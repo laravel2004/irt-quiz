@@ -5,12 +5,12 @@
 
 @section('content')
 <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+    <div class="flex-stack-mobile" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; gap: 20px;">
         <div>
             <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">Sesi Ujian</h3>
             <p style="color: var(--text-secondary); font-size: 0.9rem;">Kelola jadwal dan pembagian soal untuk ujian.</p>
         </div>
-        <div style="display: flex; gap: 16px;">
+        <div class="flex-stack-mobile" style="display: flex; gap: 16px;">
             <div style="position: relative; width: 300px;">
                 <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
                 <input type="text" id="searchInput" class="form-input" placeholder="Cari sesi..." style="padding-left: 44px; margin-bottom: 0;">
@@ -21,69 +21,71 @@
         </div>
     </div>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>NAMA SESI</th>
-                <th>TANGGAL</th>
-                <th>WAKTU</th>
-                <th>DURASI</th>
-                <th>SOAL</th>
-                <th>KATEGORI</th>
-                <th>STATUS</th>
-                <th style="width: 150px; text-align: center;">AKSI</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($sessions as $session)
-            <tr>
-                <td>
-                    <div style="font-weight: 600;">{{ $session->name }}</div>
-                    <code style="font-size: 0.75rem; color: var(--accent);">{{ $session->code }}</code>
-                </td>
-                <td>
-                    <div style="font-size: 0.85rem;">{{ $session->start_date }}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-secondary);">s/d {{ $session->end_date }}</div>
-                </td>
-                <td>{{ substr($session->start_time, 0, 5) }} - {{ substr($session->end_time, 0, 5) }}</td>
-                <td>{{ $session->duration }} mnt</td>
-                <td>{{ $session->total_questions }} btr</td>
-                <td>
-                    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                        @foreach($session->sessionCategories as $sc)
-                            <span class="badge" style="font-size: 0.7rem; background: rgba(255,255,255,0.05);">
-                                {{ data_get($sc->category, 'name') }} ({{ $sc->percentage }}%)
-                            </span>
-                        @endforeach
-                    </div>
-                </td>
-                <td>
-                    <span class="badge {{ $session->is_active ? 'active' : '' }}">
-                        {{ $session->is_active ? 'Terbuka' : 'Tertutup' }}
-                    </span>
-                </td>
-                <td style="text-align: center;">
-                    <a href="{{ route('admin.sessions.show', $session->id) }}" class="btn-icon" title="Lihat Detail">
-                        <i class="fas fa-eye"></i>
-                    </a>
-                    <button class="btn-icon {{ $session->is_active ? 'delete' : '' }}" onclick="toggleStatus({{ $session->id }})" title="{{ $session->is_active ? 'Tutup Sesi' : 'Buka Sesi' }}" style="color: {{ $session->is_active ? '#ef4444' : '#10b981' }};">
-                        <i class="fas {{ $session->is_active ? 'fa-lock' : 'fa-lock-open' }}"></i>
-                    </button>
-                    <button class="btn-icon" onclick="editSession({{ $session->id }})" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon delete" onclick="deleteSession({{ $session->id }})" title="Hapus">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">Belum ada sesi ujian.</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>NAMA SESI</th>
+                    <th>TANGGAL</th>
+                    <th>WAKTU</th>
+                    <th>DURASI</th>
+                    <th>SOAL</th>
+                    <th>KATEGORI</th>
+                    <th>STATUS</th>
+                    <th style="width: 150px; text-align: center;">AKSI</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($sessions as $session)
+                <tr>
+                    <td>
+                        <div style="font-weight: 600;">{{ $session->name }}</div>
+                        <code style="font-size: 0.75rem; color: var(--accent);">{{ $session->code }}</code>
+                    </td>
+                    <td>
+                        <div style="font-size: 0.85rem;">{{ $session->start_date }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">s/d {{ $session->end_date }}</div>
+                    </td>
+                    <td>{{ substr($session->start_time, 0, 5) }} - {{ substr($session->end_time, 0, 5) }}</td>
+                    <td>{{ $session->duration }} mnt</td>
+                    <td>{{ $session->total_questions }} btr</td>
+                    <td>
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                            @foreach($session->sessionCategories as $sc)
+                                <span class="badge" style="font-size: 0.7rem; background: rgba(255,255,255,0.05);">
+                                    {{ data_get($sc->category, 'name') }} ({{ $sc->percentage }}%)
+                                </span>
+                            @endforeach
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge {{ $session->is_active ? 'active' : '' }}">
+                            {{ $session->is_active ? 'Terbuka' : 'Tertutup' }}
+                        </span>
+                    </td>
+                    <td style="text-align: center;">
+                        <a href="{{ route('admin.sessions.show', $session->id) }}" class="btn-icon" title="Lihat Detail">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <button class="btn-icon {{ $session->is_active ? 'delete' : '' }}" onclick="toggleStatus({{ $session->id }})" title="{{ $session->is_active ? 'Tutup Sesi' : 'Buka Sesi' }}" style="color: {{ $session->is_active ? '#ef4444' : '#10b981' }};">
+                            <i class="fas {{ $session->is_active ? 'fa-lock' : 'fa-lock-open' }}"></i>
+                        </button>
+                        <button class="btn-icon" onclick="editSession({{ $session->id }})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon delete" onclick="deleteSession({{ $session->id }})" title="Hapus">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">Belum ada sesi ujian.</td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- Session Modal -->
@@ -97,7 +99,7 @@
             @csrf
             <input type="hidden" id="sessionId">
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="responsive-grid">
                 <!-- Left Column -->
                 <div>
                     <div class="form-group">
@@ -161,7 +163,7 @@
                 </div>
             </div>
 
-            <div style="display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end;">
+            <div class="flex-stack-mobile" style="display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end;">
                 <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeSessionModal()">Batal</button>
                 <button type="submit" class="btn-primary">Simpan Sesi</button>
             </div>

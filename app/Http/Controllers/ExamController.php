@@ -40,8 +40,18 @@ class ExamController extends Controller
         $start = \Carbon\Carbon::parse($session->start_date . ' ' . $session->start_time);
         $end = \Carbon\Carbon::parse($session->end_date . ' ' . $session->end_time);
 
-        if (!$session->is_active || $now->lt($start) || $now->gt($end)) {
-            return back()->with('error', 'Sesi ujian belum dimulai atau sudah berakhir.');
+        if (!$session->is_active) {
+            return back()->with('error', 'Sesi ujian sedang ditutup oleh administrator.');
+        }
+
+        if ($now->lt($start)) {
+            $formattedStart = $start->translatedFormat('d F Y, H:i');
+            return back()->with('error', "Ujian belum dimulai. Silakan masuk kembali pada $formattedStart WIB.");
+        }
+
+        if ($now->gt($end)) {
+            $formattedEnd = $end->translatedFormat('d F Y, H:i');
+            return back()->with('error', "Sesi ujian telah berakhir pada $formattedEnd WIB.");
         }
 
         if ($participant->finished_at) {

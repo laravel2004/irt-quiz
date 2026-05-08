@@ -12,7 +12,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="sidebar">
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-logo">
             <i class="fas fa-graduation-cap" style="font-size: 1.8rem; color: var(--accent);"></i>
             <h1>IRT EXAM</h1>
@@ -68,6 +70,16 @@
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
             </a>
+        </div>
+    </div>
+
+    <div class="mobile-header">
+        <button class="sidebar-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-graduation-cap" style="font-size: 1.2rem; color: var(--accent);"></i>
+            <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 0;">IRT EXAM</h1>
         </div>
     </div>
 
@@ -146,6 +158,21 @@
                 confirmCallback();
             }
             confirmCallback = null;
+        }
+
+        // Mobile Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+            
+            // Prevent body scroll when sidebar is open
+            if (sidebar.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = 'auto';
+            }
         }
     </script>
 </body>

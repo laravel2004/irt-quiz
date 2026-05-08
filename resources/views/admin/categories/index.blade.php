@@ -15,42 +15,44 @@
         </button>
     </div>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th style="width: 80px;">ID</th>
-                <th>NAMA KATEGORI</th>
-                <th>SLUG</th>
-                <th style="width: 150px; text-align: center;">AKSI</th>
-            </tr>
-        </thead>
-        <tbody id="categoryTableBody">
-            @forelse($categories as $category)
-            <tr id="row-{{ $category->id }}">
-                <td>#{{ $category->id }}</td>
-                <td class="cat-name">{{ $category->name }}</td>
-                <td><code style="color: var(--accent);">{{ $category->slug }}</code></td>
-                <td style="text-align: center;">
-                    <a href="{{ route('admin.categories.show', $category->id) }}" class="btn-icon" title="Lihat Detail">
-                        <i class="fas fa-eye"></i>
-                    </a>
-                    <button class="btn-icon" onclick="openEditModal({{ $category->id }}, '{{ $category->name }}')" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon delete" onclick="deleteCategory({{ $category->id }})" title="Hapus">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                    Belum ada kategori yang ditambahkan.
-                </td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">ID</th>
+                    <th>NAMA KATEGORI</th>
+                    <th>SLUG</th>
+                    <th style="width: 150px; text-align: center;">AKSI</th>
+                </tr>
+            </thead>
+            <tbody id="categoryTableBody">
+                @forelse($categories as $category)
+                <tr id="row-{{ $category->id }}">
+                    <td>#{{ $category->id }}</td>
+                    <td class="cat-name">{{ $category->name }}</td>
+                    <td><code style="color: var(--accent);">{{ $category->slug }}</code></td>
+                    <td style="text-align: center;">
+                        <a href="{{ route('admin.categories.show', $category->id) }}" class="btn-icon" title="Lihat Detail">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <button class="btn-icon" onclick="openEditModal({{ $category->id }}, '{{ $category->name }}')" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon delete" onclick="deleteCategory({{ $category->id }})" title="Hapus">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        Belum ada kategori yang ditambahkan.
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- Create/Edit Modal -->

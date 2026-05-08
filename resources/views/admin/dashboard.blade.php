@@ -35,45 +35,47 @@
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+<div class="responsive-grid">
     <!-- Recent Sessions -->
     <div class="glass" style="padding: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h3 style="font-family: 'Outfit', sans-serif;">Sesi Ujian Terbaru</h3>
             <a href="{{ route('admin.sessions.index') }}" style="color: var(--accent); text-decoration: none; font-size: 0.85rem;">Lihat Semua</a>
         </div>
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-            <thead>
-                <tr style="color: var(--text-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--glass-border);">
-                    <th style="padding: 12px 0;">NAMA SESI</th>
-                    <th style="padding: 12px 0; text-align: center;">SOAL</th>
-                    <th style="padding: 12px 0; text-align: center;">PESERTA</th>
-                    <th style="padding: 12px 0; text-align: right;">STATUS</th>
-                </tr>
-            </thead>
-            <tbody style="font-size: 0.9rem;">
-                @foreach($recentSessions as $s)
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <td style="padding: 16px 0;">
-                        <div style="font-weight: 600;">{{ $s->name }}</div>
-                        <code style="font-size: 0.75rem; color: var(--accent);">{{ $s->code }}</code>
-                    </td>
-                    <td style="text-align: center;">{{ $s->questions_count }}</td>
-                    <td style="text-align: center;">{{ $s->participants_count }}</td>
-                    <td style="text-align: right;">
-                        <span class="badge {{ $s->is_active ? 'active' : '' }}" style="font-size: 0.75rem; padding: 4px 12px;">
-                            {{ $s->is_active ? 'Aktif' : 'Selesai' }}
-                        </span>
-                    </td>
-                </tr>
-                @endforeach
-                @if($recentSessions->isEmpty())
-                <tr>
-                    <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-secondary);">Belum ada sesi ujian.</td>
-                </tr>
-                @endif
-            </tbody>
-        </table>
+        <div class="table-responsive" style="margin-bottom: 0;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;" class="data-table">
+                <thead>
+                    <tr style="color: var(--text-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--glass-border);">
+                        <th style="padding: 12px 0;">NAMA SESI</th>
+                        <th style="padding: 12px 0; text-align: center;">SOAL</th>
+                        <th style="padding: 12px 0; text-align: center;">PESERTA</th>
+                        <th style="padding: 12px 0; text-align: right;">STATUS</th>
+                    </tr>
+                </thead>
+                <tbody style="font-size: 0.9rem;">
+                    @foreach($recentSessions as $s)
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 16px 0;">
+                            <div style="font-weight: 600;">{{ $s->name }}</div>
+                            <code style="font-size: 0.75rem; color: var(--accent);">{{ $s->code }}</code>
+                        </td>
+                        <td style="text-align: center;">{{ $s->questions_count }}</td>
+                        <td style="text-align: center;">{{ $s->participants_count }}</td>
+                        <td style="text-align: right;">
+                            <span class="badge {{ $s->is_active ? 'active' : '' }}" style="font-size: 0.75rem; padding: 4px 12px;">
+                                {{ $s->is_active ? 'Aktif' : 'Selesai' }}
+                            </span>
+                        </td>
+                    </tr>
+                    @endforeach
+                    @if($recentSessions->isEmpty())
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-secondary);">Belum ada sesi ujian.</td>
+                    </tr>
+                    @endif
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Quick Actions -->

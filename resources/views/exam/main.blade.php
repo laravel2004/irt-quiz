@@ -86,6 +86,8 @@
         }
         .nav-btn.active { background: var(--accent); border-color: var(--accent); }
         .nav-btn.answered { border-color: #10b981; color: #10b981; background: rgba(16, 185, 129, 0.05); }
+        .nav-btn.doubtful { border-color: #f59e0b; color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+        .nav-btn.doubtful.active { background: #f59e0b; color: #020617; }
 
         .option-item {
             background: rgba(255, 255, 255, 0.03);
@@ -132,32 +134,136 @@
             display: flex;
             justify-content: space-between;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .nav-toggle-btn {
+                display: flex !important;
+            }
+            .sidebar-nav {
+                position: fixed;
+                right: -320px;
+                top: 0;
+                bottom: 0;
+                width: 320px;
+                height: 100vh;
+                z-index: 2000;
+                transition: all 0.3s ease;
+                background: #0f172a !important;
+                border-left: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            .bottom-nav {
+                right: 0;
+            }
+            .sidebar-nav.active {
+                right: 0;
+                box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+            }
+            .sidebar-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.7);
+                backdrop-filter: blur(4px);
+                z-index: 1500;
+                display: none;
+            }
+            .sidebar-overlay.active {
+                display: block;
+            }
+        }
+
+        @media (max-width: 768px) {
+            /* ... (previous styles) */
+            .exam-header {
+                padding: 12px 20px;
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+            .exam-header > div:first-child {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .exam-header .timer-box {
+                width: 100%;
+                justify-content: center;
+                padding: 8px;
+                font-size: 1rem;
+            }
+            .question-area {
+                padding: 20px;
+            }
+            .question-card {
+                padding: 24px;
+                border-radius: 12px;
+            }
+            .question-card h2 {
+                font-size: 1.1rem;
+            }
+            .option-item {
+                padding: 16px;
+                font-size: 0.9rem;
+            }
+            .bottom-nav {
+                padding: 12px 20px;
+            }
+            .bottom-nav button {
+                flex: 1;
+                font-size: 0.85rem;
+                padding: 12px !important;
+            }
+            .nav-grid {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 8px;
+            }
+            .hide-mobile {
+                display: none !important;
+            }
         }
     </style>
 </head>
 <body>
     <header class="exam-header">
-        <div style="display: flex; align-items: center; gap: 20px;">
-            <div style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.2rem; color: white;">
-                <i class="fas fa-graduation-cap" style="color: var(--accent); margin-right: 8px;"></i> {{ $session->name }}
+        <div style="display: flex; align-items: center; gap: 20px; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="nav-toggle-btn" onclick="toggleNav()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; width: 40px; height: 40px; border-radius: 8px; display: none; align-items: center; justify-content: center;">
+                    <i class="fas fa-th-large"></i>
+                </button>
+                <div style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.1rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <i class="fas fa-graduation-cap" style="color: var(--accent); margin-right: 8px;"></i> {{ $session->name }}
+                </div>
             </div>
-            <div style="height: 24px; width: 1px; background: rgba(255,255,255,0.1);"></div>
-            <div style="color: var(--text-secondary); font-size: 0.9rem;">
-                {{ $participant->name }} ({{ $participant->access_code }})
+            <div class="timer-box" id="timer" style="margin-left: auto;">
+                <i class="fas fa-clock"></i> <span id="timeDisplay">00:00:00</span>
             </div>
         </div>
-        <div class="timer-box" id="timer">
-            <i class="fas fa-clock"></i> <span id="timeDisplay">00:00:00</span>
+        <div style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 8px;" class="hide-mobile">
+            {{ $participant->name }} ({{ $participant->access_code }})
         </div>
     </header>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleNav()"></div>
 
     <div class="main-layout">
         <div class="question-area" id="questionArea">
             <!-- Questions will be rendered here by JS -->
         </div>
 
-        <aside class="sidebar-nav">
-            <h4 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">Navigasi Soal</h4>
+        <aside class="sidebar-nav" id="sidebarNav">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h4 style="font-family: 'Outfit', sans-serif; margin: 0;">Navigasi Soal</h4>
+                <button onclick="toggleNav()" style="background: none; border: none; color: white; font-size: 1.5rem;" class="nav-toggle-btn">
+                    &times;
+                </button>
+            </div>
             <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 20px;">Klik nomor untuk berpindah soal.</p>
             
             <div class="nav-grid" id="navGrid">
@@ -186,8 +292,10 @@
     <script>
         const questions = @json($questions);
         const sessionKey = `exam_answers_{{ $participant->id }}`;
+        const doubtfulKey = `exam_doubtfuls_{{ $participant->id }}`;
         let currentIdx = 0;
         let answers = JSON.parse(localStorage.getItem(sessionKey) || '{}');
+        let doubtfuls = JSON.parse(localStorage.getItem(doubtfulKey) || '{}');
         let remainingSeconds = Math.floor({{ $remainingSeconds }});
 
         function renderNav() {
@@ -195,7 +303,8 @@
             grid.innerHTML = '';
             questions.forEach((q, i) => {
                 const btn = document.createElement('button');
-                btn.className = `nav-btn ${i === currentIdx ? 'active' : ''} ${answers[q.id] ? 'answered' : ''}`;
+                const isDoubtful = doubtfuls[q.id];
+                btn.className = `nav-btn ${i === currentIdx ? 'active' : ''} ${isDoubtful ? 'doubtful' : (answers[q.id] ? 'answered' : '')}`;
                 btn.innerText = i + 1;
                 btn.onclick = () => jumpTo(i);
                 grid.appendChild(btn);
@@ -244,7 +353,10 @@
                         ${optionsHtml}
                     </div>
 
-                    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: flex-end;">
+                    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <button class="btn-primary" style="background: ${doubtfuls[q.id] ? '#f59e0b' : 'transparent'}; border: 1px solid #f59e0b; color: ${doubtfuls[q.id] ? '#020617' : '#f59e0b'}; font-size: 0.85rem; height: 38px; min-width: auto; padding: 0 16px;" onclick="toggleDoubtful('${q.id}')">
+                            <i class="fas fa-question-circle"></i> ${doubtfuls[q.id] ? 'Sudah Yakin' : 'Ragu-ragu'}
+                        </button>
                         <button class="btn-primary" style="background: transparent; border: 1px solid #ef4444; color: #ef4444; font-size: 0.85rem; height: 38px; min-width: auto; padding: 0 16px;" onclick="clearAnswer('${q.id}')">
                             <i class="fas fa-eraser"></i> Kosongkan Jawaban
                         </button>
@@ -287,7 +399,18 @@
             renderQuestion();
         }
 
-        function jumpTo(i) { currentIdx = i; renderQuestion(); }
+        function toggleNav() {
+            const nav = document.getElementById('sidebarNav');
+            const overlay = document.getElementById('sidebarOverlay');
+            nav.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        function jumpTo(i) { 
+            currentIdx = i; 
+            renderQuestion(); 
+            if (window.innerWidth <= 1024) toggleNav();
+        }
         function nextQuestion() {
             if (currentIdx < questions.length - 1) {
                 currentIdx++; renderQuestion();
@@ -320,13 +443,31 @@
             }, 1000);
         }
 
+        function toggleDoubtful(qId) {
+            if (doubtfuls[qId]) {
+                delete doubtfuls[qId];
+            } else {
+                doubtfuls[qId] = true;
+            }
+            localStorage.setItem(doubtfulKey, JSON.stringify(doubtfuls));
+            renderQuestion();
+        }
+
         function confirmSubmit() {
+            const doubtfulCount = Object.keys(doubtfuls).length;
+            if (doubtfulCount > 0) {
+                alert(`Masih ada ${doubtfulCount} soal yang bertanda Ragu-ragu. Harap selesaikan sebelum mengumpulkan ujian.`);
+                return;
+            }
+
             if (confirm('Apakah Anda yakin ingin menyelesaikan ujian? Anda tidak dapat kembali setelah mengumpulkan.')) {
                 autoSubmit();
             }
         }
 
         function autoSubmit() {
+            // Clear doubtfuls before submit if we want them to be counted as normal answers
+            // The server only cares about 'answers', not the doubtful status.
             fetch("{{ route('exam.submit') }}", {
                 method: 'POST',
                 headers: {
@@ -339,6 +480,7 @@
             .then(res => res.json())
             .then(data => {
                 localStorage.removeItem(sessionKey);
+                localStorage.removeItem(doubtfulKey);
                 window.location.href = "{{ route('exam.finish') }}";
             });
         }
