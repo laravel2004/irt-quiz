@@ -23,4 +23,11 @@ class ExamSessionParticipant extends Model
     {
         return $this->belongsTo(ExamSession::class);
     }
+
+    public function questions()
+    {
+        return $this->belongsToMany(QuestionBank::class, 'participant_questions', 'participant_id', 'question_bank_id')
+            ->withPivot('order')
+            ->withTimestamps();
+    }
 }

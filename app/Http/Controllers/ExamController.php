@@ -77,19 +77,12 @@ class ExamController extends Controller
         $participant = ExamSessionParticipant::with(['examSession.sessionCategories.category'])->findOrFail($participantId);
         $session = $participant->examSession;
 
-        // If participant has no questions assigned yet (via pivot), assign them now
-        if ($participant->examSession->questions()->wherePivot('exam_session_id', $session->id)->count() == 0) {
-            // Note: This logic picks questions for the SESSION, not per-participant. 
-            // In a real IRT system, we might want per-participant, but for now let's pick for the session if not set.
-            // Actually, usually the system picks questions for the session once.
-            
-            // Let's check if the session already has questions.
-            if ($session->questions()->count() == 0) {
-                $this->generateSessionQuestions($session);
-            }
+        // If participant has no questions assigned yet, assign them now
+        if ($participant->questions()->count() == 0) {
+            $this->generateParticipantQuestions($participant);
         }
 
-        $questions = $session->questions()->with('category')->inRandomOrder()->get();
+        $questions = $participant->questions()->with('category')->get();
         
         // Calculate remaining time
         $startTime = \Carbon\Carbon::parse($participant->started_at);
@@ -101,6 +94,35 @@ class ExamController extends Controller
         }
 
         return view('exam.main', compact('session', 'participant', 'questions', 'remainingSeconds'));
+    }
+
+    private function generateParticipantQuestions(ExamSessionParticipant $participant)
+    {
+        $session = $participant->examSession;
+        $allSelectedIds = [];
+
+        foreach ($session->sessionCategories as $sc) {
+            $count = round(($sc->percentage / 100) * $session->total_questions);
+            
+            $questionIds = QuestionBank::where('category_id', $sc->category_id)
+                ->inRandomOrder()
+                ->limit($count)
+                ->pluck('id')
+                ->toArray();
+            
+            $allSelectedIds = array_merge($allSelectedIds, $questionIds);
+        }
+
+        // Shuffle all selected questions to randomize order
+        shuffle($allSelectedIds);
+
+        // Map to pivot data with order
+        $syncData = [];
+        foreach ($allSelectedIds as $index => $id) {
+            $syncData[$id] = ['order' => $index + 1];
+        }
+
+        $participant->questions()->sync($syncData);
     }
 
     private function generateSessionQuestions(ExamSession $session)
