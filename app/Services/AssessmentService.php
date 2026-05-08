@@ -13,17 +13,21 @@ class AssessmentService
     public function calculateIRT(int $sessionId)
     {
         return DB::transaction(function () use ($sessionId) {
-            $session = ExamSession::with(['questions', 'participants'])->findOrFail($sessionId);
+            $session = ExamSession::with(['participants'])->findOrFail($sessionId);
             $participants = $session->participants()->whereNotNull('finished_at')->get();
-            $questions = $session->questions;
+            
+            // Get all unique questions that were actually answered in this session
+            $usedQuestionIds = UserAnswer::where('exam_session_id', $sessionId)
+                ->pluck('question_bank_id')
+                ->unique();
+            
+            $questions = \App\Models\QuestionBank::whereIn('id', $usedQuestionIds)->get();
 
             if ($participants->isEmpty()) {
                 return ['status' => 'error', 'message' => 'Tidak ada peserta yang menyelesaikan ujian.'];
             }
 
             // Step 1: Calculate Item Difficulty (Item Response)
-            // Difficulty = 1 - (Correct Count / Total Participants)
-            // Questions that fewer people answer correctly are "harder" (higher weight)
             $itemWeights = [];
             foreach ($questions as $question) {
                 $correctCount = UserAnswer::where('exam_session_id', $sessionId)
@@ -32,7 +36,6 @@ class AssessmentService
                     ->count();
                 
                 $difficulty = 1 - ($correctCount / $participants->count());
-                // Ensure difficulty is not 0 (at least a small weight)
                 $itemWeights[$question->id] = max(0.1, $difficulty);
             }
 
@@ -44,12 +47,14 @@ class AssessmentService
 
                 $totalCorrect = 0;
                 $totalIncorrect = 0;
-                $totalBlank = $questions->count() - $answers->count();
+                $assignedCount = $participant->questions()->count();
+                $totalBlank = $assignedCount - $answers->count();
                 $rawIRTScore = 0;
 
                 foreach ($answers as $ans) {
-                    // Re-validate correctness in case it was stored incorrectly
                     $question = $questions->firstWhere('id', $ans->question_bank_id);
+                    if (!$question) continue; // Skip if question not found
+                    
                     $correctArr = (array) $question->correct_answer;
                     $options = (array) $question->options;
                     $isCorrect = false;
@@ -92,7 +97,7 @@ class AssessmentService
                         'total_correct' => $totalCorrect,
                         'total_incorrect' => $totalIncorrect,
                         'total_blank' => $totalBlank,
-                        'score' => ($totalCorrect / $questions->count()) * 100, // Standard percentage
+                        'score' => ($assignedCount > 0) ? ($totalCorrect / $assignedCount) * 100 : 0,
                         'irt_score' => $finalIRTScore
                     ]
                 );
