@@ -93,7 +93,7 @@ class ExamController extends Controller
         
         // Calculate remaining time
         $startTime = \Carbon\Carbon::parse($participant->started_at);
-        $endTime = $startTime->copy()->addMinutes($session->duration);
+        $endTime = $startTime->copy()->addMinutes((int) $session->duration);
         $remainingSeconds = max(0, now()->diffInSeconds($endTime, false));
 
         if ($remainingSeconds <= 0) {

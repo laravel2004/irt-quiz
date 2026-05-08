@@ -20,6 +20,12 @@ class ExamSession extends Model
         'total_questions',
         'is_active'
     ];
+    
+    protected $casts = [
+        'duration' => 'integer',
+        'total_questions' => 'integer',
+        'is_active' => 'boolean'
+    ];
 
     public function sessionCategories()
     {
