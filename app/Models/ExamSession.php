@@ -20,7 +20,8 @@ class ExamSession extends Model
         'total_questions',
         'is_active',
         'max_score_raw',
-        'max_score_irt'
+        'max_score_irt',
+        'discussion_pdf'
     ];
     
     protected $casts = [

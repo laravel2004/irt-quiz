@@ -45,6 +45,12 @@
                     <span>Sesi Ujian</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{{ route('admin.participants.index') }}" class="nav-link {{ request()->routeIs('admin.participants.*') ? 'active' : '' }}">
+                    <i class="fas fa-users"></i>
+                    <span>Manajemen Peserta</span>
+                </a>
+            </li>
             <!-- <li class="nav-item">
                 <a href="#" class="nav-link">
                     <i class="fas fa-user-plus"></i>

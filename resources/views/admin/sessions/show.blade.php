@@ -152,40 +152,66 @@
 
 <!-- Participant Modal -->
 <div class="modal-overlay" id="participantModal">
-    <div class="modal-content glass animate-fade-in" style="max-width: 500px;">
+    <div class="modal-content glass animate-fade-in" style="max-width: 700px; width: 90%;">
         <div class="modal-header">
-            <h3>Tambah Peserta Baru</h3>
+            <h3>Pilih Peserta dari Database</h3>
             <button class="close-modal" onclick="closeParticipantModal()">&times;</button>
         </div>
+        <div style="margin-bottom: 20px;">
+            <div style="position: relative; margin-bottom: 16px;">
+                <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                <input type="text" id="userSearchInput" class="form-input" placeholder="Cari nama atau email peserta..." style="padding-left: 44px; margin-bottom: 0;">
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 8px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer;">
+                    <input type="checkbox" id="selectAllUsers" onchange="toggleSelectAllUsers(this)"> 
+                    <span>Pilih Semua yang Tampil</span>
+                </label>
+                <div id="selectedCount" style="font-size: 0.85rem; color: var(--accent); font-weight: 600;">0 peserta dipilih</div>
+            </div>
+        </div>
+
         <form id="participantForm">
             @csrf
             <input type="hidden" name="exam_session_id" value="{{ $session->id }}">
             
-            <div class="form-group">
-                <label>Nama Lengkap</label>
-                <input type="text" name="name" class="form-input" placeholder="Masukkan nama peserta" required>
-            </div>
-
-            <div class="form-group">
-                <label>Nomor WhatsApp</label>
-                <input type="text" name="whatsapp" class="form-input" placeholder="Contoh: 08123456789" required>
-            </div>
-
-            <div class="form-group">
-                <label>Alamat</label>
-                <textarea name="address" class="form-input" style="height: 80px;" placeholder="Masukkan alamat (opsional)"></textarea>
-            </div>
-
-            <div style="background: rgba(59, 130, 246, 0.1); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-                <p style="font-size: 0.8rem; color: var(--accent); display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-info-circle"></i> 
-                    Kode akses 6 digit akan di-generate otomatis oleh sistem.
-                </p>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: 12px; margin-bottom: 24px;">
+                <table class="data-table" style="margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">PILIH</th>
+                            <th>NAMA</th>
+                            <th>EMAIL</th>
+                            <th style="width: 100px;">ROLE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userListBody">
+                        @php 
+                            $existingUserIds = $session->participants->pluck('user_id')->toArray();
+                        @endphp
+                        @foreach($availableParticipants as $user)
+                        @if(!in_array($user->id, $existingUserIds))
+                        <tr class="user-row" data-search="{{ strtolower($user->name . ' ' . $user->email) }}">
+                            <td style="text-align: center;">
+                                <input type="checkbox" name="user_ids[]" value="{{ $user->id }}" onchange="updateSelectedCount()">
+                            </td>
+                            <td><div style="font-weight: 600;">{{ $user->name }}</div></td>
+                            <td>{{ $user->email }}</td>
+                            <td>
+                                <span class="badge" style="font-size: 0.7rem; background: {{ $user->role === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $user->role === 'premium' ? '#eab308' : '#3b82f6' }};">
+                                    {{ ucfirst($user->role) }}
+                                </span>
+                            </td>
+                        </tr>
+                        @endif
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: flex-end;">
                 <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeParticipantModal()">Batal</button>
-                <button type="submit" class="btn-primary">Simpan Peserta</button>
+                <button type="submit" class="btn-primary" id="submitBtn" disabled>Tambahkan Terpilih</button>
             </div>
         </form>
     </div>
@@ -211,6 +237,32 @@
                 <i class="fas fa-magic"></i> Generate Hasil IRT
             </button>
         </div>
+    </div>
+
+    <!-- Upload Discussion PDF -->
+    <div style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 48px; height: 48px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1.5rem;">
+                <i class="fas fa-file-pdf"></i>
+            </div>
+            <div>
+                <h4 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">File Pembahasan (PDF)</h4>
+                <p style="font-size: 0.8rem; color: var(--text-secondary);">
+                    @if($session->discussion_pdf)
+                        <span style="color: #10b981;"><i class="fas fa-check-circle"></i> File terunggah: {{ basename($session->discussion_pdf) }}</span>
+                    @else
+                        Belum ada file pembahasan yang diunggah untuk sesi ini.
+                    @endif
+                </p>
+            </div>
+        </div>
+        <form id="uploadDiscussionForm" style="display: flex; gap: 12px; align-items: center;">
+            @csrf
+            <input type="file" name="discussion_pdf" id="discussion_pdf" accept=".pdf" style="display: none;" onchange="submitDiscussionPdf()">
+            <button type="button" class="btn-primary" onclick="document.getElementById('discussion_pdf').click()" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary); height: 40px; font-size: 0.85rem;">
+                <i class="fas fa-upload"></i> {{ $session->discussion_pdf ? 'Ganti File' : 'Pilih PDF' }}
+            </button>
+        </form>
     </div>
 
     <div class="table-responsive">
@@ -508,8 +560,36 @@
     renderParticipants();
     renderIRTResults();
 
+    // User Modal Search & Selection
+    document.getElementById('userSearchInput').oninput = function(e) {
+        const term = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#userListBody .user-row');
+        rows.forEach(row => {
+            const text = row.getAttribute('data-search');
+            row.style.display = text.includes(term) ? '' : 'none';
+        });
+    };
+
+    function toggleSelectAllUsers(checkbox) {
+        const rows = document.querySelectorAll('#userListBody .user-row');
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                const cb = row.querySelector('input[type="checkbox"]');
+                cb.checked = checkbox.checked;
+            }
+        });
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        const count = document.querySelectorAll('#userListBody input[name="user_ids[]"]:checked').length;
+        document.getElementById('selectedCount').innerText = `${count} peserta dipilih`;
+        document.getElementById('submitBtn').disabled = count === 0;
+    }
+
     function openParticipantModal() {
         pForm.reset();
+        updateSelectedCount();
         pModal.classList.add('active');
     }
 
@@ -528,7 +608,7 @@
         e.preventDefault();
         const formData = new FormData(this);
         
-        fetch("{{ route('admin.participants.store') }}", {
+        fetch("{{ route('admin.session-participants.store') }}", {
             method: 'POST',
             body: formData,
             headers: {
@@ -539,7 +619,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                showToast('Peserta berhasil ditambahkan');
+                showToast(data.message);
                 setTimeout(() => location.reload(), 1000);
             } else {
                 showToast(data.message || 'Gagal menambahkan peserta', 'error');
@@ -608,6 +688,38 @@
         .catch(err => {
             console.error(err);
             showToast('Gagal generate IRT', 'error');
+        });
+    }
+
+    function submitDiscussionPdf() {
+        const fileInput = document.getElementById('discussion_pdf');
+        if (!fileInput.files.length) return;
+
+        const formData = new FormData();
+        formData.append('discussion_pdf', fileInput.files[0]);
+        formData.append('_token', '{{ csrf_token() }}');
+
+        showToast('Sedang mengunggah file...', 'info');
+
+        fetch("{{ route('admin.sessions.upload-discussion', $session->id) }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast(data.message);
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message || 'Gagal mengunggah file', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Terjadi kesalahan sistem', 'error');
         });
     }
 </script>

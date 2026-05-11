@@ -11,6 +11,7 @@ class ExamSessionParticipant extends Model
 
     protected $fillable = [
         'exam_session_id',
+        'user_id',
         'name',
         'whatsapp',
         'address',
@@ -24,10 +25,25 @@ class ExamSessionParticipant extends Model
         return $this->belongsTo(ExamSession::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function questions()
     {
         return $this->belongsToMany(QuestionBank::class, 'participant_questions', 'participant_id', 'question_bank_id')
             ->withPivot('order')
             ->withTimestamps();
+    }
+
+    public function result()
+    {
+        return $this->hasOne(ExamResult::class, 'participant_id');
+    }
+
+    public function userAnswers()
+    {
+        return $this->hasMany(UserAnswer::class, 'participant_id');
     }
 }

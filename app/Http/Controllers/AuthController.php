@@ -49,13 +49,16 @@ class AuthController extends Controller
         try {
             $user = $this->authService->login($credentials);
             
-            // For web session, we just redirect. For API, return token.
             if ($request->wantsJson()) {
                 return $this->successResponse($user, 'Login successful');
             }
 
             if ($user->role === 'admin') {
                 return redirect()->route('admin.dashboard');
+            }
+            
+            if (in_array($user->role, ['basic', 'premium'])) {
+                return redirect()->route('participant.dashboard');
             }
             
             return redirect()->route('login')->with('success', 'Login successful');
@@ -67,9 +70,14 @@ class AuthController extends Controller
         }
     }
 
+    public function participantLogin(Request $request)
+    {
+        return $this->login($request);
+    }
+
     public function logout()
     {
         $this->authService->logout();
-        return redirect()->route('login');
+        return redirect()->route('participant.login');
     }
 }

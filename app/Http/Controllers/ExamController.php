@@ -77,13 +77,22 @@ class ExamController extends Controller
         return redirect()->route('exam.main');
     }
 
-    public function main()
+    public function main($code)
     {
         $participantId = session('participant_id');
-        if (!$participantId) return redirect()->route('exam.index');
+        if (!$participantId) return redirect()->route('participant.dashboard')->with('error', 'Silakan masukkan kode akses terlebih dahulu.');
 
         $participant = ExamSessionParticipant::with(['examSession.sessionCategories.category'])->findOrFail($participantId);
         $session = $participant->examSession;
+
+        if ($session->code !== $code) {
+            return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian tidak sesuai.');
+        }
+
+        // Mark started if not already
+        if (!$participant->started_at) {
+            $participant->update(['started_at' => now()]);
+        }
 
         // Ensure session has questions
         if ($session->questions()->count() == 0) {
@@ -103,7 +112,7 @@ class ExamController extends Controller
         $remainingSeconds = max(0, now()->diffInSeconds($endTime, false));
 
         if ($remainingSeconds <= 0) {
-            return redirect()->route('exam.index')->with('error', 'Waktu ujian Anda sudah habis.');
+            return redirect()->route('participant.dashboard')->with('error', 'Waktu ujian Anda sudah habis.');
         }
 
         return view('exam.main', compact('session', 'participant', 'questions', 'remainingSeconds'));

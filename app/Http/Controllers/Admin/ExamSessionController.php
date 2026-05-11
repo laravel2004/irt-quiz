@@ -78,11 +78,17 @@ class ExamSessionController extends Controller
             return redirect()->route('admin.sessions.index')->with('error', 'Sesi tidak ditemukan');
         }
 
+        // Fetch all potential participants (Users)
+        $availableParticipants = \App\Models\User::whereIn('role', ['basic', 'premium'])->orderBy('name')->get();
+
         if ($request->ajax() || $request->wantsJson()) {
-            return $this->successResponse($session);
+            return $this->successResponse([
+                'session' => $session,
+                'availableParticipants' => $availableParticipants
+            ]);
         }
 
-        return view('admin.sessions.show', compact('session'));
+        return view('admin.sessions.show', compact('session', 'availableParticipants'));
     }
 
     public function update(Request $request, $id)
@@ -186,5 +192,26 @@ class ExamSessionController extends Controller
         }
 
         return view('admin.sessions.preview', compact('session'));
+    }
+
+    public function uploadDiscussionPdf(Request $request, $id)
+    {
+        $request->validate([
+            'discussion_pdf' => 'required|mimes:pdf|max:10240', // Max 10MB
+        ]);
+
+        $session = ExamSession::findOrFail($id);
+
+        if ($request->hasFile('discussion_pdf')) {
+            // Delete old file if exists
+            if ($session->discussion_pdf && \Illuminate\Support\Facades\Storage::disk('public')->exists($session->discussion_pdf)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($session->discussion_pdf);
+            }
+
+            $path = $request->file('discussion_pdf')->store('discussions', 'public');
+            $session->update(['discussion_pdf' => $path]);
+        }
+
+        return $this->successResponse(null, 'File pembahasan berhasil diunggah');
     }
 }

@@ -25,6 +25,8 @@ class PublicSessionController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'password' => 'required|string|min:6',
             'whatsapp' => 'required|string|max:20',
             'address' => 'nullable|string',
         ]);
@@ -33,10 +35,33 @@ class PublicSessionController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
+        // Create or Update User
+        $user = \App\Models\User::updateOrCreate(
+            ['email' => $request->email],
+            [
+                'name' => $request->name,
+                'phone' => $request->whatsapp,
+                'address' => $request->address,
+                'role' => 'basic',
+                'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+            ]
+        );
+
+        // Check if already registered for this session
+        $existing = ExamSessionParticipant::where('exam_session_id', $session->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existing) {
+            return redirect()->route('public.session.success', ['code' => $session->code])
+                             ->with('participant', $existing);
+        }
+
         $accessCode = $this->generateUniqueCode();
 
         $participant = ExamSessionParticipant::create([
             'exam_session_id' => $session->id,
+            'user_id' => $user->id,
             'name' => $request->name,
             'whatsapp' => $request->whatsapp,
             'address' => $request->address,

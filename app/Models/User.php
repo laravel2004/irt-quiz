@@ -29,4 +29,14 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    public function registrations()
+    {
+        return $this->hasMany(ExamSessionParticipant::class, 'user_id');
+    }
 }

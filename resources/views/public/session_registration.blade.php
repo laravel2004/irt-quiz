@@ -69,24 +69,37 @@
                     </div>
                 </div>
             </div>
-
             <form action="{{ route('public.session.register', $session->code) }}" method="POST">
                 @csrf
-                <div class="form-group">
-                    <label>Nama Lengkap</label>
-                    <input type="text" name="name" class="form-input" placeholder="Masukkan nama sesuai identitas" value="{{ old('name') }}" required>
-                    @error('name') <small style="color: #ef4444;">{{ $message }}</small> @enderror
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Nama Lengkap</label>
+                        <input type="text" name="name" class="form-input" placeholder="Nama Lengkap" value="{{ old('name') }}" required>
+                        @error('name') <small style="color: #ef4444;">{{ $message }}</small> @enderror
+                    </div>
+                    <div class="form-group">
+                        <label>Nomor WhatsApp</label>
+                        <input type="text" name="whatsapp" class="form-input" placeholder="081234567890" value="{{ old('whatsapp') }}" required>
+                        @error('whatsapp') <small style="color: #ef4444;">{{ $message }}</small> @enderror
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Nomor WhatsApp</label>
-                    <input type="text" name="whatsapp" class="form-input" placeholder="Contoh: 081234567890" value="{{ old('whatsapp') }}" required>
-                    @error('whatsapp') <small style="color: #ef4444;">{{ $message }}</small> @enderror
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Email (Untuk Login)</label>
+                        <input type="email" name="email" class="form-input" placeholder="email@contoh.com" value="{{ old('email') }}" required>
+                        @error('email') <small style="color: #ef4444;">{{ $message }}</small> @enderror
+                    </div>
+                    <div class="form-group">
+                        <label>Password Akun</label>
+                        <input type="password" name="password" class="form-input" placeholder="Min. 6 Karakter" required>
+                        @error('password') <small style="color: #ef4444;">{{ $message }}</small> @enderror
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label>Alamat Domisili</label>
-                    <textarea name="address" class="form-input" style="height: 100px;" placeholder="Masukkan alamat lengkap">{{ old('address') }}</textarea>
+                    <textarea name="address" class="form-input" style="height: 80px;" placeholder="Masukkan alamat lengkap">{{ old('address') }}</textarea>
                     @error('address') <small style="color: #ef4444;">{{ $message }}</small> @enderror
                 </div>
 

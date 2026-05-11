@@ -13,7 +13,8 @@ class ExamResult extends Model
         'total_incorrect',
         'total_blank',
         'score',
-        'irt_score'
+        'irt_score',
+        'ai_analysis'
     ];
 
     public function participant() { return $this->belongsTo(ExamSessionParticipant::class, 'participant_id'); }

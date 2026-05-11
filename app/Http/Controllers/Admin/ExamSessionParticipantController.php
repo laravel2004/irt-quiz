@@ -17,18 +17,35 @@ class ExamSessionParticipantController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'exam_session_id' => 'required|exists:exam_sessions,id',
-            'name' => 'required|string|max:255',
-            'whatsapp' => 'required|string|max:20',
-            'address' => 'nullable|string',
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id'
         ]);
 
         if ($validator->fails()) return $this->validationResponse($validator->errors());
 
-        $data = $request->all();
-        $data['access_code'] = $this->generateUniqueCode();
+        $users = \App\Models\User::whereIn('id', $request->user_ids)->get();
+        $createdCount = 0;
 
-        $participant = ExamSessionParticipant::create($data);
-        return $this->successResponse($participant, 'Peserta berhasil ditambahkan', 201);
+        foreach ($users as $user) {
+            // Check if already registered for this session
+            $exists = ExamSessionParticipant::where('exam_session_id', $request->exam_session_id)
+                ->where('user_id', $user->id)
+                ->exists();
+            
+            if (!$exists) {
+                ExamSessionParticipant::create([
+                    'exam_session_id' => $request->exam_session_id,
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'whatsapp' => $user->phone ?? '-',
+                    'address' => $user->address,
+                    'access_code' => $this->generateUniqueCode()
+                ]);
+                $createdCount++;
+            }
+        }
+
+        return $this->successResponse(null, "$createdCount peserta berhasil ditambahkan", 201);
     }
 
     public function destroy($id)
