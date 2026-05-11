@@ -28,6 +28,7 @@ Route::middleware(AdminMiddleware::class)->group(function () {
     Route::resource('/admin/categories', CategoryController::class)->names('admin.categories');
     Route::resource('/admin/questions', \App\Http\Controllers\Admin\QuestionBankController::class)->names('admin.questions');
     Route::resource('/admin/sessions', \App\Http\Controllers\Admin\ExamSessionController::class)->names('admin.sessions');
+    Route::get('/admin/sessions/{id}/preview-questions', [\App\Http\Controllers\Admin\ExamSessionController::class, 'previewQuestions'])->name('admin.sessions.preview-questions');
     Route::patch('/admin/sessions/{id}/toggle-status', [\App\Http\Controllers\Admin\ExamSessionController::class, 'toggleStatus'])->name('admin.sessions.toggle-status');
     Route::post('/admin/sessions/{id}/generate-irt', [\App\Http\Controllers\Admin\ExamSessionController::class, 'generateIRTResults'])->name('admin.sessions.generate-irt');
     Route::get('/admin/sessions/{id}/export', [\App\Http\Controllers\Admin\ExamSessionController::class, 'exportResults'])->name('admin.sessions.export');

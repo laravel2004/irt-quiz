@@ -36,7 +36,18 @@ class AssessmentService
                     ->count();
                 
                 $difficulty = 1 - ($correctCount / $participants->count());
-                $itemWeights[$question->id] = max(0.1, $difficulty);
+                $difficulty = max(0.1, $difficulty);
+                $itemWeights[$question->id] = $difficulty;
+                
+                // Update the question difficulty in bank
+                $question->update(['difficulty' => $difficulty]);
+            }
+
+            // Calculate max possible scores for the session pool
+            $maxPossibleRaw = $questions->sum('score_correct');
+            $maxPossibleIRT = 0;
+            foreach ($questions as $q) {
+                $maxPossibleIRT += $itemWeights[$q->id] ?? 0;
             }
 
             // Step 2: Calculate Participant Scores
@@ -50,6 +61,7 @@ class AssessmentService
                 $assignedCount = $participant->questions()->count();
                 $totalBlank = $assignedCount - $answers->count();
                 $rawIRTScore = 0;
+                $rawPoints = 0;
 
                 foreach ($answers as $ans) {
                     $question = $questions->firstWhere('id', $ans->question_bank_id);
@@ -79,14 +91,20 @@ class AssessmentService
                     if ($isCorrect) {
                         $totalCorrect++;
                         $rawIRTScore += $itemWeights[$ans->question_bank_id];
+                        $rawPoints += $question->score_correct;
                     } else {
                         $totalIncorrect++;
+                        $rawPoints += $question->score_incorrect;
                     }
                 }
 
-                // Normalization (optional, e.g., scale to 1000 like UTBK)
-                // For now, let's keep it as is or multiply by 10 for better numbers
-                $finalIRTScore = $rawIRTScore * 10;
+                // Ratio scaling for Raw Score
+                $finalRawScore = ($maxPossibleRaw > 0) ? ($rawPoints / $maxPossibleRaw) * $session->max_score_raw : 0;
+                $finalRawScore = max(0, min($finalRawScore, $session->max_score_raw)); // Clamp just in case
+
+                // Ratio scaling for IRT Score
+                $finalIRTScore = ($maxPossibleIRT > 0) ? ($rawIRTScore / $maxPossibleIRT) * $session->max_score_irt : 0;
+                $finalIRTScore = max(0, min($finalIRTScore, $session->max_score_irt)); // Clamp
 
                 ExamResult::updateOrCreate(
                     [
@@ -97,7 +115,7 @@ class AssessmentService
                         'total_correct' => $totalCorrect,
                         'total_incorrect' => $totalIncorrect,
                         'total_blank' => $totalBlank,
-                        'score' => ($assignedCount > 0) ? ($totalCorrect / $assignedCount) * 100 : 0,
+                        'score' => $finalRawScore,
                         'irt_score' => $finalIRTScore
                     ]
                 );

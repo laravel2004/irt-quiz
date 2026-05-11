@@ -42,6 +42,8 @@ class QuestionBankController extends Controller
             'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'options' => 'nullable|array',
             'correct_answer' => 'required',
+            'score_correct' => 'required|integer',
+            'score_incorrect' => 'required|integer',
         ]);
 
         if ($validator->fails()) {
@@ -80,6 +82,8 @@ class QuestionBankController extends Controller
             'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'options' => 'nullable|array',
             'correct_answer' => 'required',
+            'score_correct' => 'required|integer',
+            'score_incorrect' => 'required|integer',
         ]);
 
         if ($validator->fails()) {

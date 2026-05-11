@@ -139,6 +139,17 @@
                             <input type="number" name="total_questions" id="sTotalQuestions" class="form-input" placeholder="50" required>
                         </div>
                     </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label>Maks. Skor Raw</label>
+                            <input type="number" name="max_score_raw" id="sMaxScoreRaw" class="form-input" value="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Maks. Skor IRT</label>
+                            <input type="number" name="max_score_irt" id="sMaxScoreIrt" class="form-input" value="1000" required>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Column (Categories & Percentage) -->
@@ -273,6 +284,8 @@
             end_time: document.getElementById('sEndTime').value,
             duration: document.getElementById('sDuration').value,
             total_questions: document.getElementById('sTotalQuestions').value,
+            max_score_raw: document.getElementById('sMaxScoreRaw').value,
+            max_score_irt: document.getElementById('sMaxScoreIrt').value,
             categories: categories
         };
 
@@ -361,6 +374,8 @@
             
             document.getElementById('sDuration').value = s.duration;
             document.getElementById('sTotalQuestions').value = s.total_questions;
+            document.getElementById('sMaxScoreRaw').value = s.max_score_raw || 100;
+            document.getElementById('sMaxScoreIrt').value = s.max_score_irt || 1000;
             
             categoriesList.innerHTML = '';
             // Handle both camelCase and snake_case relationship names

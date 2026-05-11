@@ -25,11 +25,20 @@
             </div>
             <div style="text-align: right;">
                 <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px;">Target Soal</div>
-                <div style="font-size: 2rem; font-weight: 700; font-family: 'Outfit', sans-serif;">{{ $session->total_questions }} <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 400;">butir</span></div>
+                <div style="font-size: 2rem; font-weight: 700; font-family: 'Outfit', sans-serif; margin-bottom: 12px;">{{ $session->total_questions }} <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 400;">butir</span></div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button class="btn-primary" onclick="toggleStatus({{ $session->id }})" style="height: 32px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 8px; background: {{ $session->is_active ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)' }}; color: {{ $session->is_active ? '#ef4444' : '#10b981' }}; border: 1px solid {{ $session->is_active ? '#ef4444' : '#10b981' }};">
+                        <i class="fas {{ $session->is_active ? 'fa-lock' : 'fa-lock-open' }}"></i>
+                        {{ $session->is_active ? 'Tutup Sesi' : 'Buka Sesi' }}
+                    </button>
+                    <a href="{{ route('admin.sessions.preview-questions', $session->id) }}" class="btn-primary" style="height: 32px; font-size: 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; background: rgba(var(--accent-rgb), 0.1); color: var(--accent); border: 1px solid var(--accent);">
+                        <i class="fas fa-eye"></i> Preview Soal
+                    </a>
+                </div>
             </div>
         </div>
 
-        <div class="responsive-grid" style="grid-template-columns: repeat(3, 1fr); gap: 24px;">
+        <div class="responsive-grid" style="grid-template-columns: repeat(4, 1fr); gap: 24px;">
             <div class="stat-card glass" style="padding: 16px;">
                 <div class="label"><i class="fas fa-calendar"></i> Tanggal</div>
                 <div style="font-size: 1rem; margin-top: 8px;">{{ $session->start_date }}</div>
@@ -44,6 +53,11 @@
                 <div class="label"><i class="fas fa-hourglass-half"></i> Durasi</div>
                 <div style="font-size: 1rem; margin-top: 8px;">{{ $session->duration }} Menit</div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary);">Pengerjaan</div>
+            </div>
+            <div class="stat-card glass" style="padding: 16px;">
+                <div class="label"><i class="fas fa-trophy"></i> Skor Maksimal</div>
+                <div style="font-size: 1rem; margin-top: 8px;">Raw: {{ $session->max_score_raw }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">IRT: {{ $session->max_score_irt }}</div>
             </div>
         </div>
     </div>
@@ -553,6 +567,23 @@
                     setTimeout(() => location.reload(), 500);
                 }
             });
+        });
+    }
+
+    function toggleStatus(id) {
+        fetch(`/admin/sessions/${id}/toggle-status`, {
+            method: 'PATCH',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast(data.message);
+                setTimeout(() => location.reload(), 500);
+            }
         });
     }
 

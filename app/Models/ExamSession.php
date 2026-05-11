@@ -18,13 +18,17 @@ class ExamSession extends Model
         'end_time',
         'duration',
         'total_questions',
-        'is_active'
+        'is_active',
+        'max_score_raw',
+        'max_score_irt'
     ];
     
     protected $casts = [
         'duration' => 'integer',
         'total_questions' => 'integer',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'max_score_raw' => 'integer',
+        'max_score_irt' => 'integer'
     ];
 
     public function sessionCategories()

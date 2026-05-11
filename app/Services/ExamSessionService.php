@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Repositories\ExamSessionRepository;
 use App\Models\ExamSessionCategory;
+use App\Models\QuestionBank;
 use Illuminate\Support\Facades\DB;
 
 class ExamSessionService extends BaseService
@@ -57,5 +58,28 @@ class ExamSessionService extends BaseService
         
         $session->questions()->sync($questionIds);
         return true;
+    }
+
+    public function generateSessionQuestions(int $sessionId)
+    {
+        $session = $this->repository->find($sessionId);
+        if (!$session) return;
+
+        $allSelectedIds = [];
+
+        foreach ($session->sessionCategories as $sc) {
+            $count = round(($sc->percentage / 100) * $session->total_questions);
+            
+            $questionIds = QuestionBank::where('category_id', $sc->category_id)
+                ->inRandomOrder()
+                ->limit($count)
+                ->pluck('id')
+                ->toArray();
+            
+            $allSelectedIds = array_merge($allSelectedIds, $questionIds);
+        }
+
+        // Sync questions to session
+        $session->questions()->sync($allSelectedIds);
     }
 }

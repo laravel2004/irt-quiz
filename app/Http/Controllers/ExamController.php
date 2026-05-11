@@ -6,11 +6,19 @@ use App\Models\ExamSession;
 use App\Models\ExamSessionParticipant;
 use App\Models\QuestionBank;
 use App\Models\UserAnswer;
+use App\Services\ExamSessionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ExamController extends Controller
 {
+    protected ExamSessionService $sessionService;
+
+    public function __construct(ExamSessionService $sessionService)
+    {
+        $this->sessionService = $sessionService;
+    }
+
     public function index()
     {
         return view('exam.login');
@@ -77,6 +85,11 @@ class ExamController extends Controller
         $participant = ExamSessionParticipant::with(['examSession.sessionCategories.category'])->findOrFail($participantId);
         $session = $participant->examSession;
 
+        // Ensure session has questions
+        if ($session->questions()->count() == 0) {
+            $this->sessionService->generateSessionQuestions($session->id);
+        }
+
         // If participant has no questions assigned yet, assign them now
         if ($participant->questions()->count() == 0) {
             $this->generateParticipantQuestions($participant);
@@ -99,50 +112,20 @@ class ExamController extends Controller
     private function generateParticipantQuestions(ExamSessionParticipant $participant)
     {
         $session = $participant->examSession;
-        $allSelectedIds = [];
+        
+        // Get question IDs from session
+        $questionIds = $session->questions()->pluck('question_bank_id')->toArray();
 
-        foreach ($session->sessionCategories as $sc) {
-            $count = round(($sc->percentage / 100) * $session->total_questions);
-            
-            $questionIds = QuestionBank::where('category_id', $sc->category_id)
-                ->inRandomOrder()
-                ->limit($count)
-                ->pluck('id')
-                ->toArray();
-            
-            $allSelectedIds = array_merge($allSelectedIds, $questionIds);
-        }
-
-        // Shuffle all selected questions to randomize order
-        shuffle($allSelectedIds);
+        // Shuffle questions to randomize order for this specific participant
+        shuffle($questionIds);
 
         // Map to pivot data with order
         $syncData = [];
-        foreach ($allSelectedIds as $index => $id) {
+        foreach ($questionIds as $index => $id) {
             $syncData[$id] = ['order' => $index + 1];
         }
 
         $participant->questions()->sync($syncData);
-    }
-
-    private function generateSessionQuestions(ExamSession $session)
-    {
-        $allSelectedIds = [];
-
-        foreach ($session->sessionCategories as $sc) {
-            $count = round(($sc->percentage / 100) * $session->total_questions);
-            
-            $questionIds = QuestionBank::where('category_id', $sc->category_id)
-                ->inRandomOrder()
-                ->limit($count)
-                ->pluck('id')
-                ->toArray();
-            
-            $allSelectedIds = array_merge($allSelectedIds, $questionIds);
-        }
-
-        // Sync questions to session
-        $session->questions()->sync($allSelectedIds);
     }
 
     public function submit(Request $request)

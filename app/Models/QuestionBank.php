@@ -13,7 +13,9 @@ class QuestionBank extends Model
         'question_image',
         'options',
         'correct_answer',
-        'difficulty'
+        'difficulty',
+        'score_correct',
+        'score_incorrect'
     ];
 
     protected $casts = [

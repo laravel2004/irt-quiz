@@ -47,6 +47,8 @@ class ExamSessionController extends Controller
             'end_time' => 'required',
             'duration' => 'required|integer|min:1',
             'total_questions' => 'required|integer|min:1',
+            'max_score_raw' => 'required|integer|min:1',
+            'max_score_irt' => 'required|integer|min:1',
             'categories' => 'required|array|min:1',
             'categories.*.id' => 'required|exists:categories,id',
             'categories.*.percentage' => 'required|integer|min:1|max:100',
@@ -93,6 +95,8 @@ class ExamSessionController extends Controller
             'end_time' => 'required',
             'duration' => 'required|integer|min:1',
             'total_questions' => 'required|integer|min:1',
+            'max_score_raw' => 'required|integer|min:1',
+            'max_score_irt' => 'required|integer|min:1',
             'categories' => 'required|array|min:1',
             'categories.*.id' => 'required|exists:categories,id',
             'categories.*.percentage' => 'required|integer|min:1|max:100',
@@ -169,5 +173,18 @@ class ExamSessionController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    public function previewQuestions($id)
+    {
+        $session = ExamSession::with(['sessionCategories.category', 'questions.category'])->findOrFail($id);
+        
+        // Generate questions if none exist
+        if ($session->questions()->count() == 0) {
+            $this->sessionService->generateSessionQuestions($id);
+            $session->load('questions.category');
+        }
+
+        return view('admin.sessions.preview', compact('session'));
     }
 }

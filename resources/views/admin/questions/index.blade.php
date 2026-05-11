@@ -166,6 +166,17 @@
                         <label>Pertanyaan</label>
                         <textarea name="question_text" id="qText" class="form-input" style="height: 120px;" placeholder="Tuliskan soal di sini..." required></textarea>
                     </div>
+
+                    <div class="responsive-grid" style="gap: 16px;">
+                        <div class="form-group">
+                            <label>Skor Benar</label>
+                            <input type="number" name="score_correct" id="scoreCorrect" class="form-input" value="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Skor Salah</label>
+                            <input type="number" name="score_incorrect" id="scoreIncorrect" class="form-input" value="0" required>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Column -->
@@ -347,6 +358,8 @@
             document.getElementById('catSelect').value = q.category_id;
             document.getElementById('typeSelect').value = q.type;
             document.getElementById('qText').value = q.question_text;
+            document.getElementById('scoreCorrect').value = q.score_correct || 1;
+            document.getElementById('scoreIncorrect').value = q.score_incorrect || 0;
             
             if (q.question_image) {
                 document.getElementById('imagePreview').src = `/storage/${q.question_image}`;
