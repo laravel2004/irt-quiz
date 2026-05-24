@@ -40,14 +40,15 @@
                 </span>
             </div>
             <div style="display: flex; gap: 16px; align-items: center; color: var(--text-secondary); font-size: 0.8rem;">
-                <div>Kesulitan: <span style="color: var(--accent); font-weight: 600;">{{ number_format($question->difficulty, 2) }}</span></div>
+                @php $displayDifficulty = $question->pivot->difficulty ?? $question->difficulty; @endphp
+                <div>Kesulitan: <span style="color: var(--accent); font-weight: 600;">{{ number_format((float)$displayDifficulty, 2) }}</span></div>
                 <div style="width: 1px; height: 12px; background: rgba(255,255,255,0.1);"></div>
                 <div>Skor: <span style="color: #10b981; font-weight: 600;">+{{ $question->score_correct }}</span> / <span style="color: #ef4444; font-weight: 600;">{{ $question->score_incorrect }}</span></div>
             </div>
         </div>
 
-        <div style="font-size: 1.1rem; line-height: 1.6; margin-bottom: 24px; color: white;">
-            {!! nl2br(e($question->question_text)) !!}
+        <div style="font-size: 1.1rem; line-height: 1.6; margin-bottom: 24px; color: white; overflow-x: auto;">
+            {!! $question->question_text !!}
         </div>
 
         @if($question->question_image)
@@ -56,30 +57,87 @@
         </div>
         @endif
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-            @php
-                $options = (array) $question->options;
-                $correct = (array) $question->correct_answer;
-            @endphp
+        @php
+            $options = (array) $question->options;
+            $correct = (array) $question->correct_answer;
+        @endphp
 
-            @foreach($options as $optIndex => $option)
-                @php
-                    $isCorrect = in_array($optIndex, $correct);
-                @endphp
-                <div style="padding: 12px 16px; border-radius: 10px; background: {{ $isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.03)' }}; border: 1px solid {{ $isCorrect ? '#10b981' : 'rgba(255,255,255,0.05)' }}; display: flex; align-items: flex-start; gap: 12px;">
-                    <div style="width: 24px; height: 24px; border-radius: 6px; background: {{ $isCorrect ? '#10b981' : 'rgba(255,255,255,0.1)' }}; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">
-                        {{ chr(65 + $optIndex) }}
-                    </div>
-                    <div style="font-size: 0.95rem; color: {{ $isCorrect ? '#10b981' : 'var(--text-secondary)' }};">
-                        {{ $option }}
-                        @if($isCorrect)
-                        <i class="fas fa-check-circle" style="margin-left: 8px;"></i>
-                        @endif
-                    </div>
+        @if($question->type === 'multiple_benar_salah')
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 80px 80px; gap: 12px; padding: 0 16px; font-weight: 600; color: var(--text-secondary); font-size: 0.85rem;">
+                    <div>PERNYATAAN</div>
+                    <div style="text-align: center;">BENAR</div>
+                    <div style="text-align: center;">SALAH</div>
                 </div>
-            @endforeach
-        </div>
+                @foreach($options as $optIndex => $option)
+                    @php
+                        $isBenar = in_array((string)$optIndex, $correct) || in_array($optIndex, $correct);
+                    @endphp
+                    <div style="display: grid; grid-template-columns: 1fr 80px 80px; gap: 12px; padding: 16px; border-radius: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); align-items: center;">
+                        <div style="font-size: 0.95rem; overflow-x: auto; color: white;">
+                            {!! $option !!}
+                        </div>
+                        <div style="text-align: center;">
+                            @if($isBenar)
+                                <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; display: inline-block;"><i class="fas fa-check"></i></span>
+                            @else
+                                <span style="color: rgba(255,255,255,0.1); display: inline-block;"><i class="fas fa-minus"></i></span>
+                            @endif
+                        </div>
+                        <div style="text-align: center;">
+                            @if(!$isBenar)
+                                <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; display: inline-block;"><i class="fas fa-check"></i></span>
+                            @else
+                                <span style="color: rgba(255,255,255,0.1); display: inline-block;"><i class="fas fa-minus"></i></span>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                @foreach($options as $optIndex => $option)
+                    @php
+                        $isCorrect = in_array((string)$optIndex, $correct) || in_array($optIndex, $correct);
+                    @endphp
+                    <div style="padding: 12px 16px; border-radius: 10px; background: {{ $isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.03)' }}; border: 1px solid {{ $isCorrect ? '#10b981' : 'rgba(255,255,255,0.05)' }}; display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="width: 24px; height: 24px; border-radius: 6px; background: {{ $isCorrect ? '#10b981' : 'rgba(255,255,255,0.1)' }}; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">
+                            @if($question->type === 'multiple_choice')
+                                <i class="fas {{ $isCorrect ? 'fa-check-square' : 'fa-square' }}" style="font-size: 0.85rem;"></i>
+                            @else
+                                {{ chr(65 + $optIndex) }}
+                            @endif
+                        </div>
+                        <div style="font-size: 0.95rem; color: {{ $isCorrect ? '#10b981' : 'var(--text-secondary)' }}; overflow-x: auto;">
+                            {!! $option !!}
+                            @if($isCorrect && $question->type !== 'multiple_choice')
+                            <i class="fas fa-check-circle" style="margin-left: 8px;"></i>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
     </div>
     @endforeach
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    window.MathJax = {
+        tex: {
+            inlineMath: [['\\(', '\\)']],
+            displayMath: [['\\[', '\\]']],
+            packages: {'[+]': ['mhchem']}
+        },
+        loader: {load: ['[tex]/mhchem']},
+        startup: {
+            pageReady: () => {
+                return MathJax.startup.defaultPageReady();
+            }
+        }
+    };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+@endpush

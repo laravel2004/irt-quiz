@@ -37,13 +37,15 @@ class QuestionBankController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'category_id' => 'required|exists:categories,id',
-            'type' => 'required|in:pilihan_ganda,benar_salah,multiple_choice',
+            'sub_category_id' => 'required|exists:sub_categories,id',
+            'type' => 'required|in:pilihan_ganda,benar_salah,multiple_choice,multiple_benar_salah',
             'question_text' => 'required|string',
             'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'options' => 'nullable|array',
             'correct_answer' => 'required',
             'score_correct' => 'required|integer',
             'score_incorrect' => 'required|integer',
+            'explanation' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -68,7 +70,7 @@ class QuestionBankController extends Controller
 
     public function show($id)
     {
-        $question = $this->questionService->getById($id);
+        $question = \App\Models\QuestionBank::with(['category', 'subCategory'])->find($id);
         if (!$question) return $this->errorResponse('Pertanyaan tidak ditemukan', 404);
         return $this->successResponse($question);
     }
@@ -77,13 +79,15 @@ class QuestionBankController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'category_id' => 'required|exists:categories,id',
-            'type' => 'required|in:pilihan_ganda,benar_salah,multiple_choice',
+            'sub_category_id' => 'required|exists:sub_categories,id',
+            'type' => 'required|in:pilihan_ganda,benar_salah,multiple_choice,multiple_benar_salah',
             'question_text' => 'required|string',
             'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'options' => 'nullable|array',
             'correct_answer' => 'required',
             'score_correct' => 'required|integer',
             'score_incorrect' => 'required|integer',
+            'explanation' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {

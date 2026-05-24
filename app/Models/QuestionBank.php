@@ -8,6 +8,7 @@ class QuestionBank extends Model
 {
     protected $fillable = [
         'category_id',
+        'sub_category_id',
         'type',
         'question_text',
         'question_image',
@@ -15,7 +16,8 @@ class QuestionBank extends Model
         'correct_answer',
         'difficulty',
         'score_correct',
-        'score_incorrect'
+        'score_incorrect',
+        'explanation'
     ];
 
     protected $casts = [
@@ -26,5 +28,10 @@ class QuestionBank extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function subCategory()
+    {
+        return $this->belongsTo(SubCategory::class);
     }
 }

@@ -19,4 +19,5 @@ class ExamResult extends Model
 
     public function participant() { return $this->belongsTo(ExamSessionParticipant::class, 'participant_id'); }
     public function session() { return $this->belongsTo(ExamSession::class, 'exam_session_id'); }
+    public function categoryResults() { return $this->hasMany(ExamCategoryResult::class); }
 }

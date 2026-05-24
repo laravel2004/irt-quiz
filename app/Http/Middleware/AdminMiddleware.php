@@ -20,8 +20,8 @@ class AdminMiddleware
             return redirect()->route('login')->with('error', 'Please login to access this page.');
         }
 
-        if (Auth::user()->role !== 'admin') {
-            abort(403, 'Unauthorized access.');
+        if (!Auth::user()->isAdmin()) {
+            abort(403, 'Akses Ditolak. Anda bukan Admin.');
         }
 
         return $next($request);

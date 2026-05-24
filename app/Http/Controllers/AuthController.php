@@ -53,15 +53,19 @@ class AuthController extends Controller
                 return $this->successResponse($user, 'Login successful');
             }
 
-            if ($user->role === 'admin') {
+            if ($user->role === 'superadmin') {
                 return redirect()->route('admin.dashboard');
             }
             
-            if (in_array($user->role, ['basic', 'premium'])) {
+            if ($user->role === 'admin_sesi') {
+                return redirect()->route('admin.sessions.index');
+            }
+            
+            if ($user->role === 'basic') {
                 return redirect()->route('participant.dashboard');
             }
             
-            return redirect()->route('login')->with('success', 'Login successful');
+            return redirect('/');
         } catch (Exception $e) {
             if ($request->wantsJson()) {
                 return $this->errorResponse($e->getMessage(), 401);
@@ -78,6 +82,6 @@ class AuthController extends Controller
     public function logout()
     {
         $this->authService->logout();
-        return redirect()->route('participant.login');
+        return redirect()->route('login')->with('success', 'Logout berhasil');
     }
 }

@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Admin IRT',
             'email' => 'admin@irt.com',
             'password' => bcrypt('password'),
-            'role' => 'admin',
+            'role' => 'superadmin',
         ]);
     }
 }

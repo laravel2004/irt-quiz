@@ -12,4 +12,9 @@ class Category extends Model
     {
         return $this->hasMany(QuestionBank::class);
     }
+
+    public function subCategories()
+    {
+        return $this->hasMany(SubCategory::class);
+    }
 }

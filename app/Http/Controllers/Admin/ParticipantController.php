@@ -15,7 +15,7 @@ class ParticipantController extends Controller
 
     public function index(Request $request)
     {
-        $participants = User::whereIn('role', ['basic', 'premium'])->latest()->get();
+        $participants = User::whereIn('role', ['basic', 'admin_sesi', 'superadmin'])->latest()->get();
         
         if ($request->ajax()) {
             return $this->successResponse($participants);
@@ -31,7 +31,7 @@ class ParticipantController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string',
             'address' => 'nullable|string',
-            'role' => 'required|in:basic,premium',
+            'role' => 'required|in:basic,admin_sesi,superadmin',
             'password' => 'required|string|min:6',
         ]);
 
@@ -64,7 +64,7 @@ class ParticipantController extends Controller
             'email' => 'required|email|unique:users,email,' . $id,
             'phone' => 'nullable|string',
             'address' => 'nullable|string',
-            'role' => 'required|in:basic,premium',
+            'role' => 'required|in:basic,admin_sesi,superadmin',
             'password' => 'nullable|string|min:6',
         ]);
 

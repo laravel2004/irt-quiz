@@ -14,7 +14,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $totalParticipants = ExamSessionParticipant::count();
+        $totalParticipants = \App\Models\User::whereIn('role', ['basic', 'premium'])->count();
         $totalQuestions = QuestionBank::count();
         $totalCategories = Category::count();
         $activeSessionsCount = ExamSession::where('is_active', true)->count();

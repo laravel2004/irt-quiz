@@ -48,6 +48,42 @@ class ExamSessionParticipantController extends Controller
         return $this->successResponse(null, "$createdCount peserta berhasil ditambahkan", 201);
     }
 
+    public function storeNewUser(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'exam_session_id' => 'required|exists:exam_sessions,id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'whatsapp' => 'nullable|string|max:20',
+            'address' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationResponse($validator->errors());
+        }
+
+        $user = \App\Models\User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => bcrypt($request->password),
+            'role' => 'basic',
+            'phone' => $request->whatsapp,
+            'address' => $request->address
+        ]);
+
+        $participant = ExamSessionParticipant::create([
+            'exam_session_id' => $request->exam_session_id,
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'whatsapp' => $request->whatsapp ?? '-',
+            'address' => $request->address,
+            'access_code' => $this->generateUniqueCode()
+        ]);
+
+        return $this->successResponse($participant->load('user'), 'Akun peserta baru berhasil dibuat dan ditambahkan ke sesi', 201);
+    }
+
     public function destroy($id)
     {
         $participant = ExamSessionParticipant::find($id);
@@ -55,6 +91,24 @@ class ExamSessionParticipantController extends Controller
         
         $participant->delete();
         return $this->successResponse(null, 'Peserta berhasil dihapus');
+    }
+
+    public function updatePrivilege(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'privilege' => 'required|in:general,premium'
+        ]);
+
+        if ($validator->fails()) return $this->validationResponse($validator->errors());
+
+        $participant = ExamSessionParticipant::find($id);
+        if (!$participant) return $this->errorResponse('Peserta tidak ditemukan', 404);
+
+        $participant->update([
+            'privilege' => $request->privilege
+        ]);
+
+        return $this->successResponse($participant, 'Privilege peserta berhasil diubah menjadi ' . ucfirst($request->privilege));
     }
 
     private function generateUniqueCode()

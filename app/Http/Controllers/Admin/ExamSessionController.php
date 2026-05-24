@@ -27,8 +27,16 @@ class ExamSessionController extends Controller
 
     public function index(Request $request)
     {
-        $sessions = ExamSession::with('sessionCategories.category')->latest()->get();
-        $categories = Category::all();
+        $query = ExamSession::with('sessionCategories.category')->latest();
+        
+        if (auth()->user() && auth()->user()->role === 'admin_sesi') {
+            $query->whereHas('participants', function($q) {
+                $q->where('user_id', auth()->id());
+            });
+        }
+        
+        $sessions = $query->get();
+        $categories = Category::with('subCategories')->get();
         
         if ($request->ajax()) {
             return $this->successResponse($sessions);
@@ -45,21 +53,27 @@ class ExamSessionController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'start_time' => 'required',
             'end_time' => 'required',
-            'duration' => 'required|integer|min:1',
-            'total_questions' => 'required|integer|min:1',
-            'max_score_raw' => 'required|integer|min:1',
-            'max_score_irt' => 'required|integer|min:1',
             'categories' => 'required|array|min:1',
             'categories.*.id' => 'required|exists:categories,id',
-            'categories.*.percentage' => 'required|integer|min:1|max:100',
+            'categories.*.duration' => 'required|integer|min:1',
+            'categories.*.total_questions' => 'required|integer|min:1',
+            'categories.*.max_score_raw' => 'required|integer|min:1',
+            'categories.*.max_score_irt' => 'required|integer|min:1',
+            'categories.*.sub_categories' => 'sometimes|array',
+            'categories.*.sub_categories.*.id' => 'required|exists:sub_categories,id',
+            'categories.*.sub_categories.*.percentage' => 'required|integer|min:1|max:100',
         ]);
 
         if ($validator->fails()) return $this->validationResponse($validator->errors());
 
-        // Validate total percentage equals 100
-        $totalPercentage = collect($request->categories)->sum('percentage');
-        if ($totalPercentage !== 100) {
-            return $this->errorResponse('Total persentase harus 100%', 422);
+        // Validate total percentage equals 100 for each category that has sub_categories
+        foreach ($request->categories as $index => $cat) {
+            if (isset($cat['sub_categories']) && count($cat['sub_categories']) > 0) {
+                $totalPercentage = collect($cat['sub_categories'])->sum('percentage');
+                if ($totalPercentage != 100) {
+                    return $this->errorResponse("Total persentase sub mata pelajaran pada kategori ke-" . ($index + 1) . " harus 100%", 422);
+                }
+            }
         }
 
         $data = $request->all();
@@ -71,7 +85,7 @@ class ExamSessionController extends Controller
 
     public function show(Request $request, $id)
     {
-        $session = ExamSession::with(['sessionCategories.category', 'questions.category', 'participants', 'results.participant'])->find($id);
+        $session = ExamSession::with(['sessionCategories.category', 'sessionCategories.subCategories.subCategory', 'questions.category', 'participants.user', 'results.participant'])->find($id);
         
         if (!$session) {
             if ($request->ajax()) return $this->errorResponse('Sesi tidak ditemukan', 404);
@@ -79,7 +93,7 @@ class ExamSessionController extends Controller
         }
 
         // Fetch all potential participants (Users)
-        $availableParticipants = \App\Models\User::whereIn('role', ['basic', 'premium'])->orderBy('name')->get();
+        $availableParticipants = \App\Models\User::whereIn('role', ['basic', 'premium', 'user', 'admin_sesi'])->orderBy('name')->get();
 
         if ($request->ajax() || $request->wantsJson()) {
             return $this->successResponse([
@@ -99,20 +113,26 @@ class ExamSessionController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'start_time' => 'required',
             'end_time' => 'required',
-            'duration' => 'required|integer|min:1',
-            'total_questions' => 'required|integer|min:1',
-            'max_score_raw' => 'required|integer|min:1',
-            'max_score_irt' => 'required|integer|min:1',
             'categories' => 'required|array|min:1',
             'categories.*.id' => 'required|exists:categories,id',
-            'categories.*.percentage' => 'required|integer|min:1|max:100',
+            'categories.*.duration' => 'required|integer|min:1',
+            'categories.*.total_questions' => 'required|integer|min:1',
+            'categories.*.max_score_raw' => 'required|integer|min:1',
+            'categories.*.max_score_irt' => 'required|integer|min:1',
+            'categories.*.sub_categories' => 'sometimes|array',
+            'categories.*.sub_categories.*.id' => 'required|exists:sub_categories,id',
+            'categories.*.sub_categories.*.percentage' => 'required|integer|min:1|max:100',
         ]);
 
         if ($validator->fails()) return $this->validationResponse($validator->errors());
 
-        $totalPercentage = collect($request->categories)->sum('percentage');
-        if ($totalPercentage !== 100) {
-            return $this->errorResponse('Total persentase harus 100%', 422);
+        foreach ($request->categories as $index => $cat) {
+            if (isset($cat['sub_categories']) && count($cat['sub_categories']) > 0) {
+                $totalPercentage = collect($cat['sub_categories'])->sum('percentage');
+                if ($totalPercentage != 100) {
+                    return $this->errorResponse("Total persentase sub mata pelajaran pada kategori ke-" . ($index + 1) . " harus 100%", 422);
+                }
+            }
         }
 
         $this->sessionService->updateWithCategories($id, $request->all());

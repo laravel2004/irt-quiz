@@ -12,7 +12,10 @@ class ExamSessionCategory extends Model
     protected $fillable = [
         'exam_session_id',
         'category_id',
-        'percentage'
+        'duration',
+        'total_questions',
+        'max_score_raw',
+        'max_score_irt'
     ];
 
     public function examSession()
@@ -23,5 +26,10 @@ class ExamSessionCategory extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function subCategories()
+    {
+        return $this->hasMany(ExamSessionSubCategory::class);
     }
 }

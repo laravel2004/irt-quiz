@@ -1,17 +1,17 @@
 @extends('layouts.admin')
 
-@section('title', 'Kategori Soal')
-@section('header_title', 'Manajemen Kategori Soal')
+@section('title', 'Mata Pelajaran')
+@section('header_title', 'Manajemen Mata Pelajaran')
 
 @section('content')
 <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
         <div>
-            <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">Daftar Kategori</h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">Kelola kategori mata pelajaran untuk bank soal.</p>
+            <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">Daftar Mata Pelajaran</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Kelola mata pelajaran dan sub-materinya untuk bank soal.</p>
         </div>
         <button class="btn-primary" onclick="openModal('create')">
-            <i class="fas fa-plus"></i> Tambah Kategori
+            <i class="fas fa-plus"></i> Tambah Pelajaran
         </button>
     </div>
 
@@ -20,7 +20,7 @@
             <thead>
                 <tr>
                     <th style="width: 80px;">ID</th>
-                    <th>NAMA KATEGORI</th>
+                    <th>NAMA PELAJARAN</th>
                     <th>SLUG</th>
                     <th style="width: 150px; text-align: center;">AKSI</th>
                 </tr>
@@ -32,8 +32,8 @@
                     <td class="cat-name">{{ $category->name }}</td>
                     <td><code style="color: var(--accent);">{{ $category->slug }}</code></td>
                     <td style="text-align: center;">
-                        <a href="{{ route('admin.categories.show', $category->id) }}" class="btn-icon" title="Lihat Detail">
-                            <i class="fas fa-eye"></i>
+                        <a href="{{ route('admin.sub-categories.index', ['category_id' => $category->id]) }}" class="btn-icon" title="Kelola Sub Pelajaran">
+                            <i class="fas fa-layer-group"></i>
                         </a>
                         <button class="btn-icon" onclick="openEditModal({{ $category->id }}, '{{ $category->name }}')" title="Edit">
                             <i class="fas fa-edit"></i>
@@ -46,7 +46,7 @@
                 @empty
                 <tr>
                     <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                        Belum ada kategori yang ditambahkan.
+                        Belum ada mata pelajaran yang ditambahkan.
                     </td>
                 </tr>
                 @endforelse
@@ -59,14 +59,14 @@
 <div class="modal-overlay" id="categoryModal">
     <div class="modal-content glass animate-fade-in">
         <div class="modal-header">
-            <h3 id="modalTitle">Tambah Kategori</h3>
+            <h3 id="modalTitle">Tambah Mata Pelajaran</h3>
             <button class="close-modal" onclick="closeModal()">&times;</button>
         </div>
         <form id="categoryForm">
             @csrf
             <input type="hidden" id="categoryId">
             <div class="form-group">
-                <label for="catName">Nama Kategori</label>
+                <label for="catName">Nama Mata Pelajaran</label>
                 <input type="text" id="catName" name="name" class="form-input" placeholder="Contoh: Matematika IPA" required>
                 <span class="error-msg" id="nameError" style="color: #ef4444; font-size: 0.8rem; margin-top: 4px; display: none;"></span>
             </div>
@@ -88,7 +88,7 @@
 
     function openModal(mode) {
         currentMode = mode;
-        document.getElementById('modalTitle').innerText = mode === 'create' ? 'Tambah Kategori' : 'Edit Kategori';
+        document.getElementById('modalTitle').innerText = mode === 'create' ? 'Tambah Pelajaran' : 'Edit Pelajaran';
         document.getElementById('categoryId').value = '';
         form.reset();
         hideErrors();
@@ -130,7 +130,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                showToast(currentMode === 'create' ? 'Kategori berhasil ditambahkan!' : 'Kategori berhasil diperbarui!');
+                showToast(currentMode === 'create' ? 'Mata pelajaran berhasil ditambahkan!' : 'Mata pelajaran berhasil diperbarui!');
                 setTimeout(() => location.reload(), 500);
             } else {
                 if (data.data && data.data.name) {
@@ -149,7 +149,7 @@
     });
 
     function deleteCategory(id) {
-        customConfirm('Apakah Anda yakin ingin menghapus kategori ini?', function() {
+        customConfirm('Apakah Anda yakin ingin menghapus mata pelajaran ini?', function() {
             fetch(`/admin/categories/${id}`, {
                 method: 'DELETE',
                 headers: {
@@ -160,7 +160,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    showToast('Kategori berhasil dihapus!');
+                    showToast('Pelajaran berhasil dihapus!');
                     document.getElementById(`row-${id}`).remove();
                 } else {
                     showToast(data.message || 'Gagal menghapus', 'error');

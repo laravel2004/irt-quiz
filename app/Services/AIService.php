@@ -56,8 +56,7 @@ class AIService
         $correct = $data['correct'];
         $incorrect = $data['incorrect'];
         $blank = $data['blank'];
-        $irtScore = $data['irt_score'];
-        $maxIrt = $data['max_irt'];
+        $totalScore = $data['total_score'] ?? 'Belum tersedia';
         $categoryStats = $data['category_stats'];
 
         $categoryLines = "";
@@ -65,7 +64,7 @@ class AIService
             $categoryLines .= "- $nameCat: {$stat['correct']} benar dari {$stat['total']} soal\n";
         }
 
-        return "Sebagai konsultan pendidikan, berikan analisis hasil tryout untuk: $name.
+        return "Sebagai konsultan pendidikan, berikan analisis hasil ujian untuk: $name.
         Sesi: $session. 
         
         Data Performa per Bidang/Pelajaran:
@@ -75,13 +74,68 @@ class AIService
         - Total Jawaban Benar: $correct
         - Total Jawaban Salah: $incorrect
         - Total Jawaban Kosong: $blank
-        - Skor IRT Akhir: $irtScore (dari skala maksimal $maxIrt)
+        - Skor Total: $totalScore
         
         Instruksi Analisis:
-        1. **Kelebihan**: Identifikasi bidang/pelajaran mana yang paling dikuasai. Mengapa skor IRT tersebut menunjukkan potensi tinggi?
+        1. **Kelebihan**: Identifikasi bidang/pelajaran mana yang paling dikuasai.
         2. **Kekurangan**: Analisis bidang yang masih lemah. Apakah karena banyak salah atau banyak kosong? Hubungkan dengan strategi manajemen waktu.
-        3. **Rekomendasi (Langkah Selanjutnya)**: Berikan saran belajar yang taktis dan spesifik per bidang pelajaran untuk menaikkan skor IRT pada sesi berikutnya.
+        3. **Rekomendasi (Langkah Selanjutnya)**: Berikan saran belajar yang taktis dan spesifik per bidang pelajaran.
         
         Berikan jawaban Anda dalam format JSON (keys: kelebihan, kekurangan, rekomendasi) dengan narasi yang mendalam dan konsultatif.";
+    }
+
+    public function generateAggregateAnalysis($data)
+    {
+        try {
+            $prompt = $this->buildAggregatePrompt($data);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->post($this->baseUrl . '/chat/completions', [
+                'model' => $this->model,
+                'messages' => [
+                    ['role' => 'system', 'content' => 'Anda adalah AI Konsultan Pendidikan Senior. Tugas Anda menganalisis perkembangan hasil tryout siswa dari beberapa kali percobaan pada sesi yang sama. Output harus berformat JSON murni dengan key: analisis_progres, pola_kekurangan, strategi_lanjutan.'],
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+                'temperature' => 0.8,
+            ]);
+
+            if ($response->successful()) {
+                $content = $response->json()['choices'][0]['message']['content'];
+                $content = str_replace(['```json', '```'], '', $content);
+                return json_decode(trim($content), true);
+            }
+
+            Log::error('OpenAI Error: ' . $response->body());
+            return null;
+        } catch (\Exception $e) {
+            Log::error('AI Service Error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    protected function buildAggregatePrompt($data)
+    {
+        $name = $data['participant_name'];
+        $session = $data['session_name'];
+        $attempts = $data['attempts'];
+
+        $attemptsStr = "";
+        foreach ($attempts as $a) {
+            $attemptsStr .= "Percobaan ke-{$a['attempt_number']}: Benar {$a['total_correct']}, Salah {$a['total_incorrect']}, Kosong {$a['total_blank']}, Skor Mentah {$a['raw_score']}, Skor IRT {$a['irt_score']}\n";
+        }
+
+        return "Analisis perkembangan siswa bernama $name pada sesi ujian: $session.
+        
+        Riwayat Percobaan:
+        $attemptsStr
+        
+        Instruksi Analisis:
+        1. **analisis_progres**: Jelaskan bagaimana tren nilai (IRT maupun Raw) dari percobaan awal ke akhir. Apakah ada peningkatan konsisten atau penurunan?
+        2. **pola_kekurangan**: Berdasarkan tren jawaban salah/kosong, apa pola kesalahan yang masih menetap dan perlu segera diatasi?
+        3. **strategi_lanjutan**: Berikan saran belajar yang komprehensif berdasarkan seluruh riwayat di atas.
+        
+        Berikan jawaban dalam format JSON (keys: analisis_progres, pola_kekurangan, strategi_lanjutan).";
     }
 }

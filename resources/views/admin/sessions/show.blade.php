@@ -25,7 +25,7 @@
             </div>
             <div style="text-align: right;">
                 <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px;">Target Soal</div>
-                <div style="font-size: 2rem; font-weight: 700; font-family: 'Outfit', sans-serif; margin-bottom: 12px;">{{ $session->total_questions }} <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 400;">butir</span></div>
+                <div style="font-size: 2rem; font-weight: 700; font-family: 'Outfit', sans-serif; margin-bottom: 12px;">{{ $session->sessionCategories->sum('total_questions') }} <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 400;">butir</span></div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                     <button class="btn-primary" onclick="toggleStatus({{ $session->id }})" style="height: 32px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 8px; background: {{ $session->is_active ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)' }}; color: {{ $session->is_active ? '#ef4444' : '#10b981' }}; border: 1px solid {{ $session->is_active ? '#ef4444' : '#10b981' }};">
                         <i class="fas {{ $session->is_active ? 'fa-lock' : 'fa-lock-open' }}"></i>
@@ -50,31 +50,53 @@
                 <div style="font-size: 0.8rem; color: var(--text-secondary);">WIB</div>
             </div>
             <div class="stat-card glass" style="padding: 16px;">
-                <div class="label"><i class="fas fa-hourglass-half"></i> Durasi</div>
-                <div style="font-size: 1rem; margin-top: 8px;">{{ $session->duration }} Menit</div>
+                <div class="label"><i class="fas fa-hourglass-half"></i> Total Durasi</div>
+                <div style="font-size: 1rem; margin-top: 8px;">{{ $session->sessionCategories->sum('duration') }} Menit</div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary);">Pengerjaan</div>
             </div>
             <div class="stat-card glass" style="padding: 16px;">
-                <div class="label"><i class="fas fa-trophy"></i> Skor Maksimal</div>
-                <div style="font-size: 1rem; margin-top: 8px;">Raw: {{ $session->max_score_raw }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">IRT: {{ $session->max_score_irt }}</div>
+                <div class="label"><i class="fas fa-trophy"></i> Total Skor Maksimal</div>
+                <div style="font-size: 1rem; margin-top: 8px;">Raw: {{ $session->sessionCategories->sum('max_score_raw') }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">IRT: {{ $session->sessionCategories->sum('max_score_irt') }}</div>
             </div>
         </div>
     </div>
 
     <!-- Category Distribution -->
     <div class="glass animate-fade-in" style="padding: 32px;">
-        <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; margin-bottom: 20px;">Distribusi Kategori</h3>
-        <div style="display: flex; flex-direction: column; gap: 16px;">
+        <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; margin-bottom: 20px;">Konfigurasi Mata Pelajaran</h3>
+        <div style="display: flex; flex-direction: column; gap: 24px;">
             @foreach($session->sessionCategories as $sc)
-            <div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px;">
-                    <span>{{ data_get($sc->category, 'name') }}</span>
-                    <span style="color: var(--accent);">{{ $sc->percentage }}%</span>
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                    <div>
+                        <h4 style="font-size: 1.1rem; color: var(--accent); margin-bottom: 4px;">{{ data_get($sc->category, 'name') }}</h4>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; gap: 16px;">
+                            <span><i class="fas fa-hourglass-half"></i> {{ $sc->duration }} Menit</span>
+                            <span><i class="fas fa-list-ol"></i> {{ $sc->total_questions }} Soal</span>
+                            <span><i class="fas fa-bullseye"></i> Raw: {{ $sc->max_score_raw }} | IRT: {{ $sc->max_score_irt }}</span>
+                        </div>
+                    </div>
                 </div>
-                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
-                    <div style="height: 100%; width: {{ $sc->percentage }}%; background: var(--accent);"></div>
+                
+                @if($sc->subCategories->count() > 0)
+                <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 16px;">
+                    <h5 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">Persentase Sub Mata Pelajaran:</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+                        @foreach($sc->subCategories as $subCat)
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px;">
+                                <span>{{ data_get($subCat->subCategory, 'name') }}</span>
+                                <span style="font-weight: 600; color: #10b981;">{{ $subCat->percentage }}%</span>
+                            </div>
+                            <div style="height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden;">
+                                <div style="height: 100%; width: {{ $subCat->percentage }}%; background: #10b981;"></div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
                 </div>
+                @endif
             </div>
             @endforeach
         </div>
@@ -93,8 +115,9 @@
                 <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 0.8rem;"></i>
                 <input type="text" id="participantSearch" class="form-input" placeholder="Cari nama peserta..." style="padding-left: 36px; margin-bottom: 0; font-size: 0.85rem; height: 38px;">
             </div>
-            <button class="btn-primary" style="background: transparent; border: 1px solid var(--accent); color: var(--accent); height: 38px; font-size: 0.85rem;" onclick="copyRegistrationLink()">
-                <i class="fas fa-link"></i> Salin Link
+
+            <button class="btn-primary" onclick="openNewUserModal()" style="height: 38px; font-size: 0.85rem; background: transparent; border: 1px solid var(--accent); color: var(--accent);">
+                <i class="fas fa-plus"></i> Buat Peserta Baru
             </button>
             <button class="btn-primary" onclick="openParticipantModal()" style="height: 38px; font-size: 0.85rem;">
                 <i class="fas fa-user-plus"></i> Tambah Peserta
@@ -110,6 +133,7 @@
                     <th style="width: 150px;">KODE AKSES</th>
                     <th>NAMA PESERTA</th>
                     <th style="width: 150px;">WHATSAPP</th>
+                    <th style="width: 150px;">PRIVILEGE</th>
                     <th>ALAMAT</th>
                     <th style="width: 80px; text-align: center;">AKSI</th>
                 </tr>
@@ -120,8 +144,26 @@
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td><code style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; border-radius: 4px; font-weight: 700; letter-spacing: 1px;">{{ data_get($participant, 'access_code') }}</code></td>
-                    <td><div style="font-weight: 600;">{{ data_get($participant, 'name') }}</div></td>
+                    <td>
+                        <div style="font-weight: 600;">{{ data_get($participant, 'name') }}</div>
+                        @php
+                            $roleName = optional($participant->user)->role ?? 'basic';
+                            $bgRole = 'rgba(59, 130, 246, 0.1)';
+                            $colorRole = '#3b82f6';
+                            if($roleName === 'superadmin') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
+                            elseif($roleName === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
+                        @endphp
+                        <span class="badge" style="font-size: 0.65rem; background: {{ $bgRole }}; color: {{ $colorRole }}; margin-top: 4px;">
+                            {{ ucfirst(str_replace('_', ' ', $roleName)) }}
+                        </span>
+                    </td>
                     <td>{{ data_get($participant, 'whatsapp') }}</td>
+                    <td>
+                        <select onchange="updateParticipantPrivilege({{ $participant->id }}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: {{ $participant->privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $participant->privilege === 'premium' ? '#eab308' : '#3b82f6' }}; font-weight: 600;">
+                            <option value="general" {{ $participant->privilege === 'general' ? 'selected' : '' }} style="background: var(--bg-dark); color: white;">General</option>
+                            <option value="premium" {{ $participant->privilege === 'premium' ? 'selected' : '' }} style="background: var(--bg-dark); color: white;">Premium</option>
+                        </select>
+                    </td>
                     <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ data_get($participant, 'address') ?? '-' }}</td>
                     <td style="text-align: center;">
                         <button class="btn-icon delete" onclick="deleteParticipant({{ $participant->id }})" title="Hapus">
@@ -131,7 +173,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 60px; color: var(--text-secondary);">
+                    <td colspan="7" style="text-align: center; padding: 60px; color: var(--text-secondary);">
                         <i class="fas fa-users-slash" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.2;"></i>
                         <p>Belum ada peserta terdaftar untuk sesi ini.</p>
                     </td>
@@ -198,8 +240,14 @@
                             <td><div style="font-weight: 600;">{{ $user->name }}</div></td>
                             <td>{{ $user->email }}</td>
                             <td>
-                                <span class="badge" style="font-size: 0.7rem; background: {{ $user->role === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $user->role === 'premium' ? '#eab308' : '#3b82f6' }};">
-                                    {{ ucfirst($user->role) }}
+                                @php
+                                    $bgRole = 'rgba(59, 130, 246, 0.1)';
+                                    $colorRole = '#3b82f6';
+                                    if($user->role === 'premium') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
+                                    elseif($user->role === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
+                                @endphp
+                                <span class="badge" style="font-size: 0.7rem; background: {{ $bgRole }}; color: {{ $colorRole }};">
+                                    {{ ucfirst(str_replace('_', ' ', $user->role)) }}
                                 </span>
                             </td>
                         </tr>
@@ -212,6 +260,50 @@
             <div style="display: flex; gap: 12px; justify-content: flex-end;">
                 <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeParticipantModal()">Batal</button>
                 <button type="submit" class="btn-primary" id="submitBtn" disabled>Tambahkan Terpilih</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- New User Modal -->
+<div class="modal-overlay" id="newUserModal">
+    <div class="modal-content glass animate-fade-in" style="max-width: 500px; width: 90%;">
+        <div class="modal-header">
+            <h3>Buat Peserta Baru</h3>
+            <button class="close-modal" onclick="closeNewUserModal()">&times;</button>
+        </div>
+        <form id="newUserForm" onsubmit="submitNewParticipant(event)">
+            @csrf
+            <input type="hidden" name="exam_session_id" value="{{ $session->id }}">
+            
+            <div class="form-group">
+                <label>Nama Lengkap</label>
+                <input type="text" name="name" class="form-input" required placeholder="Masukkan nama peserta">
+            </div>
+            
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" class="form-input" required placeholder="email@contoh.com">
+            </div>
+            
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" class="form-input" required minlength="6" placeholder="Minimal 6 karakter">
+            </div>
+            
+            <div class="form-group">
+                <label>No. WhatsApp</label>
+                <input type="text" name="whatsapp" class="form-input" placeholder="Misal: 08123456789">
+            </div>
+            
+            <div class="form-group">
+                <label>Alamat Lengkap</label>
+                <textarea name="address" class="form-input" rows="2" placeholder="Alamat rumah atau asal sekolah"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeNewUserModal()">Batal</button>
+                <button type="submit" class="btn-primary" id="submitNewUserBtn">Buat & Tambahkan</button>
             </div>
         </form>
     </div>
@@ -348,7 +440,19 @@
     const pForm = document.getElementById('participantForm');
     
     // Participants Pagination & Search Logic
-    let allParticipants = @json($session->participants);
+    let rawParticipants = @json($session->participants->load('user'));
+    
+    // Filter to keep only the latest participant registration per user
+    let latestParticipantsMap = new Map();
+    rawParticipants.forEach(p => {
+        let userId = p.user_id;
+        let key = userId || p.name; // fallback to name
+        if (!latestParticipantsMap.has(key) || latestParticipantsMap.get(key).id < p.id) {
+            latestParticipantsMap.set(key, p);
+        }
+    });
+    
+    let allParticipants = Array.from(latestParticipantsMap.values());
     let filteredParticipants = [...allParticipants];
     let itemsPerPage = 10;
     let currentPage = 1;
@@ -370,12 +474,30 @@
         const end = Math.min(start + itemsPerPage, total);
         const pageItems = filteredParticipants.slice(start, end);
 
-        body.innerHTML = pageItems.length ? pageItems.map((p, i) => `
+        body.innerHTML = pageItems.length ? pageItems.map((p, i) => {
+            let badgeBg = 'rgba(59, 130, 246, 0.1)';
+            let badgeColor = '#3b82f6';
+            let roleName = p.user?.role || 'basic';
+            if(roleName === 'superadmin') { badgeBg = 'rgba(234, 179, 8, 0.1)'; badgeColor = '#eab308'; }
+            else if(roleName === 'admin_sesi') { badgeBg = 'rgba(139, 92, 246, 0.1)'; badgeColor = '#8b5cf6'; }
+            
+            return `
             <tr>
                 <td>${start + i + 1}</td>
                 <td><code style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; border-radius: 4px; font-weight: 700; letter-spacing: 1px;">${p.access_code}</code></td>
-                <td><div style="font-weight: 600;">${p.name}</div></td>
+                <td>
+                    <div style="font-weight: 600;">${p.name}</div>
+                    <span class="badge" style="font-size: 0.65rem; background: ${badgeBg}; color: ${badgeColor}; margin-top: 4px;">
+                        ${roleName.charAt(0).toUpperCase() + roleName.slice(1).replace('_', ' ')}
+                    </span>
+                </td>
                 <td>${p.whatsapp || '-'}</td>
+                <td>
+                    <select onchange="updateParticipantPrivilege(${p.id}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: ${p.privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)'}; color: ${p.privilege === 'premium' ? '#eab308' : '#3b82f6'}; font-weight: 600;">
+                        <option value="general" ${p.privilege === 'general' ? 'selected' : ''} style="background: var(--bg-dark); color: white;">General</option>
+                        <option value="premium" ${p.privilege === 'premium' ? 'selected' : ''} style="background: var(--bg-dark); color: white;">Premium</option>
+                    </select>
+                </td>
                 <td style="color: var(--text-secondary); font-size: 0.85rem;">${p.address || '-'}</td>
                 <td style="text-align: center;">
                     <button class="btn-icon delete" onclick="deleteParticipant(${p.id})" title="Hapus">
@@ -383,9 +505,10 @@
                     </button>
                 </td>
             </tr>
-        `).join('') : `
+        `;
+        }).join('') : `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 60px; color: var(--text-secondary);">
+                <td colspan="7" style="text-align: center; padding: 60px; color: var(--text-secondary);">
                     <i class="fas fa-users-slash" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.2;"></i>
                     <p>${searchVal ? 'Tidak ada peserta yang cocok dengan pencarian.' : 'Belum ada peserta terdaftar.'}</p>
                 </td>
@@ -441,7 +564,22 @@
     };
 
     // IRT Results Pagination & Search Logic
-    let allIRTResults = @json($session->results->load('participant'));
+    let rawIRTResults = @json($session->results->load('participant'));
+    
+    // Filter to keep only the latest result per user (based on highest participant id)
+    let latestResultsMap = new Map();
+    rawIRTResults.forEach(r => {
+        if (!r.participant) return;
+        let userId = r.participant.user_id;
+        let key = userId || r.participant.name; // fallback to name if user_id is somehow null
+        
+        if (!latestResultsMap.has(key) || latestResultsMap.get(key).participant.id < r.participant.id) {
+            latestResultsMap.set(key, r);
+        }
+    });
+    
+    let allIRTResults = Array.from(latestResultsMap.values());
+    
     // Sort results by IRT score desc, then total correct desc
     allIRTResults.sort((a, b) => b.irt_score - a.irt_score || b.total_correct - a.total_correct);
     
@@ -597,12 +735,7 @@
         pModal.classList.remove('active');
     }
 
-    function copyRegistrationLink() {
-        const url = "{{ route('public.session.registration', $session->code) }}";
-        navigator.clipboard.writeText(url).then(() => {
-            showToast('Link registrasi berhasil disalin!');
-        });
-    }
+
 
     pForm.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -631,9 +764,70 @@
         });
     });
 
+    // New User Modal Logic
+    const nuModal = document.getElementById('newUserModal');
+    
+    function openNewUserModal() {
+        document.getElementById('newUserForm').reset();
+        nuModal.classList.add('active');
+    }
+
+    function closeNewUserModal() {
+        nuModal.classList.remove('active');
+    }
+
+    function submitNewParticipant(e) {
+        e.preventDefault();
+        const form = document.getElementById('newUserForm');
+        const formData = new FormData(form);
+        const btn = document.getElementById('submitNewUserBtn');
+        const originalText = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+        
+        fetch("{{ route('admin.session-participants.store-new') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            
+            if (data.status === 'success') {
+                showToast(data.message);
+                
+                // Add the new participant directly to allParticipants array
+                allParticipants.unshift(data.data);
+                filteredParticipants = [...allParticipants];
+                currentPage = 1;
+                renderParticipants();
+                
+                // Update total count
+                const totalCountEl = document.getElementById('totalParticipantsCount');
+                if(totalCountEl) totalCountEl.innerText = allParticipants.length;
+                
+                closeNewUserModal();
+            } else {
+                showToast(data.message || 'Gagal membuat peserta baru', 'error');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error(err);
+            showToast('Terjadi kesalahan sistem', 'error');
+        });
+    }
+
     function deleteParticipant(id) {
         customConfirm('Hapus peserta ini dari sesi?', function() {
-            fetch(`/admin/participants/${id}`, {
+            fetch(`/admin/session-participants/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
@@ -715,6 +909,38 @@
                 setTimeout(() => location.reload(), 1000);
             } else {
                 showToast(data.message || 'Gagal mengunggah file', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+        });
+    }
+
+    function updateParticipantPrivilege(participantId, privilege) {
+        fetch(`/admin/session-participants/${participantId}/privilege`, {
+            method: 'PATCH',
+            body: JSON.stringify({ privilege: privilege }),
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast(data.message);
+                // Update select color
+                const selectElement = document.querySelector(`select[onchange="updateParticipantPrivilege(${participantId}, this.value)"]`);
+                if (privilege === 'premium') {
+                    selectElement.style.backgroundColor = 'rgba(234, 179, 8, 0.1)';
+                    selectElement.style.color = '#eab308';
+                } else {
+                    selectElement.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                    selectElement.style.color = '#3b82f6';
+                }
+            } else {
+                showToast(data.message || 'Gagal mengupdate privilege', 'error');
             }
         })
         .catch(err => {

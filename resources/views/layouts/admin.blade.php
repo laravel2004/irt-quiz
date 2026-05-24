@@ -3,21 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Dashboard') - IRT Exam System</title>
+    <title>@yield('title', 'Dashboard') - JagoBelajar Tryout</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <!-- TinyMCE WYSIWYG Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js" referrerpolicy="origin"></script>
+    <!-- MathLive Visual Math Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/mathlive@0.101.0/dist/mathlive.min.js"></script>
+    @stack('head')
 </head>
 <body>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     
+    @if(auth()->user() && auth()->user()->role === 'admin_sesi')
+        <style>
+            .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
+            .main-content { margin-left: 0 !important; max-width: 100%; margin: 0 auto; width: 100%; padding: 40px 32px; }
+            @media (max-width: 768px) {
+                .main-content { padding: 20px 16px; }
+                header { flex-direction: column; align-items: flex-start !important; gap: 20px; }
+                .search-container { max-width: 100% !important; }
+            }
+        </style>
+    @endif
+
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <i class="fas fa-graduation-cap" style="font-size: 1.8rem; color: var(--accent);"></i>
-            <h1>IRT EXAM</h1>
+        <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 30px; margin-top: 10px;">
+            <img src="https://jagobelajar.com/img/jagobelajar.png" alt="JagoBelajar Logo" style="height: 48px; width: auto;">
+            <h1 style="font-size: 1.1rem; text-align: center; line-height: 1.2;">JagoBelajar Tryout</h1>
         </div>
 
         <ul class="nav-menu">
@@ -27,10 +48,11 @@
                     <span>Hotspot</span>
                 </a>
             </li>
+            @if(auth()->user()->role === 'superadmin')
             <li class="nav-item">
                 <a href="{{ route('admin.categories.index') }}" class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
                     <i class="fas fa-tags"></i>
-                    <span>Kategori Soal</span>
+                    <span>Pelajaran & Sub</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -39,18 +61,21 @@
                     <span>Bank Soal</span>
                 </a>
             </li>
+            @endif
             <li class="nav-item">
                 <a href="{{ route('admin.sessions.index') }}" class="nav-link {{ request()->routeIs('admin.sessions.*') ? 'active' : '' }}">
                     <i class="fas fa-calendar-alt"></i>
                     <span>Sesi Ujian</span>
                 </a>
             </li>
+            @if(auth()->user()->role === 'superadmin')
             <li class="nav-item">
                 <a href="{{ route('admin.participants.index') }}" class="nav-link {{ request()->routeIs('admin.participants.*') ? 'active' : '' }}">
                     <i class="fas fa-users"></i>
                     <span>Manajemen Peserta</span>
                 </a>
             </li>
+            @endif
             <!-- <li class="nav-item">
                 <a href="#" class="nav-link">
                     <i class="fas fa-user-plus"></i>
@@ -72,7 +97,7 @@
         </ul>
 
         <div style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--glass-border);">
-            <a href="{{ route('login') }}" class="nav-link" style="color: #ef4444;">
+            <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="nav-link" style="color: #ef4444;">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
             </a>
@@ -84,8 +109,8 @@
             <i class="fas fa-bars"></i>
         </button>
         <div style="display: flex; align-items: center; gap: 10px;">
-            <i class="fas fa-graduation-cap" style="font-size: 1.2rem; color: var(--accent);"></i>
-            <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 0;">IRT EXAM</h1>
+            <img src="https://jagobelajar.com/img/jagobelajar.png" alt="JagoBelajar Logo" style="height: 24px; width: auto;">
+            <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 0;">JagoBelajar Tryout</h1>
         </div>
     </div>
 
@@ -93,18 +118,21 @@
         <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
             <div>
                 <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.5rem;">@yield('header_title', 'Overview')</h2>
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">Welcome back, Administrator</p>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Welcome back, {{ auth()->user()->name ?? 'User' }}</p>
             </div>
             <div style="display: flex; align-items: center; gap: 20px;">
                 <div style="position: relative;">
                     <i class="fas fa-bell" style="color: var(--text-secondary); font-size: 1.2rem; cursor: pointer;"></i>
                     <span style="position: absolute; top: -5px; right: -5px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; border: 2px solid var(--bg-dark);"></span>
                 </div>
-                <div class="glass" style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-radius: 50px; cursor: pointer;">
-                    <img src="https://ui-avatars.com/api/?name=Admin+IRT&background=3b82f6&color=fff" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%;">
-                    <span style="font-weight: 500; font-size: 0.9rem;">Admin IRT</span>
-                    <i class="fas fa-chevron-down" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
+                <div class="glass" style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-radius: 50px; cursor: pointer;" onclick="document.getElementById('logout-form').submit();">
+                    <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'U') }}&background=3b82f6&color=fff" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%;">
+                    <span style="font-weight: 500; font-size: 0.9rem;">{{ auth()->user()->name ?? 'User' }}</span>
+                    <i class="fas fa-sign-out-alt" style="font-size: 0.8rem; color: var(--text-secondary); margin-left: 4px;"></i>
                 </div>
+                <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+                    @csrf
+                </form>
             </div>
         </header>
 

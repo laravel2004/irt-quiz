@@ -11,7 +11,8 @@ class UserAnswer extends Model
         'exam_session_id',
         'question_bank_id',
         'answer',
-        'is_correct'
+        'is_correct',
+        'score'
     ];
 
     protected $casts = [

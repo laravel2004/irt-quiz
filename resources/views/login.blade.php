@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - IRT Exam System</title>
+    <title>Login - JagoBelajar Tryout</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,8 +15,8 @@
     <div class="login-container">
         <div class="login-card glass animate-fade-in">
             <div style="text-align: center; margin-bottom: 32px;">
-                <div style="font-size: 3rem; color: var(--accent); margin-bottom: 16px;">
-                    <i class="fas fa-graduation-cap"></i>
+                <div style="margin-bottom: 16px;">
+                    <img src="https://jagobelajar.com/img/jagobelajar.png" alt="JagoBelajar Logo" style="height: 64px; width: auto;">
                 </div>
                 <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.75rem; margin-bottom: 8px;">Welcome Back</h2>
                 <p style="color: var(--text-secondary); font-size: 0.9rem;">Please enter your details to sign in</p>

@@ -15,6 +15,7 @@ class ExamSessionParticipant extends Model
         'name',
         'whatsapp',
         'address',
+        'privilege',
         'access_code',
         'started_at',
         'finished_at'
@@ -45,5 +46,10 @@ class ExamSessionParticipant extends Model
     public function userAnswers()
     {
         return $this->hasMany(UserAnswer::class, 'participant_id');
+    }
+
+    public function categoryStatuses()
+    {
+        return $this->hasMany(ParticipantCategoryStatus::class, 'exam_session_participant_id');
     }
 }

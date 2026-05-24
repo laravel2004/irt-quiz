@@ -19,172 +19,388 @@ class ExamController extends Controller
         $this->sessionService = $sessionService;
     }
 
-    public function index()
+    private function getParticipant($code)
     {
-        return view('exam.login');
-    }
-
-    public function finish()
-    {
-        return view('exam.finish');
-    }
-
-    public function login(Request $request)
-    {
-        $request->validate(['access_code' => 'required|string|size:6']);
-
-        $participant = ExamSessionParticipant::where('access_code', $request->access_code)
-            ->with(['examSession.sessionCategories.category'])
+        $userId = auth()->id();
+        $session = ExamSession::where('code', $code)->firstOrFail();
+        
+        $participant = ExamSessionParticipant::where('exam_session_id', $session->id)
+            ->where('user_id', $userId)
+            ->latest('id')
             ->first();
 
+        return $participant;
+    }
+
+    public function terms($code)
+    {
+        $participant = $this->getParticipant($code);
+
         if (!$participant) {
-            return back()->with('error', 'Kode akses tidak valid.');
+            return redirect()->route('participant.dashboard')->with('error', 'Anda belum terdaftar di sesi ujian ini.');
         }
 
         $session = $participant->examSession;
 
-        // Check if session is active and current time is within range
+        // Validasi waktu aktif
         $now = now();
         $start = \Carbon\Carbon::parse($session->start_date . ' ' . $session->start_time);
         $end = \Carbon\Carbon::parse($session->end_date . ' ' . $session->end_time);
 
         if (!$session->is_active) {
-            return back()->with('error', 'Sesi ujian sedang ditutup oleh administrator.');
+            return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian sedang ditutup oleh administrator.');
         }
 
         if ($now->lt($start)) {
             $formattedStart = $start->translatedFormat('d F Y, H:i');
-            return back()->with('error', "Ujian belum dimulai. Silakan masuk kembali pada $formattedStart WIB.");
+            return redirect()->route('participant.dashboard')->with('error', "Ujian belum dimulai. Silakan masuk kembali pada $formattedStart WIB.");
         }
 
         if ($now->gt($end)) {
-            $formattedEnd = $end->translatedFormat('d F Y, H:i');
-            return back()->with('error', "Sesi ujian telah berakhir pada $formattedEnd WIB.");
+            return redirect()->route('participant.dashboard')->with('error', 'Waktu ujian telah berakhir.');
         }
 
         if ($participant->finished_at) {
-            return back()->with('error', 'Anda sudah menyelesaikan ujian ini.');
+            return redirect()->route('participant.dashboard')->with('error', 'Anda sudah menyelesaikan ujian ini.');
         }
 
-        // Store participant in session
         session(['participant_id' => $participant->id]);
 
-        // Mark started if not already
-        if (!$participant->started_at) {
-            $participant->update(['started_at' => now()]);
-        }
-
-        return redirect()->route('exam.main');
+        return view('exam.terms', compact('session', 'participant'));
     }
 
-    public function main($code)
+    public function agreeTerms(Request $request, $code)
     {
-        $participantId = session('participant_id');
-        if (!$participantId) return redirect()->route('participant.dashboard')->with('error', 'Silakan masukkan kode akses terlebih dahulu.');
+        $participant = $this->getParticipant($code);
+        if (!$participant) return redirect()->route('participant.dashboard');
 
-        $participant = ExamSessionParticipant::with(['examSession.sessionCategories.category'])->findOrFail($participantId);
         $session = $participant->examSession;
 
-        if ($session->code !== $code) {
-            return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian tidak sesuai.');
-        }
-
-        // Mark started if not already
-        if (!$participant->started_at) {
-            $participant->update(['started_at' => now()]);
-        }
-
-        // Ensure session has questions
+        // Generate questions if not exist
         if ($session->questions()->count() == 0) {
             $this->sessionService->generateSessionQuestions($session->id);
         }
 
-        // If participant has no questions assigned yet, assign them now
         if ($participant->questions()->count() == 0) {
             $this->generateParticipantQuestions($participant);
         }
 
-        $questions = $participant->questions()->with('category')->get();
+        // Mark started if not already
+        if (!$participant->started_at) {
+            $participant->update(['started_at' => now()]);
+        }
+
+        return redirect()->route('exam.categories', $session->code);
+    }
+
+    public function categories($code)
+    {
+        $participant = $this->getParticipant($code);
+        if (!$participant) return redirect()->route('participant.dashboard');
+
+        $session = $participant->examSession;
+        if (!$session->is_active) {
+            return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian telah ditutup oleh administrator.');
+        }
         
-        // Calculate remaining time
-        $startTime = \Carbon\Carbon::parse($participant->started_at);
-        $endTime = $startTime->copy()->addMinutes((int) $session->duration);
+        // Cek status mapel
+        $categoryStatuses = \App\Models\ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
+            ->get()->keyBy('exam_session_category_id');
+
+        return view('exam.categories', compact('session', 'participant', 'categoryStatuses'));
+    }
+
+    public function startCategory(Request $request, $code, $categoryId)
+    {
+        $participant = $this->getParticipant($code);
+        if (!$participant) return redirect()->route('participant.dashboard');
+
+        if (!$participant->examSession->is_active) {
+            return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian telah ditutup oleh administrator.');
+        }
+
+        $sessionCategory = \App\Models\ExamSessionCategory::where('exam_session_id', $participant->exam_session_id)
+            ->where('id', $categoryId)
+            ->firstOrFail();
+
+        $status = \App\Models\ParticipantCategoryStatus::firstOrCreate(
+            [
+                'exam_session_participant_id' => $participant->id,
+                'exam_session_category_id' => $sessionCategory->id
+            ],
+            [
+                'started_at' => now()
+            ]
+        );
+
+        return redirect()->route('exam.main', ['code' => $code, 'id' => $categoryId]);
+    }
+
+    public function main($code, $categoryId)
+    {
+        $participant = $this->getParticipant($code);
+        if (!$participant) return redirect()->route('participant.dashboard');
+
+        $session = $participant->examSession;
+        if (!$session->is_active) {
+            return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian telah ditutup oleh administrator.');
+        }
+
+        $sessionCategory = \App\Models\ExamSessionCategory::with('category')->findOrFail($categoryId);
+
+        $status = \App\Models\ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
+            ->where('exam_session_category_id', $categoryId)
+            ->first();
+
+        if (!$status || !$status->started_at) {
+            return redirect()->route('exam.categories', $code)->with('error', 'Silakan mulai mata pelajaran terlebih dahulu.');
+        }
+
+        if ($status->finished_at) {
+            return redirect()->route('exam.categories', $code)->with('error', 'Anda sudah menyelesaikan mata pelajaran ini.');
+        }
+
+        // Get questions specifically for this category
+        $questions = $participant->questions()
+            ->where('category_id', $sessionCategory->category_id)
+            ->with('category')
+            ->get();
+        
+        // Calculate remaining time for this category
+        $startTime = \Carbon\Carbon::parse($status->started_at);
+        $endTime = $startTime->copy()->addMinutes((int) $sessionCategory->duration);
         $remainingSeconds = max(0, now()->diffInSeconds($endTime, false));
 
         if ($remainingSeconds <= 0) {
-            return redirect()->route('participant.dashboard')->with('error', 'Waktu ujian Anda sudah habis.');
+            // Auto submit
+            $status->update(['finished_at' => now()]);
+            return redirect()->route('exam.categories', $code)->with('error', 'Waktu mata pelajaran ini sudah habis.');
         }
 
-        return view('exam.main', compact('session', 'participant', 'questions', 'remainingSeconds'));
+        return view('exam.main', compact('session', 'participant', 'questions', 'remainingSeconds', 'sessionCategory'));
+    }
+
+    public function submitCategory(Request $request, $code, $categoryId)
+    {
+        $participant = $this->getParticipant($code);
+        if (!$participant) return response()->json(['status' => 'error', 'message' => 'Not found'], 404);
+
+        $answers = $request->input('answers', []);
+        
+        DB::transaction(function () use ($participant, $answers, $categoryId, $request) {
+            foreach ($answers as $questionId => $answerData) {
+                $question = QuestionBank::find($questionId);
+                if (!$question) continue;
+
+                $answer = is_array($answerData) && isset($answerData['answer']) ? $answerData['answer'] : $answerData;
+                $isDoubtful = is_array($answerData) && isset($answerData['is_doubtful']) ? $answerData['is_doubtful'] : false;
+
+                $isCorrect = false;
+                $score = 0;
+                
+                // Check correctness based on question type
+                $correctArr = (array) $question->correct_answer;
+                $options = (array) $question->options;
+                
+                if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
+                    $correctIndex = $correctArr[0] ?? null;
+                    $correctValue = $options[$correctIndex] ?? null;
+                    $isCorrect = ($correctValue !== null && $correctValue == $answer);
+                    $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
+                } elseif ($question->type === 'multiple_choice') {
+                    $correctValues = array_map(fn($idx) => $options[$idx] ?? null, $correctArr);
+                    $correctValues = array_filter($correctValues, fn($v) => $v !== null);
+                    
+                    if (is_array($answer)) {
+                        sort($answer);
+                        sort($correctValues);
+                        $isCorrect = ($answer === $correctValues);
+                    }
+                    $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
+                } elseif ($question->type === 'multiple_benar_salah') {
+                    if (is_array($answer)) {
+                        $totalStatements = count($options);
+                        $correctCount = 0;
+                        
+                        foreach ($options as $idx => $optText) {
+                            $userAnswer = $answer[strval($idx)] ?? null;
+                            $shouldBeBenar = in_array(strval($idx), $correctArr);
+                            
+                            if (($shouldBeBenar && $userAnswer === 'benar') || (!$shouldBeBenar && $userAnswer === 'salah')) {
+                                $correctCount++;
+                            }
+                        }
+                        
+                        $percentage = $totalStatements > 0 ? ($correctCount / $totalStatements) : 0;
+                        $score = round($percentage * ($question->score_correct ?? 1), 2);
+                        $isCorrect = ($correctCount === $totalStatements);
+                    }
+                }
+
+                UserAnswer::updateOrCreate(
+                    [
+                        'participant_id' => $participant->id,
+                        'question_bank_id' => $questionId
+                    ],
+                    [
+                        'exam_session_id' => $participant->exam_session_id,
+                        'answer' => $answer,
+                        'is_correct' => $isCorrect,
+                        'score' => $score,
+                        'is_doubtful' => $isDoubtful
+                    ]
+                );
+            }
+
+            if ($request->has('finish_category') && $request->finish_category) {
+                \App\Models\ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
+                    ->where('exam_session_category_id', $categoryId)
+                    ->update(['finished_at' => now()]);
+            }
+        });
+
+        return response()->json(['status' => 'success']);
     }
 
     private function generateParticipantQuestions(ExamSessionParticipant $participant)
     {
         $session = $participant->examSession;
         
-        // Get question IDs from session
-        $questionIds = $session->questions()->pluck('question_bank_id')->toArray();
-
-        // Shuffle questions to randomize order for this specific participant
+        // Fetch raw IDs from pivot to guarantee duplicates are included
+        $questionIds = DB::table('session_questions')
+            ->where('exam_session_id', $session->id)
+            ->pluck('question_bank_id')
+            ->toArray();
+            
         shuffle($questionIds);
-
-        // Map to pivot data with order
-        $syncData = [];
+        
+        DB::table('participant_questions')->where('participant_id', $participant->id)->delete();
+        $insertData = [];
+        $now = now();
         foreach ($questionIds as $index => $id) {
-            $syncData[$id] = ['order' => $index + 1];
+            $insertData[] = [
+                'participant_id' => $participant->id,
+                'question_bank_id' => $id,
+                'order' => $index + 1,
+                'created_at' => $now,
+                'updated_at' => $now
+            ];
         }
-
-        $participant->questions()->sync($syncData);
+        
+        if (!empty($insertData)) {
+            foreach (array_chunk($insertData, 500) as $chunk) {
+                DB::table('participant_questions')->insert($chunk);
+            }
+        }
     }
 
-    public function submit(Request $request)
+    public function finishSession(Request $request, $code)
     {
-        $participantId = session('participant_id');
-        if (!$participantId) return response()->json(['status' => 'error'], 403);
+        $participant = $this->getParticipant($code);
+        if (!$participant) return response()->json(['status' => 'error'], 404);
 
-        $participant = ExamSessionParticipant::findOrFail($participantId);
         $participant->update(['finished_at' => now()]);
+        session()->forget('participant_id');
 
-        $answers = $request->input('answers', []);
-        
-        foreach ($answers as $questionId => $answer) {
-            $question = QuestionBank::find($questionId);
-            if (!$question) continue;
-
-            $isCorrect = false;
+        // Automatically generate IRT for Premium participants
+        if ($participant->privilege === 'premium') {
+            $assessmentService = new \App\Services\AssessmentService();
+            $assessmentService->calculateIRT($participant->exam_session_id);
             
-            // Check correctness based on question type
-            $correctArr = (array) $question->correct_answer;
-            $options = (array) $question->options;
-            
-            if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
-                // The DB stores the INDEX of the correct option
-                $correctIndex = $correctArr[0] ?? null;
-                $correctValue = $options[$correctIndex] ?? null;
-                $isCorrect = ($correctValue !== null && $correctValue == $answer);
-            } elseif ($question->type === 'multiple_choice') {
-                // Map indices to values
-                $correctValues = array_map(fn($idx) => $options[$idx] ?? null, $correctArr);
-                $correctValues = array_filter($correctValues, fn($v) => $v !== null);
+            // Generate Aggregate AI Analysis if they have >= 2 finished attempts
+            $registrations = ExamSessionParticipant::where('user_id', $participant->user_id)
+                ->where('exam_session_id', $participant->exam_session_id)
+                ->with('result')
+                ->orderBy('id', 'asc')
+                ->get();
                 
-                if (is_array($answer)) {
-                    sort($answer);
-                    sort($correctValues);
-                    $isCorrect = ($answer === $correctValues);
+            $attemptsData = [];
+            foreach ($registrations as $index => $reg) {
+                if ($reg->result) {
+                    $attemptsData[] = [
+                        'attempt_number' => $index + 1,
+                        'total_correct' => $reg->result->total_correct,
+                        'total_incorrect' => $reg->result->total_incorrect,
+                        'total_blank' => $reg->result->total_blank,
+                        'raw_score' => $reg->result->score,
+                        'irt_score' => $reg->result->irt_score
+                    ];
                 }
             }
 
-            UserAnswer::create([
-                'participant_id' => $participant->id,
-                'exam_session_id' => $participant->exam_session_id,
-                'question_bank_id' => $questionId,
-                'answer' => $answer,
-                'is_correct' => $isCorrect
-            ]);
+            if (count($attemptsData) >= 2) {
+                $aiService = new \App\Services\AIService();
+                $analysis = $aiService->generateAggregateAnalysis([
+                    'participant_name' => $participant->name,
+                    'session_name' => $registrations->first()->examSession->name,
+                    'attempts' => $attemptsData
+                ]);
+
+                if ($analysis) {
+                    $jsonAnalysis = is_array($analysis) ? $analysis : json_decode($analysis, true);
+                    \App\Models\AggregateAiAnalysis::updateOrCreate(
+                        ['user_id' => $participant->user_id, 'exam_session_id' => $participant->exam_session_id],
+                        ['analysis_data' => $jsonAnalysis]
+                    );
+                }
+            }
         }
 
-        session()->forget('participant_id');
+        return response()->json(['status' => 'success', 'message' => 'Ujian berhasil diselesaikan secara keseluruhan.']);
+    }
 
-        return response()->json(['status' => 'success', 'message' => 'Ujian berhasil dikumpulkan']);
+    public function success($code)
+    {
+        $participant = $this->getParticipant($code);
+        if (!$participant) {
+            return redirect()->route('participant.dashboard');
+        }
+
+        $session = $participant->examSession;
+        $rawScore = 0;
+        $userAnswers = \App\Models\UserAnswer::where('participant_id', $participant->id)->get();
+        $participantQuestions = $participant->questions()->get();
+        
+        foreach ($session->sessionCategories as $sessionCategory) {
+            $catId = $sessionCategory->category_id;
+            $catQuestions = $participantQuestions->where('category_id', $catId);
+            $maxPossiblePoints = $catQuestions->sum('score_correct');
+            
+            $participantPoints = 0;
+            foreach ($catQuestions as $q) {
+                $ans = $userAnswers->where('question_bank_id', $q->id)->first();
+                if ($ans && $ans->is_correct) {
+                    $participantPoints += $ans->score;
+                }
+            }
+            
+            if ($maxPossiblePoints > 0) {
+                $scaledScore = ($participantPoints / $maxPossiblePoints) * $sessionCategory->max_score_raw;
+                $rawScore += max(0, min($scaledScore, $sessionCategory->max_score_raw));
+            }
+        }
+        $rawScore = number_format($rawScore, 2);
+        
+        $answeredQuestions = \App\Models\UserAnswer::where('participant_id', $participant->id)->count();
+        $totalQuestions = $session->questions()->count();
+
+        $categoryScores = [];
+        foreach ($session->sessionCategories as $sc) {
+            $catId = $sc->category_id;
+            
+            $catAnswers = \App\Models\UserAnswer::where('participant_id', $participant->id)
+                ->whereHas('question', function($q) use ($catId) {
+                    $q->where('category_id', $catId);
+                })->get();
+                
+            $categoryScores[] = [
+                'name' => $sc->category->name,
+                'score' => $catAnswers->sum('score'),
+                'answered' => $catAnswers->count(),
+                'total' => $sc->total_questions
+            ];
+        }
+
+        return view('exam.success', compact('session', 'participant', 'rawScore', 'answeredQuestions', 'totalQuestions', 'categoryScores'));
     }
 }

@@ -40,8 +40,14 @@
                     <td>{{ $user->email }}</td>
                     <td>{{ $user->phone ?? '-' }}</td>
                     <td>
-                        <span class="badge {{ $user->role === 'premium' ? 'active' : '' }}" style="background: {{ $user->role === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $user->role === 'premium' ? '#eab308' : '#3b82f6' }};">
-                            {{ ucfirst($user->role) }}
+                        @php
+                            $bgRole = 'rgba(59, 130, 246, 0.1)';
+                            $colorRole = '#3b82f6';
+                            if($user->role === 'superadmin') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
+                            elseif($user->role === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
+                        @endphp
+                        <span class="badge" style="background: {{ $bgRole }}; color: {{ $colorRole }};">
+                            {{ ucfirst(str_replace('_', ' ', $user->role)) }}
                         </span>
                     </td>
                     <td style="font-size: 0.85rem; color: var(--text-secondary);">{{ Str::limit($user->address, 50) ?? '-' }}</td>
@@ -95,8 +101,9 @@
                 <div class="form-group">
                     <label>Role</label>
                     <select name="role" id="pRole" class="form-input" required>
-                        <option value="basic">Basic</option>
-                        <option value="premium">Premium</option>
+                        <option value="basic">Basic (Peserta Ujian)</option>
+                        <option value="admin_sesi">Admin Sesi</option>
+                        <option value="superadmin">Superadmin</option>
                     </select>
                 </div>
                 <div class="form-group">

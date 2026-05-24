@@ -6,8 +6,8 @@
 <div class="auth-container animate-fade-in">
     <div class="glass" style="padding: 40px; width: 100%; max-width: 450px;">
         <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="font-family: 'Outfit', sans-serif; font-size: 2rem; margin-bottom: 8px;">Login Peserta</h1>
-            <p style="color: var(--text-secondary);">Silakan login untuk mengakses ujian Anda.</p>
+            <h1 style="font-family: 'Outfit', sans-serif; font-size: 2rem; margin-bottom: 8px;">Portal Ujian</h1>
+            <p style="color: var(--text-secondary);">Silakan login untuk masuk ke dalam sistem.</p>
         </div>
 
         @if(session('error'))
@@ -16,7 +16,13 @@
             </div>
         @endif
 
-        <form action="{{ route('participant.login.post') }}" method="POST">
+        @if(session('success'))
+            <div class="alert alert-success" style="margin-bottom: 24px; padding: 12px; background: rgba(16, 185, 129, 0.1); color: #10b981; border-radius: 8px; font-size: 0.9rem;">
+                <i class="fas fa-check-circle"></i> {{ session('success') }}
+            </div>
+        @endif
+
+        <form action="{{ route('login.post') }}" method="POST">
             @csrf
             <div class="form-group">
                 <label for="email">Email</label>
@@ -35,7 +41,7 @@
             </div>
 
             <button type="submit" class="btn-primary" style="width: 100%; height: 50px; font-size: 1rem; border-radius: 12px;">
-                Masuk ke Dashboard
+                Masuk
             </button>
         </form>
 

@@ -12,24 +12,22 @@ class ExamSession extends Model
     protected $fillable = [
         'name',
         'code',
+        'admin_id',
         'start_date',
         'end_date',
         'start_time',
         'end_time',
-        'duration',
-        'total_questions',
         'is_active',
-        'max_score_raw',
-        'max_score_irt',
         'discussion_pdf'
     ];
+
+    public function admin()
+    {
+        return $this->belongsTo(User::class, 'admin_id');
+    }
     
     protected $casts = [
-        'duration' => 'integer',
-        'total_questions' => 'integer',
-        'is_active' => 'boolean',
-        'max_score_raw' => 'integer',
-        'max_score_irt' => 'integer'
+        'is_active' => 'boolean'
     ];
 
     public function sessionCategories()
@@ -49,6 +47,6 @@ class ExamSession extends Model
 
     public function questions()
     {
-        return $this->belongsToMany(QuestionBank::class, 'session_questions', 'exam_session_id', 'question_bank_id');
+        return $this->belongsToMany(QuestionBank::class, 'session_questions', 'exam_session_id', 'question_bank_id')->withPivot('difficulty');
     }
 }
