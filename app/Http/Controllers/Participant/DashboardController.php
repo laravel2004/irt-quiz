@@ -45,7 +45,7 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         $registration = ExamSessionParticipant::where('user_id', $user->id)
-            ->with(['examSession.sessionCategories', 'questions.category', 'userAnswers', 'result'])
+            ->with(['examSession.sessionCategories', 'questions.category', 'questions.subCategory', 'userAnswers', 'result'])
             ->findOrFail($registrationId);
 
         if (!$registration->finished_at) {
@@ -54,8 +54,43 @@ class DashboardController extends Controller
 
         // Map answers for easy access in view
         $answers = $registration->userAnswers->pluck('answer', 'question_bank_id')->toArray();
+        $userAnswersMapped = $registration->userAnswers->keyBy('question_bank_id');
 
-        return view('participant.review', compact('registration', 'answers'));
+        $mapelStats = [];
+
+        foreach ($registration->questions as $question) {
+            $catName = $question->category->name ?? 'Lainnya';
+            $subCatName = $question->subCategory->name ?? 'Lainnya';
+
+            if (!isset($mapelStats[$catName])) {
+                $mapelStats[$catName] = [
+                    'benar' => 0, 
+                    'salah' => 0,
+                    'subMapel' => []
+                ];
+            }
+            if (!isset($mapelStats[$catName]['subMapel'][$subCatName])) {
+                $mapelStats[$catName]['subMapel'][$subCatName] = ['benar' => 0, 'salah' => 0];
+            }
+
+            $userAnswer = $userAnswersMapped->get($question->id);
+            if ($userAnswer && $userAnswer->is_correct) {
+                $mapelStats[$catName]['benar']++;
+                $mapelStats[$catName]['subMapel'][$subCatName]['benar']++;
+            } else {
+                $mapelStats[$catName]['salah']++;
+                $mapelStats[$catName]['subMapel'][$subCatName]['salah']++;
+            }
+        }
+
+        $chartDataMapel = [
+            'labels' => array_keys($mapelStats),
+            'benar' => array_column($mapelStats, 'benar'),
+            'salah' => array_column($mapelStats, 'salah'),
+            'details' => $mapelStats
+        ];
+
+        return view('participant.review', compact('registration', 'answers', 'chartDataMapel'));
     }
 
     public function showReviewCategory($registrationId, $categoryId)
