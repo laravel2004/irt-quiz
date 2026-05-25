@@ -6,6 +6,9 @@
 <div class="auth-container animate-fade-in">
     <div class="glass" style="padding: 40px; width: 100%; max-width: 450px;">
         <div style="text-align: center; margin-bottom: 32px;">
+            <div style="margin-bottom: 16px;">
+                <img src="{{ asset('img/logo.png') }}" alt="JagoBelajar Logo" style="height: 64px; width: auto;">
+            </div>
             <h1 style="font-family: 'Outfit', sans-serif; font-size: 2rem; margin-bottom: 8px;">Portal Ujian</h1>
             <p style="color: var(--text-secondary);">Silakan login untuk masuk ke dalam sistem.</p>
         </div>
@@ -44,6 +47,15 @@
                 Masuk
             </button>
         </form>
+
+        <div style="margin-top: 24px; text-align: center;">
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                Mengalami kendala login? 
+                <a href="https://wa.me/6285607519600" target="_blank" style="color: #25D366; text-decoration: none; font-weight: 600;">
+                    <i class="fab fa-whatsapp"></i> Hubungi Admin
+                </a>
+            </p>
+        </div>
 
         <div style="margin-top: 24px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
             Belum memiliki akun? <br>

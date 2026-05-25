@@ -37,7 +37,7 @@
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 30px; margin-top: 10px;">
-            <img src="https://jagobelajar.com/img/jagobelajar.png" alt="JagoBelajar Logo" style="height: 48px; width: auto;">
+            <img src="{{ asset('img/logo.png') }}" alt="JagoBelajar Logo" style="height: 48px; width: auto;">
             <h1 style="font-size: 1.1rem; text-align: center; line-height: 1.2;">JagoBelajar Tryout</h1>
         </div>
 
@@ -109,7 +109,7 @@
             <i class="fas fa-bars"></i>
         </button>
         <div style="display: flex; align-items: center; gap: 10px;">
-            <img src="https://jagobelajar.com/img/jagobelajar.png" alt="JagoBelajar Logo" style="height: 24px; width: auto;">
+            <img src="{{ asset('img/logo.png') }}" alt="JagoBelajar Logo" style="height: 24px; width: auto;">
             <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 700; margin: 0;">JagoBelajar Tryout</h1>
         </div>
     </div>

@@ -16,7 +16,7 @@
         <div class="login-card glass animate-fade-in">
             <div style="text-align: center; margin-bottom: 32px;">
                 <div style="margin-bottom: 16px;">
-                    <img src="https://jagobelajar.com/img/jagobelajar.png" alt="JagoBelajar Logo" style="height: 64px; width: auto;">
+                    <img src="{{ asset('img/logo.png') }}" alt="JagoBelajar Logo" style="height: 64px; width: auto;">
                 </div>
                 <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.75rem; margin-bottom: 8px;">Welcome Back</h2>
                 <p style="color: var(--text-secondary); font-size: 0.9rem;">Please enter your details to sign in</p>
@@ -55,6 +55,15 @@
                     Sign In <i class="fas fa-arrow-right"></i>
                 </button>
             </form>
+
+            <div style="margin-top: 24px; text-align: center;">
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                    Mengalami kendala login? 
+                    <a href="https://wa.me/6285607519600" target="_blank" style="color: #25D366; text-decoration: none; font-weight: 600;">
+                        <i class="fab fa-whatsapp"></i> Hubungi Admin
+                    </a>
+                </p>
+            </div>
 
             <div style="margin-top: 32px; text-align: center; font-size: 0.85rem; color: var(--text-secondary);">
                 Don't have an account? <a href="#" style="color: var(--accent); text-decoration: none; font-weight: 600;">Register Now</a>
