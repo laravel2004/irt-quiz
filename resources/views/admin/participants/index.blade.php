@@ -86,19 +86,19 @@
                 <input type="text" name="name" id="pName" class="form-input" placeholder="Masukkan nama lengkap" required>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div class="form-group">
+            <div class="flex-stack-mobile" style="display: flex; gap: 16px; width: 100%;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
                     <label>Email</label>
                     <input type="email" name="email" id="pEmail" class="form-input" placeholder="email@contoh.com" required>
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
                     <label>No. WhatsApp</label>
                     <input type="text" name="phone" id="pPhone" class="form-input" placeholder="08123456789">
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div class="form-group">
+            <div class="flex-stack-mobile" style="display: flex; gap: 16px; width: 100%; margin-top: 16px;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
                     <label>Role</label>
                     <select name="role" id="pRole" class="form-input" required>
                         <option value="basic">Basic (Peserta Ujian)</option>
@@ -106,14 +106,14 @@
                         <option value="superadmin">Superadmin</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
                     <label>Password</label>
                     <input type="password" name="password" id="pPassword" class="form-input" placeholder="Min. 6 karakter">
                     <small id="passwordNote" style="color: var(--text-secondary); font-size: 0.7rem; display: none;">Kosongkan jika tidak ingin mengubah password.</small>
                 </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 16px;">
                 <label>Alamat</label>
                 <textarea name="address" id="pAddress" class="form-input" style="height: 80px;" placeholder="Masukkan alamat lengkap (opsional)"></textarea>
             </div>

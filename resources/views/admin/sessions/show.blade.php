@@ -218,6 +218,7 @@
             <input type="hidden" name="exam_session_id" value="{{ $session->id }}">
             
             <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: 12px; margin-bottom: 24px;">
+                <div class="table-responsive">
                 <table class="data-table" style="margin-bottom: 0;">
                     <thead>
                         <tr>
@@ -255,6 +256,7 @@
                         @endforeach
                     </tbody>
                 </table>
+                </div>
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: flex-end;">

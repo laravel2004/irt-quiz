@@ -238,12 +238,20 @@
         .question-text table td, .question-text table th { border: 1px solid rgba(255,255,255,0.2); padding: 8px; }
 
         @media (max-width: 768px) {
-            .exam-header-bar { flex-direction: column; gap: 16px; }
-            .exam-header-bar > div:last-child { width: 100%; align-items: stretch; }
-            .btn-pill { font-size: 13px; padding: 8px 16px; }
-            .exam-left-pane { display: none !important; } /* Hide image pane on mobile, or we could stack it */
-            .exam-body { flex-direction: column; }
-            .exam-left-pane, .exam-right-pane { border-right: none; border-bottom: 1px dashed #475569; }
+            body { height: auto; min-height: 100vh; overflow-y: auto; }
+            .main-content { padding: 12px; height: auto; overflow: visible; }
+            .exam-container { height: auto; }
+            .exam-header-bar { flex-direction: column; gap: 16px; padding: 16px; }
+            .exam-header-bar > div:last-child { width: 100%; align-items: flex-start !important; }
+            .exam-header-bar > div:last-child > div:first-child { flex-direction: column; align-items: stretch !important; width: 100%; }
+            .exam-header-bar > div:last-child > div:first-child > button, 
+            .exam-header-bar > div:last-child > div:first-child > div { width: 100%; justify-content: center; }
+            .btn-pill { font-size: 13px; padding: 10px 16px; }
+            .exam-left-pane { display: none !important; }
+            .exam-body { flex-direction: column; overflow: visible; }
+            .exam-right-pane { padding: 16px; overflow-y: visible; }
+            .exam-footer { flex-direction: column; gap: 12px; padding: 16px; align-items: stretch; }
+            .exam-footer button { width: 100%; justify-content: center; }
         }
     </style>
 </head>

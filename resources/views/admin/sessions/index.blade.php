@@ -90,7 +90,7 @@
         </table>
     </div>
     @else
-    <div class="responsive-grid" style="grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px;">
+    <div class="responsive-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
         @forelse($sessions as $session)
         <div class="glass card-hover" style="padding: 24px; border-radius: 16px; display: flex; flex-direction: column; justify-content: space-between;">
             <div>
@@ -102,14 +102,14 @@
                 </div>
                 <h4 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin-bottom: 12px; color: white;">{{ $session->name }}</h4>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                <div class="flex-stack-mobile" style="display: flex; gap: 12px; margin-bottom: 20px; justify-content: space-between;">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); flex: 1;">
                         <i class="fas fa-calendar-alt" style="width: 16px;"></i> {{ $session->start_date }}
                     </div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); flex: 1;">
                         <i class="fas fa-clock" style="width: 16px;"></i> {{ $session->sessionCategories->sum('duration') }} Menit
                     </div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); flex: 1;">
                         <i class="fas fa-list" style="width: 16px;"></i> {{ $session->sessionCategories->sum('total_questions') }} Soal
                     </div>
                 </div>
@@ -150,23 +150,23 @@
                         <input type="text" name="name" id="sName" class="form-input" placeholder="Contoh: Try Out Akbar Nasional" required>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div class="form-group" style="margin-bottom: 0;">
+                    <div class="flex-stack-mobile" style="display: flex; gap: 12px; width: 100%;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
                             <label>Tanggal Mulai</label>
                             <input type="date" name="start_date" id="sStartDate" class="form-input" required>
                         </div>
-                        <div class="form-group" style="margin-bottom: 0;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
                             <label>Tanggal Selesai</label>
                             <input type="date" name="end_date" id="sEndDate" class="form-input" required>
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
-                        <div class="form-group" style="margin-bottom: 0;">
+                    <div class="flex-stack-mobile" style="display: flex; gap: 12px; width: 100%; margin-top: 12px;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
                             <label>Waktu Mulai</label>
                             <input type="time" name="start_time" id="sStartTime" class="form-input" required>
                         </div>
-                        <div class="form-group" style="margin-bottom: 0;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
                             <label>Waktu Selesai</label>
                             <input type="time" name="end_time" id="sEndTime" class="form-input" required>
                         </div>
@@ -295,7 +295,7 @@
                 </select>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 12px;">
                 <div>
                     <label style="font-size: 0.8rem;">Durasi (Mnt)</label>
                     <input type="number" class="form-input cat-duration" value="${dur}" required min="1">

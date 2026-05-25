@@ -34,7 +34,7 @@
     <div class="glass animate-fade-in" style="padding: 32px;">
         <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 24px;">Ujian Saya</h3>
         
-        <div class="responsive-grid" style="grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px;">
+        <div class="responsive-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
             @forelse($groupedRegistrations as $sessionId => $sessionRegistrations)
             @php 
                 $session = $sessionRegistrations->first()->examSession; 

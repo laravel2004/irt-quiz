@@ -123,7 +123,7 @@
     <div id="pembahasan-hub">
         <h3 style="font-family: 'Outfit', sans-serif; color: white; margin-bottom: 24px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">Pilih Rincian Pembahasan per Mata Pelajaran</h3>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 32px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 32px;">
             @foreach($questionsByCategory as $categoryId => $categoryQuestions)
                 @php 
                     $categoryName = $categoryQuestions->first()->category->name; 
