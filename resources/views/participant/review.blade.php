@@ -115,6 +115,21 @@
         @endif
     </div>
 
+    <!-- STATISTIK JAWABAN (CHART) -->
+    <div class="chart-section glass" style="margin-top: 40px; margin-bottom: 40px; padding: 24px; border-radius: 16px;">
+        <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 24px; text-align: center;">Statistik Jawaban per Pelajaran</h3>
+        
+        <!-- Wadah Grafik -->
+        <div class="chart-container-responsive">
+            <div class="chart-wrapper">
+                <canvas id="mapelChart"></canvas>
+            </div>
+            <div id="subChartsContainer" style="display: grid; grid-template-columns: 1fr; gap: 32px; width: 100%;">
+                <!-- Dynamic Sub Charts -->
+            </div>
+        </div>
+    </div>
+
     <!-- PEMBAHASAN LIST -->
     @php
         $questionsByCategory = $registration->questions->groupBy('category_id');
@@ -178,6 +193,7 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     function generateAIAnalysis() {
         const btn = document.getElementById('aiBtn');
@@ -225,9 +241,106 @@
             loading.style.display = 'none';
         });
     }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        const mapelData = @json($chartDataMapel);
+
+        const ctxMapel = document.getElementById('mapelChart').getContext('2d');
+        const mapelWrapper = document.getElementById('mapelChart').parentElement;
+        mapelWrapper.style.height = Math.max(mapelData.labels.length * 60 + 100, 300) + 'px';
+
+        new Chart(ctxMapel, {
+            type: 'bar',
+            data: {
+                labels: mapelData.labels,
+                datasets: [
+                    { label: 'Benar', data: mapelData.benar, backgroundColor: 'rgba(16, 185, 129, 0.8)' },
+                    { label: 'Salah', data: mapelData.salah, backgroundColor: 'rgba(239, 68, 68, 0.8)' }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: { 
+                    title: { display: true, text: 'Grafik Mata Pelajaran (Utama)', color: '#fff', font: {size: 16, family: "'Outfit', sans-serif"} },
+                    legend: { labels: { color: '#fff' } }
+                },
+                scales: {
+                    y: { grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                    x: { ticks: { precision: 0 }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+                }
+            }
+        });
+
+        // 2. Inisialisasi Grafik Sub Mapel (Dinamis per Mata Pelajaran)
+        const subContainer = document.getElementById('subChartsContainer');
+        
+        Object.keys(mapelData.details).forEach((mapelName, index) => {
+            const subMapels = mapelData.details[mapelName].subMapel;
+            const subLabels = Object.keys(subMapels);
+            if (subLabels.length === 0) return;
+            
+            const subBenar = subLabels.map(l => subMapels[l].benar);
+            const subSalah = subLabels.map(l => subMapels[l].salah);
+            
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper';
+            wrapper.style.height = Math.max(subLabels.length * 60 + 100, 300) + 'px';
+            
+            const canvas = document.createElement('canvas');
+            canvas.id = 'subChart_' + index;
+            wrapper.appendChild(canvas);
+            subContainer.appendChild(wrapper);
+            
+            new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: subLabels,
+                    datasets: [
+                        { label: 'Benar', data: subBenar, backgroundColor: 'rgba(5, 150, 105, 0.9)' },
+                        { label: 'Salah', data: subSalah, backgroundColor: 'rgba(220, 38, 38, 0.9)' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        title: { display: true, text: 'Rincian Sub Bab: ' + mapelName, color: '#fff', font: {size: 16, family: "'Outfit', sans-serif"} },
+                        legend: { labels: { color: '#fff' } }
+                    },
+                    scales: {
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                        x: { ticks: { precision: 0 }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+                    }
+                }
+            });
+        });
+    });
 </script>
 
 <style>
     @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .chart-container-responsive {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+    .chart-wrapper {
+        position: relative;
+        height: 400px;
+        width: 100%;
+    }
+
+    @media (max-width: 768px) {
+        .chart-wrapper {
+            height: 250px;
+        }
+    }
 </style>
 @endsection
