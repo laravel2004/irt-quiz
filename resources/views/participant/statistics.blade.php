@@ -37,6 +37,7 @@
         @endif
 
         <div style="overflow-x: auto;">
+            <div class="table-responsive">
             <table style="width: 100%; border-collapse: separate; border-spacing: 0; min-width: 600px;">
                 <thead>
                     <tr>
@@ -106,6 +107,7 @@
                     @endif
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>

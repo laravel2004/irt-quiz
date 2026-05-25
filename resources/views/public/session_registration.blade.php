@@ -48,6 +48,17 @@
             margin-bottom: 32px;
             border-left: 4px solid var(--accent);
         }
+        @media (max-width: 768px) {
+            .registration-card {
+                padding: 20px;
+            }
+            .session-info {
+                padding: 16px;
+            }
+            body {
+                padding: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -58,12 +69,12 @@
             <p style="color: var(--text-secondary); margin-bottom: 24px;">Silakan lengkapi formulir pendaftaran di bawah ini untuk mengikuti sesi ujian.</p>
 
             <div class="session-info">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div>
+                <div class="flex-stack-mobile" style="display: flex; gap: 16px; width: 100%;">
+                    <div style="flex: 1;">
                         <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Tanggal Pelaksanaan</div>
                         <div style="font-weight: 600; margin-top: 4px; color: white;">{{ $session->start_date }}</div>
                     </div>
-                    <div>
+                    <div style="flex: 1;">
                         <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Durasi Ujian</div>
                         <div style="font-weight: 600; margin-top: 4px; color: white;">{{ $session->duration }} Menit</div>
                     </div>
@@ -71,33 +82,33 @@
             </div>
             <form action="{{ route('public.session.register', $session->code) }}" method="POST">
                 @csrf
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div class="form-group">
+                <div class="flex-stack-mobile" style="display: flex; gap: 16px; width: 100%;">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
                         <label>Nama Lengkap</label>
                         <input type="text" name="name" class="form-input" placeholder="Nama Lengkap" value="{{ old('name') }}" required>
                         @error('name') <small style="color: #ef4444;">{{ $message }}</small> @enderror
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
                         <label>Nomor WhatsApp</label>
                         <input type="text" name="whatsapp" class="form-input" placeholder="081234567890" value="{{ old('whatsapp') }}" required>
                         @error('whatsapp') <small style="color: #ef4444;">{{ $message }}</small> @enderror
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div class="form-group">
+                <div class="flex-stack-mobile" style="display: flex; gap: 16px; width: 100%; margin-top: 16px;">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
                         <label>Email (Untuk Login)</label>
                         <input type="email" name="email" class="form-input" placeholder="email@contoh.com" value="{{ old('email') }}" required>
                         @error('email') <small style="color: #ef4444;">{{ $message }}</small> @enderror
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
                         <label>Password Akun</label>
                         <input type="password" name="password" class="form-input" placeholder="Min. 6 Karakter" required>
                         @error('password') <small style="color: #ef4444;">{{ $message }}</small> @enderror
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" style="margin-top: 16px;">
                     <label>Alamat Domisili</label>
                     <textarea name="address" class="form-input" style="height: 80px;" placeholder="Masukkan alamat lengkap">{{ old('address') }}</textarea>
                     @error('address') <small style="color: #ef4444;">{{ $message }}</small> @enderror

@@ -179,6 +179,13 @@ body {
     padding: 40px;
 }
 
+@media (max-width: 768px) {
+    .login-card {
+        padding: 24px;
+        margin: 16px;
+    }
+}
+
 .form-group {
     margin-bottom: 24px;
 }
