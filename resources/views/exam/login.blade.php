@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masuk Ujian - IRT Exam System</title>
+    <title>Masuk Ujian - JagoBelajar Tryout</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
@@ -30,17 +30,10 @@
             z-index: 10;
         }
         .logo-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, var(--accent), #1d4ed8);
-            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8rem;
-            color: white;
             margin: 0 auto 24px;
-            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
         }
         .access-input {
             font-size: 1.5rem;
@@ -81,7 +74,7 @@
 
     <div class="login-card animate-fade-in">
         <div class="logo-icon">
-            <i class="fas fa-graduation-cap"></i>
+            <img src="{{ asset('img/logo.png') }}" alt="JagoBelajar Logo" style="height: 64px; width: auto;">
         </div>
         <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.5rem; color: white; margin-bottom: 8px;">Portal Ujian</h1>
         <p style="color: var(--text-secondary); margin-bottom: 32px; font-size: 0.9rem;">Masukkan kode akses 6 digit Anda untuk memulai ujian.</p>
@@ -100,8 +93,17 @@
             </button>
         </form>
 
+        <div style="margin-top: 24px; text-align: center;">
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                Mengalami kendala login? 
+                <a href="https://wa.me/6285607519600" target="_blank" style="color: #25D366; text-decoration: none; font-weight: 600;">
+                    <i class="fab fa-whatsapp"></i> Hubungi Admin
+                </a>
+            </p>
+        </div>
+
         <p style="margin-top: 32px; font-size: 0.75rem; color: var(--text-secondary);">
-            &copy; {{ date('Y') }} IRT Exam System &bull; V1.0
+            &copy; {{ date('Y') }} JagoBelajar Tryout &bull; V1.0
         </p>
     </div>
 
