@@ -251,10 +251,10 @@
     <header class="top-navbar">
         <div style="display: flex; align-items: center; gap: 16px;">
             <div style="background: rgba(59, 130, 246, 0.1); padding: 8px; border-radius: 8px;">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/9/9d/Logo_Tut_Wuri_Handayani.png" alt="Logo" style="height: 32px; filter: drop-shadow(0 0 2px rgba(255,255,255,0.5));">
+                <img src="{{ asset('img/logo.png') }}" alt="Logo JagoBelajar" style="height: 32px; filter: drop-shadow(0 0 2px rgba(255,255,255,0.5));">
             </div>
             <div>
-                <div style="color: white; font-weight: 700; font-size: 15px; letter-spacing: 0.5px;">PUSMENDIK</div>
+                <div style="color: white; font-weight: 700; font-size: 15px; letter-spacing: 0.5px;">Bimbel & Try Out Online</div>
                 <div style="color: #94a3b8; font-size: 12px; font-weight: 500;">APLIKASI ANBK</div>
             </div>
         </div>
