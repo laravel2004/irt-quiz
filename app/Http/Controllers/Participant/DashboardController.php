@@ -28,7 +28,28 @@ class DashboardController extends Controller
             
         $groupedRegistrations = $registrations->groupBy('exam_session_id');
 
-        return view('participant.dashboard', compact('groupedRegistrations'));
+        $scoreChartData = $registrations
+            ->filter(fn ($registration) => $registration->finished_at && $registration->result && $registration->result->score !== null)
+            ->sortBy(fn ($registration) => $registration->finished_at ?? $registration->created_at)
+            ->values()
+            ->map(function ($registration, $index) {
+                $sessionName = $registration->examSession->name ?? 'Sesi Ujian';
+                $attemptLabel = $registration->finished_at
+                    ? \Carbon\Carbon::parse($registration->finished_at)->format('d M Y')
+                    : 'Percobaan ' . ($index + 1);
+
+                return [
+                    'label' => $sessionName . ' - ' . $attemptLabel,
+                    'score' => round((float) $registration->result->score, 2),
+                ];
+            });
+
+        $scoreChartData = [
+            'labels' => $scoreChartData->pluck('label')->all(),
+            'scores' => $scoreChartData->pluck('score')->all(),
+        ];
+
+        return view('participant.dashboard', compact('groupedRegistrations', 'scoreChartData'));
     }
 
     public function showSession($sessionId)
@@ -466,5 +487,6 @@ class DashboardController extends Controller
         return view('participant.statistics', compact('session', 'isClosed', 'rankings', 'user'));
     }
 }
+
 
 

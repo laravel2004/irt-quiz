@@ -31,6 +31,27 @@
         </div>
     @endif
 
+    <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px;">
+            <div>
+                <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 8px;">Grafik Nilai Sesi Ujian</h3>
+                <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">Lihat perkembangan nilai dari setiap sesi ujian yang sudah kamu selesaikan.</p>
+            </div>
+            <span class="badge active" style="font-size: 0.75rem; white-space: nowrap;">Riwayat Nilai</span>
+        </div>
+
+        @if(!empty($scoreChartData['scores']))
+            <div style="height: 320px; position: relative;">
+                <canvas id="scoreChart" aria-label="Grafik nilai sesi ujian" role="img"></canvas>
+            </div>
+        @else
+            <div style="padding: 32px; border-radius: 16px; background: rgba(255,255,255,0.03); text-align: center; color: var(--text-secondary);">
+                <i class="fas fa-chart-line" style="font-size: 2rem; color: #3b82f6; margin-bottom: 12px;"></i>
+                <p style="margin: 0;">Grafik nilai akan muncul setelah kamu menyelesaikan sesi ujian.</p>
+            </div>
+        @endif
+    </div>
+
     <div class="glass animate-fade-in" style="padding: 32px;">
         <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 24px;">Ujian Saya</h3>
         
@@ -91,6 +112,7 @@
 
 
 
+
                     @if($isClosed && $session->discussion_pdf && $latestReg->privilege === 'premium')
                         <a href="{{ asset('storage/' . $session->discussion_pdf) }}" target="_blank" class="btn-primary" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none;">
                             <i class="fas fa-file-pdf" style="margin-right: 8px;"></i> Download PDF Pembahasan
@@ -126,7 +148,65 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+const scoreChartData = @json($scoreChartData);
+
+if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && scoreChartData.scores.length) {
+    const chartContext = document.getElementById('scoreChart');
+
+    new Chart(chartContext, {
+        type: 'line',
+        data: {
+            labels: scoreChartData.labels,
+            datasets: [{
+                label: 'Nilai',
+                data: scoreChartData.scores,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.18)',
+                pointBackgroundColor: '#60a5fa',
+                pointBorderColor: '#ffffff',
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#e5e7eb'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: '#94a3b8'
+                    },
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.12)'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: 100,
+                    ticks: {
+                        color: '#94a3b8'
+                    },
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.12)'
+                    }
+                }
+            }
+        }
+    });
+}
+
 function showAggregateAnalysis(sessionId) {
     const modal = document.getElementById('aggregateModal');
     const loading = document.getElementById('aggregateLoading');
@@ -204,5 +284,7 @@ document.querySelectorAll('.retake-form').forEach(form => {
 </script>
 
 @endsection
+
+
 
 

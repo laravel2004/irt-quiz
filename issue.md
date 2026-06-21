@@ -1,276 +1,555 @@
-﻿# Planning Implementasi Dashboard User untuk Sesi Ujian
+﻿# Planning Implementasi Grafik Nilai Sesi Ujian di Dashboard User
 
 ## Ringkasan Kebutuhan
 
-Perlu dibuat alur lengkap untuk user yang login agar bisa melihat sesi ujian yang ditugaskan, membuka detail sesi, membaca term, lalu memulai ujian dari sesi yang dipilih.
+Pada dashboard user sudah ada section card sesi ujian yang menampilkan informasi tentang sesi ujian yang sudah dilakukan oleh user. Informasi tersebut mencakup nama sesi ujian, tanggal pelaksanaan, dan nilai yang diperoleh.
 
-Fokus utama fitur ini:
-1. Dashboard role user menampilkan card sesi ujian yang sudah di-assign ke user.
-2. Card menampilkan informasi inti: nama sesi, tanggal ujian, dan status aktif / tidak aktif.
-3. Card punya action untuk masuk ke detail sesi.
-4. Detail sesi menampilkan informasi lebih lengkap seperti materi, durasi, dan instruksi khusus.
-5. Dari detail sesi, user bisa menuju halaman ujian sesuai sesi yang dipilih.
-6. Sebelum memulai ujian, user harus melihat dan menyetujui term terlebih dahulu.
+Fitur baru yang perlu ditambahkan adalah grafik nilai di dashboard user. Grafik ini harus diletakkan di atas section card sesi ujian. Grafik akan menampilkan nilai dari setiap sesi ujian yang sudah dilakukan oleh user dalam bentuk visual, misalnya grafik garis atau grafik batang.
 
-Dokumen ini sengaja dibuat sebagai planning yang bisa langsung dikerjakan oleh junior programmer atau model AI yang lebih murah.
+Dokumen ini dibuat sebagai panduan implementasi yang cukup detail agar bisa dikerjakan oleh junior programmer atau AI model yang lebih murah tanpa perlu banyak asumsi tambahan.
 
 ## Tujuan Implementasi
 
-- User mudah melihat sesi ujian yang memang menjadi tanggung jawabnya.
-- Alur dari dashboard ke detail sesi ke halaman ujian menjadi jelas dan terkontrol.
-- User tidak bisa langsung masuk ke ujian tanpa membaca term.
-- Setiap sesi ujian yang dipilih selalu membawa konteks data yang benar.
+- Membuat dashboard user lebih informatif dan mudah dipahami.
+- Membantu user melihat perkembangan nilai dari sesi ujian yang sudah dilakukan.
+- Memastikan data sesi ujian tetap ditampilkan jelas melalui card yang sudah ada.
+- Menambahkan visualisasi nilai tanpa merusak tampilan atau alur dashboard yang sudah berjalan.
 
-## Ruang Lingkup
+## Ruang Lingkup Pekerjaan
 
-Yang termasuk dalam pekerjaan ini:
-- Dashboard user untuk daftar sesi ujian yang di-assign.
-- Card sesi ujian dengan informasi ringkas.
-- Halaman detail sesi ujian.
-- Halaman term sebelum mulai ujian.
-- Tombol mulai ujian yang mengarah ke halaman ujian sesuai sesi.
-- Validasi akses agar user hanya bisa membuka sesi miliknya.
+Yang perlu dikerjakan:
 
-Yang tidak perlu dikerjakan dulu kecuali sudah ada di sistem:
-- Perubahan besar pada engine pengerjaan soal.
-- Perubahan struktur penilaian ujian.
-- Perubahan admin panel untuk assign sesi, kecuali memang dibutuhkan untuk menampilkan data.
+1. Mengecek implementasi dashboard user yang sudah ada.
+2. Mengecek data sesi ujian yang sudah dilakukan oleh user.
+3. Memastikan card sesi ujian menampilkan informasi dengan jelas.
+4. Menyiapkan data nilai untuk kebutuhan grafik.
+5. Menambahkan grafik nilai di atas section card sesi ujian.
+6. Menangani kondisi ketika user belum memiliki riwayat sesi ujian.
+7. Melakukan testing manual untuk memastikan data dan tampilan benar.
 
-## Alur yang Diinginkan
+Yang tidak termasuk dalam pekerjaan ini:
 
-1. User login dan masuk ke dashboard role user.
-2. Sistem menampilkan daftar card sesi ujian yang di-assign ke user tersebut.
-3. User klik action pada salah satu card untuk melihat detail sesi.
-4. Halaman detail menampilkan informasi lengkap sesi.
-5. User klik tombol untuk mulai ujian.
-6. Sebelum ujian dimulai, user melihat halaman term.
-7. User menyetujui term.
-8. User diarahkan ke halaman ujian sesuai sesi yang dipilih.
+- Mengubah sistem penilaian ujian.
+- Mengubah alur pengerjaan ujian.
+- Mengubah fitur admin untuk membuat sesi ujian.
+- Mengubah struktur database kecuali benar-benar diperlukan.
+- Menambahkan fitur filter kompleks seperti filter per bulan atau per kategori, kecuali sudah diminta kemudian.
 
-## Data yang Harus Ditampilkan
+## Kondisi Saat Ini yang Harus Diperhatikan
 
-### Di Dashboard User
+Pada dashboard user terdapat section card sesi ujian. Section ini menampilkan informasi sesi ujian yang sudah dilakukan oleh user, seperti:
 
-Setiap card sesi ujian minimal berisi:
-- Nama sesi ujian
-- Tanggal ujian
-- Status sesi, misalnya `aktif` atau `tidak aktif`
-- Action untuk melihat detail
+- Nama sesi ujian.
+- Tanggal pelaksanaan sesi ujian.
+- Nilai yang diperoleh user.
 
-Jika tersedia, card juga boleh menampilkan data tambahan seperti:
-- Jam ujian
-- Ringkasan materi
-- Label deadline atau periode akses
+Pastikan section ini tetap ada dan tidak dihapus. Jika tampilannya masih kurang jelas, rapikan agar user mudah memahami informasi yang ditampilkan.
 
-### Di Halaman Detail Sesi
+Contoh tampilan informasi pada card yang diharapkan:
 
-Halaman detail sesi minimal menampilkan:
-- Nama sesi ujian
-- Tanggal ujian
-- Status sesi
-- Materi yang akan diujikan
-- Durasi ujian
-- Instruksi khusus jika ada
-- Tombol lanjut ke term / mulai ujian
+- Nama sesi ujian terlihat sebagai judul utama card.
+- Tanggal pelaksanaan terlihat jelas, misalnya `21 Juni 2026` atau format tanggal lain yang konsisten dengan aplikasi.
+- Nilai terlihat menonjol, misalnya `Nilai: 85`.
+- Jika ada status ujian, tampilkan secara ringkas, misalnya `Selesai`.
 
-### Di Halaman Term
+## Fitur Baru yang Akan Ditambahkan
 
-Halaman term minimal menampilkan:
-- Judul term
-- Isi term / aturan ujian
-- Checkbox atau tombol persetujuan
-- Tombol untuk lanjut ke ujian setelah setuju
-- Tombol kembali ke detail sesi jika user batal
+Tambahkan section grafik nilai pada dashboard user.
+
+Posisi grafik:
+
+- Diletakkan di atas section card sesi ujian.
+- Muncul setelah header atau ringkasan dashboard, jika ada.
+- Muncul sebelum daftar card sesi ujian.
+
+Isi grafik:
+
+- Grafik menampilkan nilai dari setiap sesi ujian yang sudah dilakukan user.
+- Setiap titik atau batang mewakili satu sesi ujian.
+- Label grafik menggunakan nama sesi ujian atau tanggal sesi ujian.
+- Nilai pada grafik menggunakan nilai yang diperoleh user.
+
+Jenis grafik yang boleh digunakan:
+
+- Grafik garis, cocok untuk menampilkan perkembangan nilai dari waktu ke waktu.
+- Grafik batang, cocok untuk membandingkan nilai antar sesi ujian.
+
+Rekomendasi awal:
+
+- Gunakan grafik garis jika urutan waktu sesi ujian jelas.
+- Gunakan grafik batang jika nama sesi ujian lebih penting untuk dibandingkan.
+- Jika belum ada library grafik di project, gunakan library yang ringan dan mudah, misalnya Chart.js.
 
 ## Tahapan Implementasi
 
-### Tahap 1: Pahami alur data user dan sesi ujian
+### 1. Pahami Struktur Project
 
-Langkah pertama adalah memeriksa bagaimana sistem saat ini menyimpan dan mengambil data sesi ujian yang di-assign ke user.
+Langkah pertama adalah memahami struktur project sebelum mengubah kode.
 
-Yang perlu dicek:
-- Model yang menghubungkan user dengan sesi ujian
-- Tabel relasi assignment jika ada
-- Route dashboard user saat ini
-- Controller yang merender dashboard user
-- View yang dipakai untuk dashboard role user
+Yang harus dicek:
 
-Output tahap ini:
-- Developer tahu data apa yang bisa dipakai tanpa membuat struktur baru yang tidak perlu.
-- Developer tahu endpoint mana yang perlu diubah atau ditambah.
+- Framework yang digunakan project.
+- Lokasi file route untuk dashboard user.
+- Lokasi controller atau handler yang mengirim data ke dashboard user.
+- Lokasi file view dashboard user.
+- Lokasi model yang berhubungan dengan user, sesi ujian, hasil ujian, atau nilai ujian.
 
-### Tahap 2: Siapkan query daftar sesi untuk user
+Petunjuk umum untuk project Laravel:
 
-Setelah alur data dipahami, buat query yang mengambil sesi ujian khusus untuk user login.
+- Cek route di folder `routes`.
+- Cek controller di folder `app/Http/Controllers`.
+- Cek model di folder `app/Models`.
+- Cek view di folder `resources/views`.
+- Cek asset frontend di folder `resources/js`, `resources/css`, atau file layout Blade.
 
-Kriteria query:
-- Hanya ambil sesi yang benar-benar di-assign ke user tersebut.
-- Sertakan data penting yang dibutuhkan card dashboard.
-- Pastikan status aktif / tidak aktif ikut terbawa.
-- Jika ada relasi materi atau instruksi, eager load supaya view tidak banyak query.
+Output dari tahap ini:
 
-Hal yang perlu diperhatikan:
-- Jangan ambil semua sesi dari database.
-- Jangan tampilkan sesi milik user lain.
-- Jika ada sesi duplikat dari assignment yang tidak normal, tangani dengan filter yang aman.
+- Mengetahui file dashboard user yang harus diubah.
+- Mengetahui sumber data sesi ujian dan nilai.
+- Mengetahui apakah project sudah memakai library grafik atau belum.
 
-Output tahap ini:
-- Controller atau service sudah punya data siap tampil untuk dashboard user.
+### 2. Identifikasi Data Sesi Ujian User
 
-### Tahap 3: Bangun tampilan card sesi ujian di dashboard
+Cari bagaimana dashboard user saat ini mengambil data sesi ujian.
 
-Buat atau sesuaikan komponen tampilan agar daftar sesi terlihat sebagai card yang mudah dibaca.
+Hal yang perlu dicari:
 
-Setiap card harus punya struktur jelas:
-- Judul di bagian atas
-- Informasi tanggal ujian
-- Status aktif / tidak aktif sebagai badge
-- Tombol atau link action ke detail sesi
+- Nama model untuk sesi ujian.
+- Nama model untuk hasil ujian atau attempt ujian.
+- Relasi antara user dan sesi ujian.
+- Kolom yang menyimpan nilai user.
+- Kolom tanggal pelaksanaan atau tanggal selesai ujian.
 
-Catatan implementasi:
-- Jika sesi tidak aktif, tampilkan badge yang jelas agar user tahu statusnya.
-- Jika tidak ada sesi yang di-assign, tampilkan empty state yang informatif.
-- UI harus tetap rapi pada layar mobile dan desktop.
+Contoh kemungkinan nama data:
 
-Output tahap ini:
-- Dashboard user menampilkan daftar sesi dalam bentuk card yang mudah dipahami.
+- `ExamSession`
+- `QuizSession`
+- `TestSession`
+- `ExamResult`
+- `QuizResult`
+- `Attempt`
+- `UserExam`
 
-### Tahap 4: Buat action dari card ke halaman detail sesi
+Jangan langsung membuat model atau tabel baru jika data sebenarnya sudah tersedia. Gunakan data yang sudah dipakai oleh card sesi ujian.
 
-Tambahkan action pada card untuk membuka halaman detail sesi ujian.
+Output dari tahap ini:
 
-Hal yang harus dipastikan:
-- Action membawa identifier sesi yang benar.
-- Route detail hanya bisa diakses oleh user yang berhak.
-- Jika user mencoba membuka sesi milik orang lain, sistem harus menolak dengan respons yang aman, misalnya 403 atau redirect.
+- Data nama sesi ujian bisa diambil.
+- Data tanggal pelaksanaan bisa diambil.
+- Data nilai user bisa diambil.
+- Data hanya milik user yang sedang login.
 
-Output tahap ini:
-- Card di dashboard sudah bisa dipakai untuk masuk ke detail sesi.
+### 3. Pastikan Card Sesi Ujian Tetap Jelas
 
-### Tahap 5: Buat halaman detail sesi ujian
+Sebelum menambahkan grafik, pastikan section card sesi ujian tetap menampilkan data utama dengan jelas.
 
-Halaman detail adalah tempat user membaca seluruh informasi sesi sebelum memulai ujian.
+Checklist card sesi ujian:
 
-Isi halaman detail minimal:
-- Nama sesi
-- Status sesi
-- Tanggal ujian
-- Materi yang akan diujikan
-- Durasi ujian
-- Instruksi khusus
-- Tombol lanjut ke term / mulai ujian
+- Nama sesi ujian tampil jelas.
+- Tanggal pelaksanaan tampil jelas.
+- Nilai user tampil jelas.
+- Layout card rapi di desktop dan mobile.
+- Jika tidak ada data, tampilkan empty state yang mudah dipahami.
 
-Saran implementasi:
-- Susun informasi dari yang paling penting ke yang paling rinci.
-- Jika instruksi khusus kosong, tampilkan teks default seperti `Tidak ada instruksi khusus`.
-- Jika materi berupa daftar, tampilkan dalam list yang mudah dibaca.
+Contoh empty state:
 
-Output tahap ini:
-- User bisa memahami isi sesi sebelum menekan tombol mulai.
+`Belum ada sesi ujian yang sudah diselesaikan.`
 
-### Tahap 6: Tambahkan halaman term sebelum ujian
+Jika card saat ini sudah cukup baik, jangan ubah terlalu banyak. Fokus hanya pada perapian kecil jika memang diperlukan.
 
-Sebelum user masuk ke halaman ujian, tampilkan halaman term terlebih dahulu.
+Output dari tahap ini:
 
-Isi yang disarankan:
-- Ringkasan aturan ujian
-- Durasi akses / waktu pengerjaan
-- Larangan umum jika memang ada
-- Konfirmasi bahwa user sudah membaca dan menyetujui term
+- Card sesi ujian tetap berfungsi.
+- Informasi penting tidak hilang setelah grafik ditambahkan.
 
-Perilaku yang diharapkan:
-- User belum boleh masuk ke ujian sebelum menyetujui term.
-- Tombol mulai ujian aktif hanya setelah checkbox atau aksi persetujuan dilakukan.
-- Jika user menolak term, user tetap berada di halaman term atau kembali ke detail sesi.
+### 4. Siapkan Data untuk Grafik di Backend
 
-Output tahap ini:
-- Ada lapisan konfirmasi sebelum ujian dimulai.
+Data grafik sebaiknya disiapkan dari controller atau backend agar view hanya fokus menampilkan.
 
-### Tahap 7: Buat tombol mulai ujian yang mengarah ke sesi yang dipilih
+Format data yang dibutuhkan grafik:
 
-Setelah term disetujui, user menekan tombol mulai ujian.
+- Label sesi ujian.
+- Nilai setiap sesi ujian.
+- Tanggal sesi ujian jika diperlukan untuk sorting atau label tambahan.
 
-Yang harus dilakukan tombol ini:
-- Membawa user ke route halaman ujian yang benar.
-- Mengirim identifier sesi yang dipilih.
-- Menjamin halaman ujian hanya menerima sesi yang sesuai dengan detail sebelumnya.
+Contoh struktur data yang bisa dikirim ke view:
 
-Hal yang perlu dijaga:
-- Jangan hardcode session id di view.
-- Gunakan route parameter atau mekanisme yang konsisten dengan struktur aplikasi.
-- Jika sesi belum boleh diakses, tampilkan pesan yang jelas.
+```php
+$scoreChartData = [
+    'labels' => ['Sesi 1', 'Sesi 2', 'Sesi 3'],
+    'scores' => [75, 82, 90],
+];
+```
 
-Output tahap ini:
-- User bisa masuk ke halaman ujian dari sesi yang dipilih tanpa salah konteks.
+Atau jika ingin lebih detail:
 
-### Tahap 8: Tambahkan validasi akses dan keamanan sederhana
+```php
+$scoreChartData = [
+    'labels' => $completedSessions->pluck('session_name'),
+    'scores' => $completedSessions->pluck('score'),
+    'dates' => $completedSessions->pluck('completed_at'),
+];
+```
 
-Agar fitur aman dan tidak mudah disalahgunakan, tambahkan validasi dasar berikut:
-- User hanya bisa melihat sesi yang di-assign ke dirinya.
-- User hanya bisa memulai ujian dari sesi yang valid.
-- Halaman term dan halaman ujian harus memeriksa hak akses lagi di backend.
-- Jangan mengandalkan validasi dari frontend saja.
+Hal penting:
 
-Kalau session assignment atau status sesi tidak valid:
-- Tampilkan error yang ramah user.
-- Jangan tampilkan data sensitif.
+- Urutkan data berdasarkan tanggal pelaksanaan dari yang paling lama ke paling baru.
+- Pastikan hanya sesi ujian milik user yang sedang login.
+- Pastikan hanya sesi ujian yang sudah memiliki nilai yang masuk grafik.
+- Jika nilai null, jangan masukkan ke grafik kecuali memang ada aturan khusus.
 
-Output tahap ini:
-- Alur lebih aman dan tidak mudah dibypass.
+Output dari tahap ini:
 
-### Tahap 9: Tambahkan state kosong, error, dan loading
+- View dashboard menerima data grafik siap pakai.
+- Data grafik sudah sesuai dengan user login.
+- Data grafik sudah terurut dengan benar.
 
-Supaya UI lebih matang, siapkan beberapa state penting:
-- Saat user tidak punya sesi di-assign
-- Saat data gagal dimuat
-- Saat sesi tidak aktif
-- Saat user belum menyetujui term
+### 5. Tentukan Cara Render Grafik
 
-Ini penting agar fitur terasa jelas dan tidak membingungkan.
+Cek apakah project sudah memakai library grafik.
 
-Output tahap ini:
-- UI lebih informatif pada semua kondisi.
+Jika sudah ada library grafik:
 
-### Tahap 10: Uji alur end-to-end
+- Gunakan library yang sudah ada.
+- Ikuti pola komponen atau file JavaScript yang sudah tersedia.
+- Jangan menambahkan library baru jika tidak perlu.
 
-Setelah implementasi selesai, lakukan pengecekan manual atau test sederhana untuk memastikan alurnya benar.
+Jika belum ada library grafik:
 
-Skenario yang wajib diuji:
-- User login dan melihat daftar sesi yang tepat.
-- Card menampilkan nama sesi, tanggal, dan status dengan benar.
-- Link detail membuka sesi yang sesuai.
-- Detail sesi menampilkan materi, durasi, dan instruksi.
-- Term tampil sebelum ujian.
-- User hanya bisa lanjut setelah menyetujui term.
-- Tombol mulai ujian mengarah ke halaman ujian yang sesuai.
-- User tidak bisa akses sesi milik user lain.
+- Gunakan Chart.js karena sederhana dan umum digunakan.
+- Tambahkan dependency melalui package manager jika project menggunakan npm.
+- Alternatif sederhana: gunakan CDN hanya jika pola project memang mengizinkan CDN.
 
-## Checklist Implementasi untuk Junior Programmer
+Rekomendasi untuk project modern:
 
-- [ ] Cari file controller / view dashboard user.
-- [ ] Identifikasi relasi user ke sesi ujian.
-- [ ] Buat query untuk mengambil sesi milik user login.
-- [ ] Tampilkan daftar sesi dalam bentuk card.
-- [ ] Tambahkan action ke halaman detail sesi.
-- [ ] Buat halaman detail sesi ujian.
-- [ ] Tambahkan halaman term sebelum mulai ujian.
-- [ ] Tambahkan tombol setuju term dan mulai ujian.
-- [ ] Pastikan route dan controller memvalidasi hak akses.
-- [ ] Test semua alur dari dashboard sampai halaman ujian.
+- Jika project memakai Vite, install Chart.js via npm.
+- Import Chart.js di file JavaScript dashboard atau file app utama.
+- Hindari script inline terlalu panjang di Blade jika project sudah punya asset pipeline.
 
-## Catatan Implementasi
+Output dari tahap ini:
 
-- Prioritaskan perubahan kecil tapi konsisten dengan struktur project yang sudah ada.
-- Jika ada pola view / controller / service yang sudah dipakai di project, ikuti pola tersebut.
-- Jangan membuat struktur baru yang terlalu kompleks jika kebutuhan ini bisa diselesaikan dengan komponen yang sudah ada.
-- Bila data materi, durasi, atau instruksi belum tersedia, koordinasikan field mana yang perlu dipakai dari database atau model yang sudah ada.
+- Diputuskan apakah memakai library grafik yang sudah ada atau Chart.js.
+- Tidak ada duplikasi library grafik.
 
-## Definisi Selesai
+### 6. Tambahkan Section Grafik di View Dashboard
 
-Fitur dianggap selesai jika:
-- User bisa melihat sesi ujian yang di-assign di dashboard.
-- User bisa membuka detail sesi dari card.
-- User bisa membaca term sebelum masuk ujian.
-- User hanya bisa mulai ujian setelah menyetujui term.
-- User diarahkan ke halaman ujian yang sesuai dengan sesi yang dipilih.
-- Validasi akses dasar sudah aman di backend.
+Tambahkan section grafik di file view dashboard user.
+
+Posisi section:
+
+- Di atas section card sesi ujian.
+- Masih berada di dalam layout dashboard user.
+- Tidak mengganggu heading atau menu dashboard.
+
+Contoh struktur tampilan:
+
+```html
+<section class="mb-6">
+    <div class="card">
+        <div class="card-header">
+            <h2>Grafik Nilai Sesi Ujian</h2>
+            <p>Perkembangan nilai dari sesi ujian yang sudah kamu selesaikan.</p>
+        </div>
+        <div class="card-body">
+            <canvas id="scoreChart"></canvas>
+        </div>
+    </div>
+</section>
+```
+
+Catatan:
+
+- Sesuaikan class CSS dengan style yang sudah digunakan project.
+- Jangan membuat style baru berlebihan jika sudah ada komponen card.
+- Gunakan bahasa yang konsisten dengan aplikasi.
+
+Output dari tahap ini:
+
+- Section grafik muncul di dashboard user.
+- Posisi grafik berada sebelum card sesi ujian.
+
+### 7. Kirim Data dari Backend ke JavaScript
+
+Data dari backend perlu dikirim ke JavaScript dengan aman.
+
+Jika menggunakan Blade Laravel, bisa gunakan `@json`.
+
+Contoh:
+
+```html
+<script>
+    window.scoreChartData = @json($scoreChartData);
+</script>
+```
+
+Atau langsung di script inisialisasi grafik:
+
+```js
+const scoreChartData = @json($scoreChartData);
+```
+
+Hal penting:
+
+- Jangan membangun JSON manual dengan string concatenation.
+- Gunakan helper resmi seperti `@json` agar escaping aman.
+- Pastikan jika data kosong, JavaScript tetap tidak error.
+
+Output dari tahap ini:
+
+- JavaScript menerima `labels` dan `scores`.
+- Tidak ada error ketika data kosong.
+
+### 8. Implementasikan Grafik
+
+Buat inisialisasi grafik setelah element canvas tersedia.
+
+Contoh konfigurasi Chart.js grafik garis:
+
+```js
+const chartElement = document.getElementById('scoreChart');
+
+if (chartElement && window.scoreChartData) {
+    new Chart(chartElement, {
+        type: 'line',
+        data: {
+            labels: window.scoreChartData.labels,
+            datasets: [{
+                label: 'Nilai',
+                data: window.scoreChartData.scores,
+                borderWidth: 2,
+                tension: 0.3,
+            }],
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: 100,
+                },
+            },
+        },
+    });
+}
+```
+
+Jika menggunakan grafik batang, ubah `type` menjadi `bar`.
+
+Checklist implementasi grafik:
+
+- Grafik muncul jika data tersedia.
+- Label sesuai dengan sesi ujian.
+- Nilai sesuai dengan nilai pada card.
+- Skala nilai mudah dipahami.
+- Grafik responsive di layar kecil.
+- Tidak ada error JavaScript di console.
+
+Output dari tahap ini:
+
+- Grafik nilai berhasil tampil di dashboard user.
+- Grafik menampilkan data yang sama dengan data sesi ujian user.
+
+### 9. Tangani Kondisi Data Kosong
+
+Jika user belum pernah menyelesaikan sesi ujian, jangan tampilkan grafik kosong yang membingungkan.
+
+Opsi tampilan:
+
+- Tampilkan card informasi kosong.
+- Sembunyikan canvas grafik.
+- Tampilkan pesan singkat.
+
+Contoh pesan:
+
+`Grafik nilai akan muncul setelah kamu menyelesaikan sesi ujian.`
+
+Hal penting:
+
+- Dashboard tidak boleh error ketika data kosong.
+- Section card sesi ujian juga harus memiliki empty state yang jelas.
+- Jangan menampilkan grafik dengan label kosong dan nilai kosong tanpa penjelasan.
+
+Output dari tahap ini:
+
+- User baru tetap mendapat tampilan dashboard yang rapi.
+- Tidak ada error backend atau frontend ketika data belum ada.
+
+### 10. Perhatikan Urutan dan Konsistensi Data
+
+Pastikan urutan data pada grafik sama dengan logika yang mudah dipahami user.
+
+Rekomendasi:
+
+- Grafik diurutkan dari sesi paling lama ke sesi paling baru.
+- Card sesi ujian boleh diurutkan dari yang terbaru ke yang paling lama jika itu pola dashboard saat ini.
+- Jika urutan grafik dan card berbeda, pastikan tetap masuk akal.
+
+Contoh:
+
+- Grafik: Januari, Februari, Maret.
+- Card: Maret, Februari, Januari.
+
+Keduanya masih wajar karena grafik menunjukkan perkembangan waktu, sedangkan card menampilkan riwayat terbaru lebih dulu.
+
+Output dari tahap ini:
+
+- Grafik mudah dibaca sebagai perkembangan nilai.
+- Card tetap nyaman digunakan sebagai daftar riwayat sesi ujian.
+
+### 11. Validasi Akses Data User
+
+Pastikan data yang tampil hanya milik user yang sedang login.
+
+Checklist keamanan:
+
+- Query menggunakan `auth()->id()` atau mekanisme user login yang sudah dipakai project.
+- User A tidak bisa melihat nilai milik User B.
+- Jika ada route API untuk mengambil data grafik, route tersebut harus dilindungi middleware auth.
+- Jangan mengirim data user lain ke frontend.
+
+Output dari tahap ini:
+
+- Data grafik aman dan sesuai user login.
+- Data card sesi ujian juga tetap aman.
+
+### 12. Rapikan UI dan Responsiveness
+
+Pastikan tampilan grafik nyaman dilihat di desktop dan mobile.
+
+Checklist UI:
+
+- Section grafik punya judul yang jelas.
+- Ada deskripsi singkat di bawah judul.
+- Tinggi grafik tidak terlalu kecil.
+- Grafik tidak overflow di layar mobile.
+- Warna grafik kontras dan tetap sesuai tema aplikasi.
+- Jarak antara grafik dan card sesi ujian cukup nyaman.
+
+Contoh judul section:
+
+`Grafik Nilai Sesi Ujian`
+
+Contoh deskripsi:
+
+`Lihat perkembangan nilai dari setiap sesi ujian yang sudah kamu selesaikan.`
+
+Output dari tahap ini:
+
+- Dashboard terlihat rapi.
+- Grafik mudah dipahami oleh user.
+
+### 13. Testing Manual
+
+Lakukan testing manual minimal dengan beberapa kondisi data.
+
+Skenario testing:
+
+1. User belum punya sesi ujian selesai.
+   - Dashboard tidak error.
+   - Grafik tidak tampil kosong membingungkan.
+   - Pesan empty state muncul.
+
+2. User punya satu sesi ujian selesai.
+   - Card menampilkan nama sesi, tanggal, dan nilai.
+   - Grafik menampilkan satu data nilai.
+
+3. User punya beberapa sesi ujian selesai.
+   - Card menampilkan semua data sesuai aturan dashboard.
+   - Grafik menampilkan semua nilai.
+   - Urutan grafik sesuai tanggal pelaksanaan.
+
+4. Ada sesi ujian tanpa nilai.
+   - Sesi tersebut tidak masuk grafik, kecuali aturan aplikasi menyatakan lain.
+   - Dashboard tetap tidak error.
+
+5. Login sebagai user berbeda.
+   - Data grafik berubah sesuai user yang login.
+   - Tidak ada data user lain yang tampil.
+
+Output dari tahap ini:
+
+- Fitur sudah aman untuk diuji lebih lanjut.
+- Bug umum pada data kosong dan data user lain sudah dicegah.
+
+## Rekomendasi Detail Teknis
+
+### Backend
+
+- Ambil data dari sumber yang sama dengan card sesi ujian jika memungkinkan.
+- Buat variable khusus untuk grafik, misalnya `$scoreChartData`.
+- Urutkan data grafik berdasarkan tanggal pelaksanaan atau tanggal selesai ujian ascending.
+- Filter data agar hanya mengambil sesi ujian yang sudah selesai dan memiliki nilai.
+
+Contoh pseudocode:
+
+```php
+$completedSessions = $user->examSessions()
+    ->whereNotNull('score')
+    ->orderBy('completed_at')
+    ->get();
+
+$scoreChartData = [
+    'labels' => $completedSessions->pluck('name'),
+    'scores' => $completedSessions->pluck('score'),
+];
+```
+
+Catatan:
+
+- Sesuaikan nama relasi, kolom, dan model dengan struktur project sebenarnya.
+- Jangan copy mentah pseudocode jika nama model berbeda.
+
+### Frontend
+
+- Tambahkan container grafik di view dashboard user.
+- Gunakan `canvas` jika memakai Chart.js.
+- Inisialisasi grafik hanya jika element canvas ditemukan.
+- Gunakan data dari backend melalui JSON yang aman.
+- Tambahkan empty state jika data grafik kosong.
+
+### UI Copy
+
+Gunakan teks sederhana dan mudah dipahami:
+
+- Judul: `Grafik Nilai Sesi Ujian`
+- Deskripsi: `Lihat perkembangan nilai dari setiap sesi ujian yang sudah kamu selesaikan.`
+- Empty state: `Grafik nilai akan muncul setelah kamu menyelesaikan sesi ujian.`
+
+## Acceptance Criteria
+
+Fitur dianggap selesai jika semua poin berikut terpenuhi:
+
+- Dashboard user tetap menampilkan section card sesi ujian.
+- Card sesi ujian menampilkan nama sesi ujian, tanggal pelaksanaan, dan nilai dengan jelas.
+- Section grafik nilai tampil di atas section card sesi ujian.
+- Grafik menampilkan nilai dari sesi ujian yang sudah dilakukan user.
+- Data grafik sesuai dengan data user yang sedang login.
+- Data grafik tidak menampilkan sesi ujian user lain.
+- Dashboard tidak error ketika user belum punya sesi ujian selesai.
+- Ada empty state yang jelas ketika data grafik kosong.
+- Tampilan grafik responsive di desktop dan mobile.
+- Tidak ada error JavaScript di console browser.
+
+## Estimasi Urutan Kerja yang Disarankan
+
+1. Cari file dashboard user dan controller terkait.
+2. Pahami query data card sesi ujian yang sudah ada.
+3. Pastikan data card berisi nama sesi, tanggal, dan nilai.
+4. Buat data `$scoreChartData` dari hasil sesi ujian user.
+5. Kirim `$scoreChartData` ke view dashboard.
+6. Tambahkan section grafik di atas section card sesi ujian.
+7. Integrasikan Chart.js atau library grafik yang sudah tersedia.
+8. Tambahkan empty state untuk data kosong.
+9. Rapikan tampilan desktop dan mobile.
+10. Test manual dengan user tanpa data, satu data, banyak data, dan user berbeda.
+
+## Catatan untuk Junior Programmer atau AI Model
+
+- Jangan mengubah fitur lain di luar dashboard user kecuali diperlukan.
+- Jangan membuat tabel baru sebelum memastikan data nilai memang belum tersedia.
+- Jangan menampilkan semua data ujian dari semua user.
+- Selalu filter data berdasarkan user yang sedang login.
+- Jika bingung memilih grafik, gunakan grafik garis terlebih dahulu.
+- Jika project sudah punya komponen card atau style khusus, ikuti style yang sudah ada.
+- Jika ada perbedaan nama model atau kolom, sesuaikan dengan kode project yang sebenarnya.
+- Setelah implementasi, bandingkan nilai di grafik dengan nilai di card untuk memastikan datanya sama.

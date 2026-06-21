@@ -37,7 +37,7 @@
                     <a href="{{ route('participant.statistics', $session->id) }}" class="btn-primary" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); height: 44px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">
                         <i class="fas fa-list-ol" style="margin-right: 8px;"></i> {{ $isClosed ? 'Statistik Final' : 'Statistik Sementara' }}
                     </a>
-                    @if($latestRegistration->privilege === 'premium' && $registrations->count() >= 2 && !$isClosed && !$isBeforeStart)
+                    @if($latestRegistration->privilege === 'premium' && !$isClosed && !$isBeforeStart)
                         <form action="{{ route('participant.retake', $session->id) }}" method="POST" class="retake-form" style="margin: 0;">
                             @csrf
                             <button type="submit" class="btn-primary" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); height: 44px;">
