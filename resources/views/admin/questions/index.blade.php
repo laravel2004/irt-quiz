@@ -28,6 +28,7 @@
                     <th style="width: 60px;">ID</th>
                     <th>MATA PELAJARAN</th>
                     <th>TIPE</th>
+                    <th>KODE SOAL</th>
                     <th>SOAL</th>
                     <th style="width: 150px; text-align: center;">AKSI</th>
                 </tr>
@@ -47,6 +48,9 @@
                         @elseif($question->type === 'benar_salah') Benar / Salah
                         @elseif($question->type === 'multiple_benar_salah') Multiple B/S
                         @else Multiple Choice @endif
+                    </td>
+                    <td>
+                        <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">{{ $question->kode_soal ?? '-' }}</span>
                     </td>
                     <td style="max-width: 400px;">
                         <div style="display: flex; align-items: center; gap: 12px;">
@@ -70,7 +74,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-secondary);">Belum ada soal.</td>
+                    <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-secondary);">Belum ada soal.</td>
                 </tr>
                 @endforelse
             </tbody>
@@ -428,9 +432,14 @@
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
                             <label><i class="fas fa-layer-group" style="color: var(--text-secondary); margin-right: 6px;"></i> Sub Pelajaran</label>
-                            <select name="sub_category_id" id="subCatSelect" class="form-input" required>
+                            <select name="sub_category_id" id="subCatSelect" class="form-input" onchange="loadKodeSoalOptions(this.value)" required>
                                 <option value="">-- Pilih Sub Pelajaran --</option>
                             </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label><i class="fas fa-tags" style="color: var(--text-secondary); margin-right: 6px;"></i> Kode Soal</label>
+                            <input type="text" name="kode_soal" id="kodeSoal" class="form-input" list="kodeSoalOptions" placeholder="Pilih atau ketik kode soal baru" maxlength="100" required>
+                            <datalist id="kodeSoalOptions"></datalist>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
                             <label><i class="fas fa-sliders-h" style="color: var(--text-secondary); margin-right: 6px;"></i> Tipe Soal</label>
@@ -757,6 +766,8 @@
             if (explanationEditor) explanationEditor.setContent('');
             document.getElementById('catSelect').value = '';
             document.getElementById('subCatSelect').innerHTML = '<option value="">-- Pilih Sub Pelajaran --</option>';
+            document.getElementById('kodeSoal').value = '';
+            document.getElementById('kodeSoalOptions').innerHTML = '';
             document.getElementById('typeSelect').value = 'pilihan_ganda';
             handleTypeChange();
         }
@@ -981,6 +992,7 @@
         subCatSelect.innerHTML = '<option value="">Memuat...</option>';
         if (!categoryId) {
             subCatSelect.innerHTML = '<option value="">-- Pilih Sub Pelajaran --</option>';
+            loadKodeSoalOptions(null);
             return;
         }
         
@@ -998,6 +1010,37 @@
                         const isSelected = selectedSubId == sub.id ? 'selected' : '';
                         subCatSelect.innerHTML += `<option value="${sub.id}" ${isSelected}>${sub.name}</option>`;
                     });
+                    if (selectedSubId) {
+                        loadKodeSoalOptions(selectedSubId);
+                    } else {
+                        loadKodeSoalOptions(null);
+                    }
+                }
+            });
+    }
+
+    function loadKodeSoalOptions(subCategoryId) {
+        const kodeSoalOptions = document.getElementById('kodeSoalOptions');
+        kodeSoalOptions.innerHTML = '';
+
+        if (!subCategoryId) {
+            return;
+        }
+
+        fetch(`{{ route('admin.questions.kode-soal') }}?sub_category_id=${subCategoryId}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    data.data.forEach(kode => {
+                        const option = document.createElement('option');
+                        option.value = kode;
+                        kodeSoalOptions.appendChild(option);
+                    });
                 }
             });
     }
@@ -1014,6 +1057,7 @@
             document.getElementById('questionId').value = q.id;
             document.getElementById('catSelect').value = q.category_id;
             loadSubCategoriesForForm(q.category_id, q.sub_category_id);
+            document.getElementById('kodeSoal').value = q.kode_soal || '';
             document.getElementById('typeSelect').value = q.type;
             document.getElementById('scoreCorrect').value = q.score_correct || 1;
             document.getElementById('scoreIncorrect').value = q.score_incorrect || 0;
@@ -1161,12 +1205,13 @@
         const rows = document.querySelectorAll('.data-table tbody tr');
 
         rows.forEach(row => {
-            if (row.cells.length < 5) return; // Skip empty row
+            if (row.cells.length < 6) return; // Skip empty row
             const category = row.cells[1].textContent.toLowerCase();
             const type = row.cells[2].textContent.toLowerCase();
-            const text = row.cells[3].textContent.toLowerCase();
+            const kodeSoal = row.cells[3].textContent.toLowerCase();
+            const text = row.cells[4].textContent.toLowerCase();
             
-            if (category.includes(term) || type.includes(term) || text.includes(term)) {
+            if (category.includes(term) || type.includes(term) || kodeSoal.includes(term) || text.includes(term)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -1285,6 +1330,7 @@
                 document.getElementById('catSelect').value = catId;
                 if (subCatId) {
                     loadSubCategoriesForForm(catId, subCatId);
+                    loadKodeSoalOptions(subCatId);
                 } else {
                     loadSubCategoriesForForm(catId);
                 }

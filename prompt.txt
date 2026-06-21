@@ -1,0 +1,14 @@
+buat file issue.md yang berisi perencanaan
+untuk nanti di implementasikan oleh junior programmer
+atau ai model yang lebih murah
+
+Isi planningnya adalah sebagai berikut :
+1. perhatikan dashbord role user ya.
+2. disitu menampilkan card sesi ujian yang di assign ke user tersebut, dengan informasi seperti nama sesi, tanggal ujian, dan status (aktif/tidak aktif).
+3. tambahkan action masuk ke dalam card tersebut, dia bisa melihat detail sesi ujian tersebut, seperti materi yang akan diujikan, durasi ujian, dan instruksi khusus jika ada.
+4. buat halaman detail sesi ujian yang menampilkan informasi lebih lengkap tentang sesi ujian tersebut
+5. baru disitu ada action untuk memulai ujian, ketika user menekan tombol tersebut, maka akan diarahkan ke halaman ujian yang sesuai dengan sesi ujian yang dipilih.
+6. jangan lupa tampilkan term nya dulu sebelum memulai ujian, agar user bisa membaca dan menyetujui term tersebut sebelum memulai ujian.
+
+Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail
+dengan target  junior programmer atau model yang lebih murah bisa mengerjakan

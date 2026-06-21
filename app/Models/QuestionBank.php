@@ -9,6 +9,7 @@ class QuestionBank extends Model
     protected $fillable = [
         'category_id',
         'sub_category_id',
+        'kode_soal',
         'type',
         'question_text',
         'question_image',

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -98,9 +98,13 @@
 
         <form action="{{ route('exam.agree', $session->code) }}" method="POST">
             @csrf
+            <label style="display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                <input type="checkbox" name="agree_terms" required style="margin-top: 4px; width: 18px; height: 18px; accent-color: #3b82f6;">
+                <span style="color: var(--text-secondary); line-height: 1.6; font-size: 0.95rem;">Saya telah membaca seluruh syarat dan ketentuan ujian, memahami aturan yang berlaku, dan setuju untuk melanjutkan ujian sesuai ketentuan tersebut.</span>
+            </label>
             <div style="display: flex; gap: 16px; margin-top: 32px;">
-                <a href="{{ route('participant.dashboard') }}" class="btn-primary" style="flex: 1; background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary); text-align: center; text-decoration: none;">
-                    Kembali
+                <a href="{{ route('participant.session.show', $session->id) }}" class="btn-primary" style="flex: 1; background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary); text-align: center; text-decoration: none;">
+                    Kembali ke Detail
                 </a>
                 <button type="submit" class="btn-primary" style="flex: 2; font-weight: 600;">
                     Saya Setuju & Lanjutkan <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>

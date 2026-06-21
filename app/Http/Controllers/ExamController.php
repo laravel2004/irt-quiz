@@ -71,6 +71,12 @@ class ExamController extends Controller
 
     public function agreeTerms(Request $request, $code)
     {
+        $request->validate([
+            'agree_terms' => 'accepted',
+        ], [
+            'agree_terms.accepted' => 'Anda harus menyetujui syarat dan ketentuan sebelum memulai ujian.',
+        ]);
+
         $participant = $this->getParticipant($code);
         if (!$participant) return redirect()->route('participant.dashboard');
 
@@ -302,18 +308,18 @@ class ExamController extends Controller
         $participant->update(['finished_at' => now()]);
         session()->forget('participant_id');
 
-        // Automatically generate IRT for Premium participants
+        // Generate result for all participants so result page is always available
+        $assessmentService = new \App\Services\AssessmentService();
+        $assessmentService->calculateIRT($participant->exam_session_id);
+
+        // Generate Aggregate AI Analysis only for Premium participants
         if ($participant->privilege === 'premium') {
-            $assessmentService = new \App\Services\AssessmentService();
-            $assessmentService->calculateIRT($participant->exam_session_id);
-            
-            // Generate Aggregate AI Analysis if they have >= 2 finished attempts
             $registrations = ExamSessionParticipant::where('user_id', $participant->user_id)
                 ->where('exam_session_id', $participant->exam_session_id)
                 ->with('result')
                 ->orderBy('id', 'asc')
                 ->get();
-                
+
             $attemptsData = [];
             foreach ($registrations as $index => $reg) {
                 if ($reg->result) {
@@ -323,7 +329,7 @@ class ExamController extends Controller
                         'total_incorrect' => $reg->result->total_incorrect,
                         'total_blank' => $reg->result->total_blank,
                         'raw_score' => $reg->result->score,
-                        'irt_score' => $reg->result->irt_score
+                        'irt_score' => $reg->result->irt_score,
                     ];
                 }
             }
@@ -333,7 +339,7 @@ class ExamController extends Controller
                 $analysis = $aiService->generateAggregateAnalysis([
                     'participant_name' => $participant->name,
                     'session_name' => $registrations->first()->examSession->name,
-                    'attempts' => $attemptsData
+                    'attempts' => $attemptsData,
                 ]);
 
                 if ($analysis) {
@@ -404,3 +410,5 @@ class ExamController extends Controller
         return view('exam.success', compact('session', 'participant', 'rawScore', 'answeredQuestions', 'totalQuestions', 'categoryScores'));
     }
 }
+
+

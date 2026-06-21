@@ -18,7 +18,11 @@ class DashboardController extends Controller
         
         // Get sessions where this user is registered, grouped by exam session
         $registrations = ExamSessionParticipant::where('user_id', $user->id)
-            ->with(['examSession.sessionCategories.category', 'result'])
+            ->with([
+                'examSession.sessionCategories.category',
+                'examSession.sessionCategories.subCategories.subCategory',
+                'result'
+            ])
             ->orderBy('created_at', 'asc')
             ->get();
             
@@ -27,11 +31,64 @@ class DashboardController extends Controller
         return view('participant.dashboard', compact('groupedRegistrations'));
     }
 
+    public function showSession($sessionId)
+    {
+        $user = auth()->user();
+
+        $registrations = ExamSessionParticipant::where('user_id', $user->id)
+            ->where('exam_session_id', $sessionId)
+            ->with([
+                'examSession.sessionCategories.category',
+                'examSession.sessionCategories.subCategories.subCategory',
+                'result'
+            ])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        if ($registrations->isEmpty()) {
+            return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian tidak ditemukan atau Anda tidak memiliki akses.');
+        }
+
+        $latestRegistration = $registrations->last();
+        $session = $latestRegistration->examSession;
+
+        $now = now();
+        $start = \Carbon\Carbon::parse($session->start_date . ' ' . $session->start_time);
+        $end = \Carbon\Carbon::parse($session->end_date . ' ' . $session->end_time);
+        $isPastEnd = $now->gt($end);
+        $isBeforeStart = $now->lt($start);
+        $isClosed = !$session->is_active || $isPastEnd;
+
+        $sessionCategories = $session->sessionCategories;
+        $totalDuration = $sessionCategories->sum('duration');
+        $totalQuestions = $sessionCategories->sum('total_questions');
+
+        return view('participant.session_detail', compact(
+            'session',
+            'registrations',
+            'latestRegistration',
+            'sessionCategories',
+            'totalDuration',
+            'totalQuestions',
+            'isPastEnd',
+            'isBeforeStart',
+            'isClosed',
+            'start',
+            'end'
+        ));
+    }
+
     public function showResult($registrationId)
     {
         $registration = ExamSessionParticipant::where('user_id', auth()->id())
             ->with(['examSession.sessionCategories', 'result'])
             ->findOrFail($registrationId);
+
+        if (!$registration->result) {
+            $assessmentService = new \App\Services\AssessmentService();
+            $assessmentService->calculateIRT($registration->exam_session_id);
+            $registration->load(['examSession.sessionCategories', 'result']);
+        }
 
         if (!$registration->result) {
             return redirect()->route('participant.dashboard')->with('error', 'Hasil belum tersedia.');
@@ -287,7 +344,9 @@ class DashboardController extends Controller
             'privilege' => $lastRegistration->privilege
         ]);
 
-        return redirect()->route('participant.dashboard')->with('success', 'Percobaan baru berhasil dibuat. Silakan mulai mengerjakan.');
+        session(['participant_id' => $newRegistration->id]);
+
+        return redirect()->route('exam.terms', $session->code)->with('success', 'Percobaan baru berhasil dibuat. Silakan baca term sebelum mulai mengerjakan.');
     }
 
     public function generateAggregateAnalysis($sessionId)
@@ -407,3 +466,5 @@ class DashboardController extends Controller
         return view('participant.statistics', compact('session', 'isClosed', 'rankings', 'user'));
     }
 }
+
+

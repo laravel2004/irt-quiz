@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\QuestionBank;
 use App\Services\QuestionBankService;
 use App\Traits\ResponseTrait;
 use Illuminate\Http\Request;
@@ -38,6 +39,7 @@ class QuestionBankController extends Controller
         $validator = Validator::make($request->all(), [
             'category_id' => 'required|exists:categories,id',
             'sub_category_id' => 'required|exists:sub_categories,id',
+            'kode_soal' => 'required|string|max:100',
             'type' => 'required|in:pilihan_ganda,benar_salah,multiple_choice,multiple_benar_salah',
             'question_text' => 'required|string',
             'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -53,8 +55,8 @@ class QuestionBankController extends Controller
         }
 
         $data = $request->all();
+        $data['kode_soal'] = trim((string) $request->kode_soal);
         
-        // Ensure correct_answer is an array
         if (!is_array($data['correct_answer'])) {
             $data['correct_answer'] = [$data['correct_answer']];
         }
@@ -70,7 +72,7 @@ class QuestionBankController extends Controller
 
     public function show($id)
     {
-        $question = \App\Models\QuestionBank::with(['category', 'subCategory'])->find($id);
+        $question = QuestionBank::with(['category', 'subCategory'])->find($id);
         if (!$question) return $this->errorResponse('Pertanyaan tidak ditemukan', 404);
         return $this->successResponse($question);
     }
@@ -80,6 +82,7 @@ class QuestionBankController extends Controller
         $validator = Validator::make($request->all(), [
             'category_id' => 'required|exists:categories,id',
             'sub_category_id' => 'required|exists:sub_categories,id',
+            'kode_soal' => 'required|string|max:100',
             'type' => 'required|in:pilihan_ganda,benar_salah,multiple_choice,multiple_benar_salah',
             'question_text' => 'required|string',
             'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -98,14 +101,13 @@ class QuestionBankController extends Controller
         if (!$question) return $this->errorResponse('Pertanyaan tidak ditemukan', 404);
 
         $data = $request->all();
+        $data['kode_soal'] = trim((string) $request->kode_soal);
         
-        // Ensure correct_answer is an array
         if (!is_array($data['correct_answer'])) {
             $data['correct_answer'] = [$data['correct_answer']];
         }
 
         if ($request->hasFile('question_image')) {
-            // Delete old image
             if ($question->question_image) {
                 Storage::disk('public')->delete($question->question_image);
             }
@@ -126,5 +128,26 @@ class QuestionBankController extends Controller
         
         $this->questionService->destroy($id);
         return $this->successResponse(null, 'Pertanyaan berhasil dihapus');
+    }
+
+    public function kodeSoalOptions(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'sub_category_id' => 'required|exists:sub_categories,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationResponse($validator->errors());
+        }
+
+        $codes = QuestionBank::where('sub_category_id', $request->sub_category_id)
+            ->whereNotNull('kode_soal')
+            ->where('kode_soal', '!=', '')
+            ->select('kode_soal')
+            ->distinct()
+            ->orderBy('kode_soal')
+            ->pluck('kode_soal');
+
+        return $this->successResponse($codes);
     }
 }

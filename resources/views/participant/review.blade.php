@@ -5,8 +5,8 @@
 @section('content')
 <div class="container" style="padding: 40px 20px; max-width: 1000px; margin: 0 auto;">
     <div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
-        <a href="{{ route('participant.dashboard') }}" style="color: var(--text-secondary); text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
-            <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+        <a href="{{ route('participant.session.show', $registration->exam_session_id) }}" style="color: var(--text-secondary); text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+            <i class="fas fa-arrow-left"></i> Kembali ke Detail Sesi
         </a>
         <div style="text-align: right;">
             <h4 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">{{ $registration->examSession->name }}</h4>

@@ -47,24 +47,23 @@
                 $isBeforeStart = $now->lt($start);
                 $isClosed = !$session->is_active || $isPastEnd;
             @endphp
-            <div class="glass card-hover" style="padding: 24px; border-radius: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="glass card-hover" style="padding: 24px; border-radius: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+                <div style="position: absolute; top: 24px; right: 24px;">
+                    @if($latestReg->privilege === 'premium')
+                        <span class="badge" style="font-size: 0.7rem; background: rgba(234, 179, 8, 0.1); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.2);">
+                            <i class="fas fa-star" style="margin-right: 4px;"></i> Premium
+                        </span>
+                    @else
+                        <span class="badge" style="font-size: 0.7rem; background: rgba(255,255,255,0.05); color: var(--text-secondary);">
+                            General
+                        </span>
+                    @endif
+                </div>
                 <div>
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <span class="badge {{ $session->is_active ? 'active' : '' }}" style="font-size: 0.7rem;">
-                                {{ $session->is_active ? 'Sesi Terbuka' : 'Sesi Tertutup' }}
-                            </span>
-                            @if($latestReg->privilege === 'premium')
-                                <span class="badge" style="font-size: 0.7rem; background: rgba(234, 179, 8, 0.1); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.2);">
-                                    <i class="fas fa-star" style="margin-right: 4px;"></i> Premium
-                                </span>
-                            @else
-                                <span class="badge" style="font-size: 0.7rem; background: rgba(255,255,255,0.05); color: var(--text-secondary);">
-                                    General
-                                </span>
-                            @endif
-                        </div>
-                        <code style="color: var(--accent); font-size: 0.8rem; font-weight: 600;">{{ $session->code }}</code>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-right: 100px;">
+                        <span class="badge {{ $session->is_active ? 'active' : '' }}" style="font-size: 0.7rem;">
+                            {{ $session->is_active ? 'Sesi Terbuka' : 'Sesi Tertutup' }}
+                        </span>
                     </div>
                     <h4 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin-bottom: 12px; color: white;">{{ $session->name }}</h4>
                     
@@ -80,59 +79,17 @@
                             </div>
                         </div>
 
-                        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
-                            <div style="font-size: 0.8rem; font-weight: 600; color: white; margin-bottom: 8px;">Riwayat Pengerjaan ({{ $sessionRegistrations->count() }} Percobaan):</div>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                @foreach($sessionRegistrations as $index => $reg)
-                                    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 8px; font-size: 0.8rem;">
-                                        <span>Percobaan {{ $index + 1 }}</span>
-                                        @if($reg->finished_at)
-                                            <div style="display: flex; gap: 6px;">
-                                                <a href="{{ route('participant.result', $reg->id) }}" style="color: var(--accent); text-decoration: none;"><i class="fas fa-chart-bar"></i> Hasil</a>
-                                                <span style="color: var(--glass-border);">|</span>
-                                                <a href="{{ route('participant.review', $reg->id) }}" style="color: #3b82f6; text-decoration: none;"><i class="fas fa-book-open"></i> Laporan</a>
-                                            </div>
-                                        @else
-                                            <a href="{{ route('exam.terms', $session->code) }}" style="color: #10b981; font-weight: 600; text-decoration: none;"><i class="fas fa-play"></i> Lanjutkan</a>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
+
                     </div>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    @if($sessionRegistrations->count() >= 2 && $latestReg->privilege === 'premium' && $latestReg->finished_at)
-                        <button onclick="showAggregateAnalysis({{ $session->id }})" class="btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #d946ef); border: none; width: 100%; height: 44px; font-size: 0.9rem;">
-                            <i class="fas fa-sparkles"></i> Analisis Perkembangan AI
-                        </button>
-                    @endif
+                    <a href="{{ route('participant.session.show', $session->id) }}" class="btn-primary" style="background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.08); width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 0.9rem;">
+                        <i class="fas fa-circle-info" style="margin-right: 8px;"></i> Detail Sesi
+                    </a>
 
-                    @if($latestReg->finished_at)
-                        @if(!$isClosed)
-                            <a href="{{ route('participant.statistics', $session->id) }}" class="btn-primary" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 0.9rem;">
-                                <i class="fas fa-list-ol" style="margin-right: 8px;"></i> Statistik Sementara
-                            </a>
-                        @else
-                            <a href="{{ route('participant.statistics', $session->id) }}" class="btn-primary" style="background: rgba(234, 179, 8, 0.1); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.2); width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 0.9rem;">
-                                <i class="fas fa-trophy" style="margin-right: 8px;"></i> Statistik Final
-                            </a>
-                        @endif
-                    @endif
 
-                    @if(!$isClosed && $latestReg->finished_at && $latestReg->privilege === 'premium')
-                        <form action="{{ route('participant.retake', $session->id) }}" method="POST" class="retake-form">
-                            @csrf
-                            <button type="submit" class="btn-primary" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); width: 100%; height: 44px;">
-                                <i class="fas fa-redo-alt"></i> Kerjakan Ulang
-                            </button>
-                        </form>
-                    @elseif(!$isClosed && !$latestReg->finished_at && !$isBeforeStart)
-                         <a href="{{ route('exam.terms', $session->code) }}" class="btn-primary" style="width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none;">
-                            Lanjutkan Ujian <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>
-                        </a>
-                    @endif
+
 
                     @if($isClosed && $session->discussion_pdf && $latestReg->privilege === 'premium')
                         <a href="{{ asset('storage/' . $session->discussion_pdf) }}" target="_blank" class="btn-primary" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none;">
@@ -247,3 +204,5 @@ document.querySelectorAll('.retake-form').forEach(form => {
 </script>
 
 @endsection
+
+

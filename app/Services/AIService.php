@@ -95,7 +95,7 @@ class AIService
             ])->post($this->baseUrl . '/chat/completions', [
                 'model' => $this->model,
                 'messages' => [
-                    ['role' => 'system', 'content' => 'Anda adalah AI Konsultan Pendidikan Senior. Tugas Anda menganalisis perkembangan hasil tryout siswa dari beberapa kali percobaan pada sesi yang sama. Output harus berformat JSON murni dengan key: analisis_progres, pola_kekurangan, strategi_lanjutan.'],
+                    ['role' => 'system', 'content' => 'Anda adalah Konsultan Pendidikan Senior yang ahli membaca tren tryout, psikometri dasar, dan strategi belajar. Berikan analisis yang spesifik, berbasis data, tidak generik, hangat, dan actionable. Output wajib JSON murni dengan key: analisis_progres, pola_kekurangan, strategi_lanjutan. Setiap value berupa 2-3 paragraf pendek yang enak dibaca.'],
                     ['role' => 'user', 'content' => $prompt],
                 ],
                 'temperature' => 0.8,
@@ -127,15 +127,21 @@ class AIService
         }
 
         return "Analisis perkembangan siswa bernama $name pada sesi ujian: $session.
-        
+
         Riwayat Percobaan:
         $attemptsStr
-        
-        Instruksi Analisis:
-        1. **analisis_progres**: Jelaskan bagaimana tren nilai (IRT maupun Raw) dari percobaan awal ke akhir. Apakah ada peningkatan konsisten atau penurunan?
-        2. **pola_kekurangan**: Berdasarkan tren jawaban salah/kosong, apa pola kesalahan yang masih menetap dan perlu segera diatasi?
-        3. **strategi_lanjutan**: Berikan saran belajar yang komprehensif berdasarkan seluruh riwayat di atas.
-        
-        Berikan jawaban dalam format JSON (keys: analisis_progres, pola_kekurangan, strategi_lanjutan).";
+
+        Instruksi kualitas analisis:
+        1. analisis_progres: Jelaskan tren dari percobaan awal sampai terakhir menggunakan angka yang tersedia. Bandingkan skor raw, skor IRT, jumlah benar, salah, dan kosong. Sebutkan apakah progresnya kuat, stabil, naik tipis, turun, atau fluktuatif.
+        2. pola_kekurangan: Identifikasi pola masalah yang masih terlihat dari data. Bedakan antara masalah pemahaman materi (banyak salah), manajemen waktu/keberanian menjawab (banyak kosong), dan konsistensi performa.
+        3. strategi_lanjutan: Berikan 3-5 arahan belajar yang taktis, konkret, dan bisa dilakukan sebelum percobaan berikutnya. Sertakan prioritas latihan, cara evaluasi, dan target perilaku saat ujian.
+
+        Gaya bahasa:
+        - Bahasa Indonesia yang profesional, suportif, dan mudah dipahami siswa.
+        - Jangan terlalu umum seperti motivasi kosong.
+        - Jangan mengarang data di luar angka yang diberikan.
+        - Jika datanya terbatas, jelaskan keterbatasannya secara elegan.
+
+        Berikan jawaban dalam JSON murni tanpa markdown dengan keys: analisis_progres, pola_kekurangan, strategi_lanjutan.";
     }
 }

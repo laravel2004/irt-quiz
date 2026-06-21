@@ -17,18 +17,18 @@
             --question-font-size: 16px;
         }
         body {
-            background: #0f172a;
+            background: #f8fafc;
             height: 100vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             font-family: 'Inter', sans-serif;
             margin: 0;
-            color: white;
+            color: #0f172a;
         }
         .top-navbar {
-            background: #1e293b;
-            border-bottom: 2px solid #3b82f6;
+            background: #ffffff;
+            border-bottom: 1px solid #dbeafe;
             padding: 12px 24px;
             display: flex;
             justify-content: space-between;
@@ -40,15 +40,15 @@
             padding: 24px;
             display: flex;
             overflow: hidden;
-            background: #0f172a;
+            background: #f8fafc;
         }
         .exam-container {
-            background: #1e293b;
+            background: #ffffff;
             border-radius: 12px;
             flex: 1;
             display: flex;
             flex-direction: column;
-            border: 1px solid #334155;
+            border: 1px solid #e2e8f0;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
         .exam-header-bar {
@@ -56,7 +56,7 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 1px solid #334155;
+            border-bottom: 1px solid #e2e8f0;
         }
         .exam-body {
             flex: 1;
@@ -65,7 +65,7 @@
         }
         .exam-left-pane {
             flex: 1;
-            border-right: 2px dashed #475569;
+            border-right: 2px dashed #cbd5e1;
             padding: 30px;
             overflow-y: auto;
             display: none;
@@ -80,7 +80,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-top: 1px solid #334155;
+            border-top: 1px solid #e2e8f0;
         }
 
         /* Buttons */
@@ -94,7 +94,7 @@
             align-items: center;
             gap: 8px;
             font-size: 15px;
-            color: white;
+            color: #0f172a;
             transition: opacity 0.2s;
         }
         .btn-pill:hover { opacity: 0.9; }
@@ -102,7 +102,7 @@
         .btn-blue { background: #2563eb; }
         .btn-red { background: #ef4444; }
         .btn-yellow { background: #eab308; color: #000; }
-        .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: white; }
+        .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: #0f172a; }
 
         .font-sizes span { cursor: pointer; margin-right: 12px; transition: color 0.2s; }
         .font-sizes span:hover { color: #3b82f6; }
@@ -113,13 +113,13 @@
             top: 0;
             bottom: 0;
             width: 350px;
-            background: #1e293b;
+            background: #ffffff;
             z-index: 1000;
             transition: right 0.3s ease-in-out;
-            border-left: 1px solid #334155;
+            border-left: 1px solid #e2e8f0;
             display: flex;
             flex-direction: column;
-            box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+            box-shadow: -5px 0 20px rgba(15,23,42,0.12);
         }
         .nav-sidebar.open {
             right: 0;
@@ -127,7 +127,7 @@
         .overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
+            background: rgba(15,23,42,0.25);
             backdrop-filter: blur(2px);
             z-index: 999;
             display: none;
@@ -142,13 +142,13 @@
             align-items: center;
             font-weight: bold;
             cursor: pointer;
-            background: #334155;
-            color: white;
+            background: #f1f5f9;
+            color: #0f172a;
             border: 2px solid transparent;
             font-size: 14px;
             transition: all 0.2s;
         }
-        .nav-grid-btn.answered { background: #10b981; color: white; }
+        .nav-grid-btn.answered { background: #10b981; color: #0f172a; }
         .nav-grid-btn.doubtful { background: #eab308; color: black; }
         .nav-grid-btn.active { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); }
         .nav-grid-btn:hover { filter: brightness(1.1); }
@@ -165,7 +165,7 @@
             transition: background 0.2s;
         }
         .option-row:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: #eff6ff;
         }
         .radio-btn {
             width: 20px; height: 20px;
@@ -208,17 +208,17 @@
             align-items: center;
             margin-bottom: 16px;
             padding: 16px;
-            background: rgba(255,255,255,0.03);
+            background: #f8fafc;
             border-radius: 8px;
-            border: 1px solid #334155;
+            border: 1px solid #e2e8f0;
             gap: 20px;
         }
         .mbs-btn {
             padding: 8px 20px;
             border-radius: 20px;
-            border: 1px solid #64748b;
+            border: 1px solid #cbd5e1;
             background: transparent;
-            color: white;
+            color: #0f172a;
             cursor: pointer;
             font-weight: 500;
         }
@@ -235,7 +235,7 @@
         .question-text p { margin: 0 0 10px; }
         .question-text ul, .question-text ol { margin: 0 0 10px 20px; }
         .question-text table { border-collapse: collapse; margin: 10px 0; }
-        .question-text table td, .question-text table th { border: 1px solid rgba(255,255,255,0.2); padding: 8px; }
+        .question-text table td, .question-text table th { border: 1px solid #cbd5e1; padding: 8px; }
 
         @media (max-width: 768px) {
             body { height: auto; min-height: 100vh; overflow-y: auto; }
@@ -244,7 +244,7 @@
             .exam-header-bar { flex-direction: column; gap: 16px; padding: 16px; }
             .exam-header-bar > div:last-child { width: 100%; align-items: flex-start !important; }
             .exam-header-bar > div:last-child > div:first-child { flex-direction: column; align-items: stretch !important; width: 100%; }
-            .exam-header-bar > div:last-child > div:first-child > button, 
+            .exam-header-bar > div:last-child > div:first-child > button,
             .exam-header-bar > div:last-child > div:first-child > div { width: 100%; justify-content: center; }
             .btn-pill { font-size: 13px; padding: 10px 16px; }
             .exam-left-pane { display: none !important; }
@@ -259,32 +259,31 @@
     <header class="top-navbar">
         <div style="display: flex; align-items: center; gap: 16px;">
             <div style="background: rgba(59, 130, 246, 0.1); padding: 8px; border-radius: 8px;">
-                <img src="{{ asset('img/logo.png') }}" alt="Logo JagoBelajar" style="height: 32px; filter: drop-shadow(0 0 2px rgba(255,255,255,0.5));">
+                <img src="{{ asset('img/logo.png') }}" alt="Logo JagoBelajar" style="height: 32px; filter: none;">
             </div>
             <div>
-                <div style="color: white; font-weight: 700; font-size: 15px; letter-spacing: 0.5px;">Bimbel & Try Out Online</div>
-                <div style="color: #94a3b8; font-size: 12px; font-weight: 500;">APLIKASI ANBK</div>
+                <div style="color: #0f172a; font-weight: 700; font-size: 15px; letter-spacing: 0.5px;">Bimbel & Try Out Online</div>
             </div>
         </div>
-        <div style="color: white; font-size: 14px; display: flex; align-items: center; gap: 10px;">
-            <span style="color: #cbd5e1;">{{ $participant->access_code }} - {{ $participant->name }}</span>
+        <div style="color: #0f172a; font-size: 14px; display: flex; align-items: center; gap: 10px;">
+            <span style="color: #475569;">{{ $participant->access_code }} - {{ $participant->name }}</span>
             <i class="fas fa-user-circle" style="font-size: 24px; color: #3b82f6;"></i>
         </div>
     </header>
 
     <div class="overlay" id="overlay" onclick="toggleNav()"></div>
-    
+
     <div class="nav-sidebar" id="navSidebar">
-        <div style="padding: 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="color: white; margin: 0; font-family: 'Outfit', sans-serif;">Daftar Soal</h3>
-            <button onclick="toggleNav()" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 20px;"><i class="fas fa-times"></i></button>
+        <div style="padding: 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="color: #0f172a; margin: 0; font-family: 'Outfit', sans-serif;">Daftar Soal</h3>
+            <button onclick="toggleNav()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 20px;"><i class="fas fa-times"></i></button>
         </div>
         <div style="padding: 20px; overflow-y: auto; flex: 1;">
             <div id="navGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
                 <!-- Navigation buttons will be rendered here -->
             </div>
         </div>
-        <div style="padding: 24px; border-top: 1px solid #334155;">
+        <div style="padding: 24px; border-top: 1px solid #e2e8f0;">
             <button class="btn-pill btn-red" style="width: 100%; justify-content: center; padding: 14px;" onclick="confirmSubmit()">
                 <i class="fas fa-paper-plane"></i> Kumpul Mapel Ini
             </button>
@@ -295,8 +294,8 @@
         <div class="exam-container">
             <div class="exam-header-bar">
                 <div>
-                    <h2 style="color: white; margin: 0 0 12px 0; font-size: 20px; font-weight: 600;" id="soalNomorText">Soal nomor 1</h2>
-                    <div class="font-sizes" style="font-size: 13px; color: #94a3b8; display: flex; align-items: center;">
+                    <h2 style="color: #0f172a; margin: 0 0 12px 0; font-size: 20px; font-weight: 600;" id="soalNomorText">Soal nomor 1</h2>
+                    <div class="font-sizes" style="font-size: 13px; color: #64748b; display: flex; align-items: center;">
                         <span style="margin-right: 12px;">Ukuran font soal:</span>
                         <span style="font-size: 12px;" onclick="changeFontSize(14)">A</span>
                         <span style="font-size: 16px;" onclick="changeFontSize(16)">A</span>
@@ -313,7 +312,7 @@
                             Daftar Soal <i class="fas fa-th-list"></i>
                         </button>
                     </div>
-                    <div style="font-weight: 600; font-size: 15px; color: #cbd5e1;" id="categoryNameText">Matematika</div>
+                    <div style="font-weight: 600; font-size: 15px; color: #475569;" id="categoryNameText">Matematika</div>
                 </div>
             </div>
 
@@ -321,9 +320,9 @@
                 <div class="exam-left-pane" id="examLeftPane">
                     <!-- Image content -->
                 </div>
-                
+
                 <div class="exam-right-pane" id="examRightPane">
-                    <div class="question-text" id="questionText" style="font-size: var(--question-font-size); color: white; margin-bottom: 32px; line-height: 1.7;">
+                    <div class="question-text" id="questionText" style="font-size: var(--question-font-size); color: #0f172a; margin-bottom: 32px; line-height: 1.7;">
                         <!-- Question Text -->
                     </div>
                     <div class="options-list" id="optionsList">
@@ -336,7 +335,7 @@
                 <button id="prevBtn" class="btn-pill btn-red" onclick="prevQuestion()" style="padding: 12px 28px;">
                     <i class="fas fa-chevron-left"></i> Soal sebelumnya
                 </button>
-                
+
                 <button id="raguBtn" class="btn-pill btn-yellow" onclick="toggleDoubtfulCurrent()" style="padding: 12px 32px;">
                     <div style="width: 16px; height: 16px; border: 2px solid #000; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-right: 4px; background: white;" id="raguCheckboxBox">
                         <i class="fas fa-check" id="raguCheckIcon" style="font-size: 10px; display: none;"></i>
@@ -370,7 +369,7 @@
             questions.forEach((q, i) => {
                 const btn = document.createElement('div');
                 const isDoubtful = doubtfuls[q.id];
-                const isAnswered = q.type === 'multiple_benar_salah' 
+                const isAnswered = q.type === 'multiple_benar_salah'
                     ? (answers[q.id] && Object.keys(answers[q.id]).length > 0)
                     : (answers[q.id] && (!Array.isArray(answers[q.id]) || answers[q.id].length > 0));
 
@@ -387,7 +386,7 @@
 
         function renderQuestion() {
             const q = questions[currentIdx];
-            
+
             document.getElementById('soalNomorText').innerText = `Soal nomor ${currentIdx + 1}`;
             document.getElementById('categoryNameText').innerText = q.category.name;
 
@@ -402,7 +401,7 @@
                     return `
                     <label class="option-row" onclick="selectOption('${q.id}', '${escapedOpt}')">
                         <div class="radio-btn ${isSelected ? 'selected' : ''}"></div>
-                        <div style="font-size: var(--question-font-size); color: #f8fafc; flex: 1;">${opt}</div>
+                        <div style="font-size: var(--question-font-size); color: #0f172a; flex: 1;">${opt}</div>
                     </label>`;
                 }).join('');
             } else if (q.type === 'multiple_choice') {
@@ -413,9 +412,9 @@
                     return `
                     <label class="option-row" onclick="toggleOption('${q.id}', '${escapedOpt}')">
                         <div class="check-btn ${isSelected ? 'selected' : ''}">
-                            ${isSelected ? '<i class="fas fa-check" style="color: white; font-size: 12px;"></i>' : ''}
+                            ${isSelected ? '<i class="fas fa-check" style="color: #0f172a; font-size: 12px;"></i>' : ''}
                         </div>
-                        <div style="font-size: var(--question-font-size); color: #f8fafc; flex: 1;">${opt}</div>
+                        <div style="font-size: var(--question-font-size); color: #0f172a; flex: 1;">${opt}</div>
                     </label>`;
                 }).join('');
             } else if (q.type === 'multiple_benar_salah') {
@@ -424,7 +423,7 @@
                     const val = currentMBS[i.toString()] || null;
                     return `
                     <div class="mbs-row">
-                        <div style="flex: 1; font-size: var(--question-font-size); color: #f8fafc; line-height: 1.5;">${i + 1}. ${opt}</div>
+                        <div style="flex: 1; font-size: var(--question-font-size); color: #0f172a; line-height: 1.5;">${i + 1}. ${opt}</div>
                         <div style="display: flex; gap: 8px;">
                             <button class="mbs-btn ${val === 'benar' ? 'selected-benar' : ''}" onclick="selectMBS('${q.id}', ${i}, 'benar')">Benar</button>
                             <button class="mbs-btn ${val === 'salah' ? 'selected-salah' : ''}" onclick="selectMBS('${q.id}', ${i}, 'salah')">Salah</button>
@@ -439,7 +438,7 @@
             const leftPane = document.getElementById('examLeftPane');
             if (q.question_image) {
                 leftPane.style.display = 'block';
-                leftPane.innerHTML = `<img src="/storage/${q.question_image}" style="max-width: 100%; border-radius: 8px; border: 1px solid #334155;">`;
+                leftPane.innerHTML = `<img src="/storage/${q.question_image}" style="max-width: 100%; border-radius: 8px; border: 1px solid #e2e8f0;">`;
             } else {
                 leftPane.style.display = 'none';
             }
@@ -454,7 +453,7 @@
             }
 
             document.getElementById('prevBtn').disabled = currentIdx === 0;
-            
+
             if (currentIdx === questions.length - 1) {
                 document.getElementById('nextBtn').innerHTML = 'Selesai <i class="fas fa-check"></i>';
                 document.getElementById('nextBtn').style.background = '#10b981';
@@ -462,7 +461,7 @@
                 document.getElementById('nextBtn').innerHTML = 'Soal berikutnya <i class="fas fa-chevron-right"></i>';
                 document.getElementById('nextBtn').style.background = '#2563eb';
             }
-            
+
             renderNav();
 
             // Render KaTeX math formulas
@@ -488,7 +487,7 @@
         function toggleOption(qId, val) {
             let current = answers[qId] || [];
             if (!Array.isArray(current)) current = [];
-            
+
             if (current.includes(val)) {
                 current = current.filter(x => x !== val);
             } else {
@@ -515,18 +514,18 @@
 
         function nextQuestion() {
             if (currentIdx < questions.length - 1) {
-                currentIdx++; 
+                currentIdx++;
                 renderQuestion();
             } else {
                 confirmSubmit();
             }
         }
-        
-        function prevQuestion() { 
-            if (currentIdx > 0) { 
-                currentIdx--; 
-                renderQuestion(); 
-            } 
+
+        function prevQuestion() {
+            if (currentIdx > 0) {
+                currentIdx--;
+                renderQuestion();
+            }
         }
 
         function toggleDoubtfulCurrent() {
@@ -549,13 +548,13 @@
                     return;
                 }
                 remainingSeconds--;
-                
+
                 const h = Math.floor(remainingSeconds / 3600);
                 const m = Math.floor((remainingSeconds % 3600) / 60);
                 const s = Math.floor(remainingSeconds % 60);
-                
+
                 display.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-                
+
                 if (remainingSeconds < 300) {
                     display.style.color = '#ef4444';
                 }
