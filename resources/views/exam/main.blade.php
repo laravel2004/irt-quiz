@@ -258,7 +258,7 @@
 <body>
     <header class="top-navbar">
         <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="background: rgba(59, 130, 246, 0.1); padding: 8px; border-radius: 8px;">
+            <div style="background: #dbeafe; padding: 8px; border-radius: 8px;">
                 <img src="{{ asset('img/logo.png') }}" alt="Logo JagoBelajar" style="height: 32px; filter: none;">
             </div>
             <div>
@@ -568,8 +568,8 @@
                     title: 'Perhatian!',
                     text: `Masih ada ${doubtfulCount} soal yang bertanda Ragu-ragu. Harap selesaikan sebelum mengumpulkan mata pelajaran ini.`,
                     icon: 'warning',
-                    background: '#1e293b',
-                    color: '#fff',
+                    background: '#ffffff',
+                    color: '#0f172a',
                     confirmButtonColor: '#3b82f6'
                 });
                 return;
@@ -584,15 +584,15 @@
                 cancelButtonColor: 'transparent',
                 confirmButtonText: 'Ya, Kumpulkan',
                 cancelButtonText: 'Batal',
-                background: '#1e293b',
-                color: '#fff'
+                background: '#ffffff',
+                color: '#0f172a'
             }).then((result) => {
                 if (result.isConfirmed) {
                     Swal.fire({
                         title: 'Menyimpan...',
                         allowOutsideClick: false,
-                        background: '#1e293b',
-                        color: '#fff',
+                        background: '#ffffff',
+                        color: '#0f172a',
                         didOpen: () => Swal.showLoading()
                     });
                     autoSubmit();
@@ -645,8 +645,8 @@
                         text: 'Anda telah berpindah tab sebanyak 3 kali. Ujian mata pelajaran ini akan dikumpulkan secara otomatis.',
                         icon: 'error',
                         allowOutsideClick: false,
-                        background: '#1e293b',
-                        color: '#fff',
+                        background: '#ffffff',
+                        color: '#0f172a',
                         showConfirmButton: false,
                         timer: 3000
                     }).then(() => {
@@ -659,8 +659,8 @@
                         icon: 'warning',
                         confirmButtonColor: '#ef4444',
                         confirmButtonText: 'Saya Mengerti',
-                        background: '#1e293b',
-                        color: '#fff'
+                        background: '#ffffff',
+                        color: '#0f172a'
                     });
                 }
             }

@@ -160,8 +160,8 @@
                     <td>{{ data_get($participant, 'whatsapp') }}</td>
                     <td>
                         <select onchange="updateParticipantPrivilege({{ $participant->id }}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: {{ $participant->privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $participant->privilege === 'premium' ? '#eab308' : '#3b82f6' }}; font-weight: 600;">
-                            <option value="general" {{ $participant->privilege === 'general' ? 'selected' : '' }} style="background: var(--bg-dark); color: white;">General</option>
-                            <option value="premium" {{ $participant->privilege === 'premium' ? 'selected' : '' }} style="background: var(--bg-dark); color: white;">Premium</option>
+                            <option value="general" {{ $participant->privilege === 'general' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">General</option>
+                            <option value="premium" {{ $participant->privilege === 'premium' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">Premium</option>
                         </select>
                     </td>
                     <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ data_get($participant, 'address') ?? '-' }}</td>
@@ -334,7 +334,7 @@
     </div>
 
     <!-- Upload Discussion PDF -->
-    <div style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+    <div style="background: #f8fafc; border: 1px dashed rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
         <div style="display: flex; align-items: center; gap: 16px;">
             <div style="width: 48px; height: 48px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1.5rem;">
                 <i class="fas fa-file-pdf"></i>
@@ -383,11 +383,11 @@
                                 1
                             </div>
                         @elseif($loop->index == 1)
-                            <div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #94a3b8, #475569); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; box-shadow: 0 4px 10px rgba(71, 85, 105, 0.2);">
+                            <div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #94a3b8, #475569); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #0f172a; box-shadow: 0 4px 10px rgba(71, 85, 105, 0.2);">
                                 2
                             </div>
                         @elseif($loop->index == 2)
-                            <div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #92400e, #451a03); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; box-shadow: 0 4px 10px rgba(69, 26, 3, 0.2);">
+                            <div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #92400e, #451a03); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #0f172a; box-shadow: 0 4px 10px rgba(69, 26, 3, 0.2);">
                                 3
                             </div>
                         @else
@@ -496,8 +496,8 @@
                 <td>${p.whatsapp || '-'}</td>
                 <td>
                     <select onchange="updateParticipantPrivilege(${p.id}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: ${p.privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)'}; color: ${p.privilege === 'premium' ? '#eab308' : '#3b82f6'}; font-weight: 600;">
-                        <option value="general" ${p.privilege === 'general' ? 'selected' : ''} style="background: var(--bg-dark); color: white;">General</option>
-                        <option value="premium" ${p.privilege === 'premium' ? 'selected' : ''} style="background: var(--bg-dark); color: white;">Premium</option>
+                        <option value="general" ${p.privilege === 'general' ? 'selected' : ''} style="background: #ffffff; color: #0f172a;">General</option>
+                        <option value="premium" ${p.privilege === 'premium' ? 'selected' : ''} style="background: #ffffff; color: #0f172a;">Premium</option>
                     </select>
                 </td>
                 <td style="color: var(--text-secondary); font-size: 0.85rem;">${p.address || '-'}</td>
@@ -615,9 +615,9 @@
             if (rankIdx === 0) {
                 rankHtml = `<div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #fbbf24, #d97706); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #451a03; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3); position: relative;"><i class="fas fa-crown" style="position: absolute; top: -10px; font-size: 0.7rem;"></i>1</div>`;
             } else if (rankIdx === 1) {
-                rankHtml = `<div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #94a3b8, #475569); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; box-shadow: 0 4px 10px rgba(71, 85, 105, 0.2);">2</div>`;
+                rankHtml = `<div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #94a3b8, #475569); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #0f172a; box-shadow: 0 4px 10px rgba(71, 85, 105, 0.2);">2</div>`;
             } else if (rankIdx === 2) {
-                rankHtml = `<div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #92400e, #451a03); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; box-shadow: 0 4px 10px rgba(69, 26, 3, 0.2);">3</div>`;
+                rankHtml = `<div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #92400e, #451a03); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #0f172a; box-shadow: 0 4px 10px rgba(69, 26, 3, 0.2);">3</div>`;
             } else {
                 rankHtml = `<div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--text-secondary); font-size: 0.85rem;">${rankIdx + 1}</div>`;
             }

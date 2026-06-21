@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            background-color: var(--bg-dark);
+            background-color: #f8fafc;
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
@@ -22,7 +22,7 @@
         .terms-container {
             max-width: 800px;
             width: 100%;
-            background: rgba(255, 255, 255, 0.02);
+            background: #ffffff;
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 24px;
             padding: 40px;
@@ -51,7 +51,7 @@
             margin-bottom: 12px;
         }
         .terms-content p, .terms-content li {
-            color: var(--text-secondary);
+            color: #475569;
             line-height: 1.6;
             font-size: 0.95rem;
             margin-bottom: 8px;
@@ -65,11 +65,11 @@
 
     <div class="terms-container animate-fade-in">
         <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 64px; height: 64px; background: rgba(59, 130, 246, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            <div style="width: 64px; height: 64px; background: #dbeafe; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
                 <i class="fas fa-clipboard-list" style="font-size: 1.8rem; color: var(--primary);"></i>
             </div>
             <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 8px;">Syarat & Ketentuan Ujian</h2>
-            <p style="color: var(--text-secondary);">Sesi: <strong>{{ $session->name }}</strong></p>
+            <p style="color: #475569;">Sesi: <strong>{{ $session->name }}</strong></p>
         </div>
 
         <div class="terms-content">
@@ -98,12 +98,12 @@
 
         <form action="{{ route('exam.agree', $session->code) }}" method="POST">
             @csrf
-            <label style="display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <label style="display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
                 <input type="checkbox" name="agree_terms" required style="margin-top: 4px; width: 18px; height: 18px; accent-color: #3b82f6;">
-                <span style="color: var(--text-secondary); line-height: 1.6; font-size: 0.95rem;">Saya telah membaca seluruh syarat dan ketentuan ujian, memahami aturan yang berlaku, dan setuju untuk melanjutkan ujian sesuai ketentuan tersebut.</span>
+                <span style="color: #475569; line-height: 1.6; font-size: 0.95rem;">Saya telah membaca seluruh syarat dan ketentuan ujian, memahami aturan yang berlaku, dan setuju untuk melanjutkan ujian sesuai ketentuan tersebut.</span>
             </label>
             <div style="display: flex; gap: 16px; margin-top: 32px;">
-                <a href="{{ route('participant.session.show', $session->id) }}" class="btn-primary" style="flex: 1; background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary); text-align: center; text-decoration: none;">
+                <a href="{{ route('participant.session.show', $session->id) }}" class="btn-primary" style="flex: 1; background: transparent; border: 1px solid var(--glass-border); color: #475569; text-align: center; text-decoration: none;">
                     Kembali ke Detail
                 </a>
                 <button type="submit" class="btn-primary" style="flex: 2; font-weight: 600;">

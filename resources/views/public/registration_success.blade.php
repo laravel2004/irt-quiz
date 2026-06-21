@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <style>
         body {
-            background: #020617;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -19,9 +19,9 @@
         .success-card {
             max-width: 500px;
             width: 100%;
-            background: rgba(15, 23, 42, 0.8);
+            background: #ffffff;
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid #e2e8f0;
             border-radius: 24px;
             padding: 48px;
             text-align: center;
@@ -39,7 +39,7 @@
             margin: 0 auto 32px;
         }
         .access-code-box {
-            background: rgba(255, 255, 255, 0.03);
+            background: #f8fafc;
             border: 2px dashed rgba(255, 255, 255, 0.1);
             border-radius: 16px;
             padding: 24px;
@@ -52,22 +52,22 @@
         <div class="icon-circle">
             <i class="fas fa-check-circle"></i>
         </div>
-        <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; margin-bottom: 12px; color: white;">Pendaftaran Berhasil!</h1>
-        <p style="color: var(--text-secondary); line-height: 1.6;">Halo <strong>{{ data_get($participant, 'name') }}</strong>, pendaftaran Anda untuk sesi <strong>{{ $session->name }}</strong> telah berhasil disimpan.</p>
+        <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; margin-bottom: 12px; color: #0f172a;">Pendaftaran Berhasil!</h1>
+        <p style="color: #475569; line-height: 1.6;">Halo <strong>{{ data_get($participant, 'name') }}</strong>, pendaftaran Anda untuk sesi <strong>{{ $session->name }}</strong> telah berhasil disimpan.</p>
 
         <div class="access-code-box">
-            <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;">KODE AKSES UJIAN ANDA</div>
+            <div style="font-size: 0.75rem; color: #475569; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;">KODE AKSES UJIAN ANDA</div>
             <div style="font-size: 3rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #10b981; letter-spacing: 8px;">{{ data_get($participant, 'access_code') }}</div>
         </div>
 
-        <div style="background: rgba(59, 130, 246, 0.1); padding: 16px; border-radius: 12px; text-align: left; margin-bottom: 32px;">
+        <div style="background: #dbeafe; padding: 16px; border-radius: 12px; text-align: left; margin-bottom: 32px;">
             <p style="font-size: 0.85rem; color: var(--accent); line-height: 1.5;">
                 <i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>
                 Simpan kode akses ini dengan baik. Anda akan memerlukannya untuk masuk ke dalam sistem saat ujian dimulai.
             </p>
         </div>
 
-        <p style="color: var(--text-secondary); font-size: 0.8rem;">
+        <p style="color: #475569; font-size: 0.8rem;">
             IRT Exam System &bull; &copy; {{ date('Y') }}
         </p>
     </div>

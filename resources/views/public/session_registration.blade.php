@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <style>
         body {
-            background: #020617;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -35,14 +35,14 @@
             opacity: 0.1;
         }
         .registration-card {
-            background: rgba(15, 23, 42, 0.8);
+            background: #ffffff;
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid #e2e8f0;
             border-radius: 0 0 16px 16px;
             padding: 40px;
         }
         .session-info {
-            background: rgba(255, 255, 255, 0.03);
+            background: #f8fafc;
             border-radius: 12px;
             padding: 24px;
             margin-bottom: 32px;
@@ -65,18 +65,18 @@
     <div class="form-container">
         <div class="header-banner"></div>
         <div class="registration-card animate-fade-in">
-            <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; margin-bottom: 8px; color: white;">{{ $session->name }}</h1>
-            <p style="color: var(--text-secondary); margin-bottom: 24px;">Silakan lengkapi formulir pendaftaran di bawah ini untuk mengikuti sesi ujian.</p>
+            <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; margin-bottom: 8px; color: #0f172a;">{{ $session->name }}</h1>
+            <p style="color: #475569; margin-bottom: 24px;">Silakan lengkapi formulir pendaftaran di bawah ini untuk mengikuti sesi ujian.</p>
 
             <div class="session-info">
                 <div class="flex-stack-mobile" style="display: flex; gap: 16px; width: 100%;">
                     <div style="flex: 1;">
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Tanggal Pelaksanaan</div>
-                        <div style="font-weight: 600; margin-top: 4px; color: white;">{{ $session->start_date }}</div>
+                        <div style="font-size: 0.75rem; color: #475569; text-transform: uppercase; letter-spacing: 1px;">Tanggal Pelaksanaan</div>
+                        <div style="font-weight: 600; margin-top: 4px; color: #0f172a;">{{ $session->start_date }}</div>
                     </div>
                     <div style="flex: 1;">
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Durasi Ujian</div>
-                        <div style="font-weight: 600; margin-top: 4px; color: white;">{{ $session->duration }} Menit</div>
+                        <div style="font-size: 0.75rem; color: #475569; text-transform: uppercase; letter-spacing: 1px;">Durasi Ujian</div>
+                        <div style="font-weight: 600; margin-top: 4px; color: #0f172a;">{{ $session->duration }} Menit</div>
                     </div>
                 </div>
             </div>
@@ -119,7 +119,7 @@
                 </button>
             </form>
 
-            <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 32px;">
+            <p style="text-align: center; color: #475569; font-size: 0.8rem; margin-top: 32px;">
                 IRT Exam System &bull; &copy; {{ date('Y') }}
             </p>
         </div>

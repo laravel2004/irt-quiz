@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <style>
         body {
-            background: #020617;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -19,7 +19,7 @@
         .finish-card {
             max-width: 500px;
             width: 100%;
-            background: rgba(15, 23, 42, 0.8);
+            background: #ffffff;
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 24px;
@@ -45,7 +45,7 @@
         <div class="icon-box">
             <i class="fas fa-heart"></i>
         </div>
-        <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; margin-bottom: 12px; color: white;">Terima Kasih!</h1>
+        <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; margin-bottom: 12px; color: #0f172a;">Terima Kasih!</h1>
         <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 32px;">
             Jawaban Anda telah berhasil kami simpan. Sesi ujian Anda telah berakhir. Anda dapat menutup halaman ini sekarang.
         </p>

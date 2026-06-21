@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <style>
         body {
-            background: #020617;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -43,9 +43,9 @@
             text-transform: uppercase;
             padding: 16px;
             border-radius: 12px;
-            background: rgba(255,255,255,0.05);
+            background: #eff6ff;
             border: 1px solid var(--glass-border);
-            color: white;
+            color: #0f172a;
             width: 100%;
             margin-bottom: 24px;
             outline: none;
@@ -76,7 +76,7 @@
         <div class="logo-icon">
             <img src="{{ asset('img/logo.png') }}" alt="JagoBelajar Logo" style="height: 64px; width: auto;">
         </div>
-        <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.5rem; color: white; margin-bottom: 8px;">Portal Ujian</h1>
+        <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.5rem; color: #0f172a; margin-bottom: 8px;">Portal Ujian</h1>
         <p style="color: var(--text-secondary); margin-bottom: 32px; font-size: 0.9rem;">Masukkan kode akses 6 digit Anda untuk memulai ujian.</p>
 
         @if(session('error'))
@@ -87,7 +87,7 @@
 
         <form action="{{ route('exam.login') }}" method="POST">
             @csrf
-            <input type="text" name="access_code" maxlength="6" class="access-input" placeholder="••••••" autocomplete="off" required autofocus>
+            <input type="text" name="access_code" maxlength="6" class="access-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢" autocomplete="off" required autofocus>
             <button type="submit" class="btn-primary" style="width: 100%; height: 52px; font-size: 1rem; font-weight: 600;">
                 Masuk Sesi <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>
             </button>

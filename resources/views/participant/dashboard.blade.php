@@ -8,7 +8,7 @@
         <div>
             <h1 style="font-family: 'Outfit', sans-serif; font-size: 2.2rem; margin-bottom: 8px;">Selamat Datang, {{ auth()->user()->name }}</h1>
             <div style="display: flex; gap: 12px; align-items: center;">
-                <span class="badge" style="background: {{ auth()->user()->role === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ auth()->user()->role === 'premium' ? '#eab308' : '#3b82f6' }}; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;">
+                <span class="badge" style="background: {{ auth()->user()->role === 'premium' ? '#fef9c3' : '#dbeafe' }}; color: {{ auth()->user()->role === 'premium' ? '#854d0e' : '#1d4ed8' }}; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;">
                     <i class="fas {{ auth()->user()->role === 'premium' ? 'fa-crown' : 'fa-user' }}" style="margin-right: 4px;"></i>
                     Peserta {{ ucfirst(auth()->user()->role) }}
                 </span>
@@ -45,8 +45,8 @@
                 <canvas id="scoreChart" aria-label="Grafik nilai sesi ujian" role="img"></canvas>
             </div>
         @else
-            <div style="padding: 32px; border-radius: 16px; background: rgba(255,255,255,0.03); text-align: center; color: var(--text-secondary);">
-                <i class="fas fa-chart-line" style="font-size: 2rem; color: #3b82f6; margin-bottom: 12px;"></i>
+            <div style="padding: 32px; border-radius: 16px; background: #f8fafc; text-align: center; color: var(--text-secondary);">
+                <i class="fas fa-chart-line" style="font-size: 2rem; color: #2563eb; margin-bottom: 12px;"></i>
                 <p style="margin: 0;">Grafik nilai akan muncul setelah kamu menyelesaikan sesi ujian.</p>
             </div>
         @endif
@@ -71,11 +71,11 @@
             <div class="glass card-hover" style="padding: 24px; border-radius: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
                 <div style="position: absolute; top: 24px; right: 24px;">
                     @if($latestReg->privilege === 'premium')
-                        <span class="badge" style="font-size: 0.7rem; background: rgba(234, 179, 8, 0.1); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.2);">
+                        <span class="badge" style="font-size: 0.7rem; background: #fef9c3; color: #854d0e; border: 1px solid #fde047;">
                             <i class="fas fa-star" style="margin-right: 4px;"></i> Premium
                         </span>
                     @else
-                        <span class="badge" style="font-size: 0.7rem; background: rgba(255,255,255,0.05); color: var(--text-secondary);">
+                        <span class="badge" style="font-size: 0.7rem; background: #eff6ff; color: var(--text-secondary);">
                             General
                         </span>
                     @endif
@@ -86,9 +86,9 @@
                             {{ $session->is_active ? 'Sesi Terbuka' : 'Sesi Tertutup' }}
                         </span>
                     </div>
-                    <h4 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin-bottom: 12px; color: white;">{{ $session->name }}</h4>
+                    <h4 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin-bottom: 12px; color: #0f172a;">{{ $session->name }}</h4>
                     
-                    <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                    <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
                         <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; font-size: 0.85rem; color: var(--text-secondary);">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <i class="fas fa-calendar-check" style="width: 16px; color: #10b981;"></i> 
@@ -105,7 +105,7 @@
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <a href="{{ route('participant.session.show', $session->id) }}" class="btn-primary" style="background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.08); width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 0.9rem;">
+                    <a href="{{ route('participant.session.show', $session->id) }}" class="btn-primary" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 0.9rem;">
                         <i class="fas fa-circle-info" style="margin-right: 8px;"></i> Detail Sesi
                     </a>
 
@@ -114,7 +114,7 @@
 
 
                     @if($isClosed && $session->discussion_pdf && $latestReg->privilege === 'premium')
-                        <a href="{{ asset('storage/' . $session->discussion_pdf) }}" target="_blank" class="btn-primary" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none;">
+                        <a href="{{ asset('storage/' . $session->discussion_pdf) }}" target="_blank" class="btn-primary" style="background: #dcfce7; color: #166534; border: 1px solid #86efac; width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none;">
                             <i class="fas fa-file-pdf" style="margin-right: 8px;"></i> Download PDF Pembahasan
                         </a>
                     @endif
@@ -130,15 +130,15 @@
 </div>
 
 <!-- Modal Aggregate Analysis -->
-<div id="aggregateModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px);">
+<div id="aggregateModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(15, 23, 42, 0.35); backdrop-filter: blur(5px);">
     <div class="modal-content glass animate-fade-in" style="margin: 5% auto; padding: 0; border-radius: 24px; width: 90%; max-width: 800px; border: 1px solid var(--glass-border); overflow: hidden;">
-        <div style="background: linear-gradient(135deg, #8b5cf6, #d946ef); padding: 24px 32px; display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="color: white; margin: 0; font-family: 'Outfit', sans-serif;"><i class="fas fa-chart-line" style="margin-right: 12px;"></i> Analisis Perkembangan AI</h2>
-            <button onclick="closeAggregateModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        <div style="background: linear-gradient(135deg, #2563eb, #facc15); padding: 24px 32px; display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="color: #ffffff; margin: 0; font-family: 'Outfit', sans-serif;"><i class="fas fa-chart-line" style="margin-right: 12px;"></i> Analisis Perkembangan AI</h2>
+            <button onclick="closeAggregateModal()" style="background: none; border: none; color: #ffffff; font-size: 1.5rem; cursor: pointer;">&times;</button>
         </div>
         <div id="aggregateContent" style="padding: 32px;">
             <div id="aggregateLoading" style="text-align: center; padding: 40px;">
-                <div style="width: 50px; height: 50px; border: 3px solid rgba(139, 92, 246, 0.3); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                <div style="width: 50px; height: 50px; border: 3px solid rgba(37, 99, 235, 0.18); border-top-color: #2563eb; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
                 <p style="color: var(--text-secondary);">AI sedang menganalisis seluruh riwayat percobaan Anda, mohon tunggu sebentar...</p>
             </div>
             <div id="aggregateData" style="display: none; display: flex; flex-direction: column; gap: 24px;">
@@ -179,14 +179,14 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
             plugins: {
                 legend: {
                     labels: {
-                        color: '#e5e7eb'
+                        color: '#334155'
                     }
                 }
             },
             scales: {
                 x: {
                     ticks: {
-                        color: '#94a3b8'
+                        color: '#475569'
                     },
                     grid: {
                         color: 'rgba(148, 163, 184, 0.12)'
@@ -196,7 +196,7 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
                     beginAtZero: true,
                     suggestedMax: 100,
                     ticks: {
-                        color: '#94a3b8'
+                        color: '#475569'
                     },
                     grid: {
                         color: 'rgba(148, 163, 184, 0.12)'
@@ -223,15 +223,15 @@ function showAggregateAnalysis(sessionId) {
             if(res.status === 'success') {
                 dataDiv.style.display = 'flex';
                 dataDiv.innerHTML = `
-                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #3b82f6; background: rgba(255,255,255,0.02);">
-                        <h4 style="color: #3b82f6; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-chart-line"></i> Tren & Perkembangan</h4>
+                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #2563eb; background: #f8fafc;">
+                        <h4 style="color: #2563eb; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-chart-line"></i> Tren & Perkembangan</h4>
                         <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">${res.data.analisis_progres}</p>
                     </div>
-                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444; background: rgba(255,255,255,0.02);">
+                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444; background: #fef2f2;">
                         <h4 style="color: #ef4444; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-exclamation-triangle"></i> Pola Kekurangan</h4>
                         <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">${res.data.pola_kekurangan}</p>
                     </div>
-                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #10b981; background: rgba(255,255,255,0.02);">
+                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #10b981; background: #f0fdf4;">
                         <h4 style="color: #10b981; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-road"></i> Strategi Lanjutan</h4>
                         <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">${res.data.strategi_lanjutan}</p>
                     </div>
@@ -272,8 +272,8 @@ document.querySelectorAll('.retake-form').forEach(form => {
             cancelButtonColor: '#ef4444',
             confirmButtonText: 'Ya, Lanjutkan',
             cancelButtonText: 'Batal',
-            background: 'rgba(15, 23, 42, 0.95)',
-            color: '#fff'
+            background: '#ffffff',
+            color: '#0f172a'
         }).then((result) => {
             if (result.isConfirmed) {
                 form.submit();

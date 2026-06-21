@@ -15,32 +15,33 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root {
-            --bg-dark: #020617;
-            --bg-card: rgba(15, 23, 42, 0.6);
-            --accent: #3b82f6;
-            --accent-rgb: 59, 130, 246;
-            --text-secondary: #94a3b8;
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --bg-dark: #f8fafc;
+            --bg-card: #ffffff;
+            --accent: #2563eb;
+            --accent-rgb: 37, 99, 235;
+            --text-secondary: #475569;
+            --glass-border: #e2e8f0;
         }
 
         body {
-            background: var(--bg-dark);
-            color: white;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            color: #0f172a;
             font-family: 'Inter', sans-serif;
             margin: 0;
             min-height: 100vh;
         }
 
         .glass {
-            background: var(--bg-card);
+            background: #ffffff;
             backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
             border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
         }
 
         .btn-primary {
             background: var(--accent);
-            color: white;
+            color: #ffffff;
             border: none;
             padding: 12px 24px;
             border-radius: 12px;
@@ -57,16 +58,16 @@
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(var(--accent-rgb), 0.3);
+            box-shadow: 0 10px 20px rgba(var(--accent-rgb), 0.18);
         }
 
         .form-input {
             width: 100%;
-            background: rgba(255, 255, 255, 0.05);
+            background: #ffffff;
             border: 1px solid var(--glass-border);
             border-radius: 12px;
             padding: 14px 16px;
-            color: white;
+            color: #0f172a;
             font-family: inherit;
             transition: all 0.3s;
             box-sizing: border-box;
@@ -75,7 +76,8 @@
         .form-input:focus {
             outline: none;
             border-color: var(--accent);
-            background: rgba(255, 255, 255, 0.08);
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
         }
 
         .form-group { margin-bottom: 20px; }
@@ -86,9 +88,10 @@
             border-radius: 6px;
             font-size: 0.75rem;
             font-weight: 600;
-            background: rgba(255, 255, 255, 0.1);
+            background: #dbeafe;
+            color: #1d4ed8;
         }
-        .badge.active { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .badge.active { background: #dcfce7; color: #166534; }
 
         .animate-fade-in {
             animation: fadeIn 0.6s ease-out;
@@ -102,7 +105,7 @@
         .card-hover:hover {
             transform: translateY(-5px);
             border-color: var(--accent);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 15px 30px rgba(15, 23, 42, 0.12);
         }
 
         .modal-overlay {
@@ -111,7 +114,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(15, 23, 42, 0.45);
             backdrop-filter: blur(8px);
             display: none;
             align-items: center;

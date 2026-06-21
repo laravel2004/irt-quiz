@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body {
-            background-color: var(--bg-dark);
+            background-color: #f8fafc;
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
@@ -29,7 +29,7 @@
             margin: 0 auto;
         }
         .category-card {
-            background: rgba(255, 255, 255, 0.03);
+            background: #f8fafc;
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 16px;
             padding: 24px;
@@ -40,7 +40,7 @@
             transition: all 0.3s ease;
         }
         .category-card:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: #eff6ff;
             transform: translateY(-2px);
             border-color: rgba(255, 255, 255, 0.1);
         }
@@ -53,9 +53,9 @@
             align-items: center;
             gap: 6px;
         }
-        .status-not-started { background: rgba(255,255,255,0.05); color: var(--text-secondary); }
-        .status-ongoing { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .status-finished { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .status-not-started { background: #eff6ff; color: #475569; }
+        .status-ongoing { background: #dbeafe; color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .status-finished { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
         
         @media (max-width: 768px) {
             .category-card {
@@ -79,7 +79,7 @@
         }
         .btn-finish-all {
             background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
+            color: #0f172a;
             height: 60px;
             font-size: 1.2rem;
             font-family: 'Outfit', sans-serif;
@@ -118,13 +118,13 @@
     <div class="header flex-stack-mobile">
         <div>
             <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px; font-size: 1.8rem;">Daftar Mata Pelajaran</h2>
-            <p style="color: var(--text-secondary); font-size: 0.95rem;">Peserta: <strong>{{ $participant->name }}</strong></p>
+            <p style="color: #475569; font-size: 0.95rem;">Peserta: <strong>{{ $participant->name }}</strong></p>
         </div>
         <div>
             <div class="glass" style="padding: 12px 20px; border-radius: 12px; display: inline-flex; align-items: center; gap: 12px;">
                 <i class="fas fa-layer-group" style="color: var(--accent);"></i>
                 <div>
-                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Sesi Ujian</div>
+                    <div style="font-size: 0.75rem; color: #475569;">Sesi Ujian</div>
                     <div style="font-weight: 600;">{{ $session->name }}</div>
                 </div>
             </div>
@@ -145,12 +145,12 @@
             @endphp
             <div class="category-card">
                 <div style="display: flex; align-items: center; gap: 20px;">
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.05); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--accent);">
+                    <div style="width: 56px; height: 56px; background: #eff6ff; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--accent);">
                         <i class="fas fa-book"></i>
                     </div>
                     <div>
                         <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 8px; font-size: 1.2rem;">{{ $sc->category->name }}</h3>
-                        <div style="display: flex; gap: 16px; font-size: 0.85rem; color: var(--text-secondary); flex-wrap: wrap; margin-bottom: 8px;">
+                        <div style="display: flex; gap: 16px; font-size: 0.85rem; color: #475569; flex-wrap: wrap; margin-bottom: 8px;">
                             <span style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-clock"></i> {{ $sc->duration }} Menit</span>
                             <span style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-list-ol"></i> {{ $sc->total_questions }} Soal</span>
                         </div>
@@ -166,7 +166,7 @@
                 
                 <div class="card-actions">
                     @if($isFinished)
-                        <button class="btn-primary" disabled style="background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: not-allowed; border: none;">
+                        <button class="btn-primary" disabled style="background: #eff6ff; color: #475569; cursor: not-allowed; border: none;">
                             <i class="fas fa-check"></i> Selesai
                         </button>
                     @elseif($isStarted)
@@ -196,7 +196,7 @@
                     </button>
                 </form>
             @else
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                <p style="color: #475569; font-size: 0.9rem;">
                     Tombol "Akhiri Ujian Sesi" akan muncul setelah Anda menyelesaikan seluruh mata pelajaran di atas.
                 </p>
             @endif
@@ -214,8 +214,8 @@
                 cancelButtonColor: 'transparent',
                 confirmButtonText: 'Mulai Sekarang',
                 cancelButtonText: 'Batal',
-                background: '#1e293b',
-                color: '#fff'
+                background: '#ffffff',
+                color: '#0f172a'
             }).then((result) => {
                 if (result.isConfirmed) {
                     document.getElementById('start-form-' + formId).submit();
@@ -233,16 +233,16 @@
                 cancelButtonColor: 'transparent',
                 confirmButtonText: 'Ya, Akhiri Ujian!',
                 cancelButtonText: 'Batal',
-                background: '#1e293b',
-                color: '#fff'
+                background: '#ffffff',
+                color: '#0f172a'
             }).then((result) => {
                 if (result.isConfirmed) {
                     Swal.fire({
                         title: 'Menyimpan Hasil...',
                         text: 'Mohon tunggu sebentar',
                         allowOutsideClick: false,
-                        background: '#1e293b',
-                        color: '#fff',
+                        background: '#ffffff',
+                        color: '#0f172a',
                         didOpen: () => {
                             Swal.showLoading()
                             
@@ -261,7 +261,7 @@
                                 if (data.status === 'success') {
                                     window.location.href = "{{ route('exam.success', $session->code) }}";
                                 } else {
-                                    Swal.fire({icon: 'error', title: 'Gagal', text: 'Gagal mengakhiri ujian', background: '#1e293b', color: '#fff'});
+                                    Swal.fire({icon: 'error', title: 'Gagal', text: 'Gagal mengakhiri ujian', background: '#ffffff', color: '#0f172a'});
                                 }
                             });
                         }

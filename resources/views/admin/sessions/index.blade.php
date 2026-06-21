@@ -100,7 +100,7 @@
                     </span>
                     <code style="color: var(--accent); font-size: 0.8rem; font-weight: 600;">{{ $session->code }}</code>
                 </div>
-                <h4 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin-bottom: 12px; color: white;">{{ $session->name }}</h4>
+                <h4 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin-bottom: 12px; color: #0f172a;">{{ $session->name }}</h4>
                 
                 <div class="flex-stack-mobile" style="display: flex; gap: 12px; margin-bottom: 20px; justify-content: space-between;">
                     <div style="font-size: 0.8rem; color: var(--text-secondary); flex: 1;">

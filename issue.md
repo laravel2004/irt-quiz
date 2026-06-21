@@ -1,555 +1,607 @@
-﻿# Planning Implementasi Grafik Nilai Sesi Ujian di Dashboard User
+# Planning Implementasi Perubahan Tone UI ke Tema Putih Cerah
 
 ## Ringkasan Kebutuhan
 
-Pada dashboard user sudah ada section card sesi ujian yang menampilkan informasi tentang sesi ujian yang sudah dilakukan oleh user. Informasi tersebut mencakup nama sesi ujian, tanggal pelaksanaan, dan nilai yang diperoleh.
+Project saat ini memiliki banyak halaman dengan tone gelap. Beberapa komponen seperti layout utama, card, modal, tombol, badge, SweetAlert, grafik, dan section dashboard masih menggunakan warna gelap atau transparansi gelap.
 
-Fitur baru yang perlu ditambahkan adalah grafik nilai di dashboard user. Grafik ini harus diletakkan di atas section card sesi ujian. Grafik akan menampilkan nilai dari setiap sesi ujian yang sudah dilakukan oleh user dalam bentuk visual, misalnya grafik garis atau grafik batang.
+Kebutuhan baru adalah mengubah tone visual seluruh project menjadi tema putih cerah dengan warna utama:
 
-Dokumen ini dibuat sebagai panduan implementasi yang cukup detail agar bisa dikerjakan oleh junior programmer atau AI model yang lebih murah tanpa perlu banyak asumsi tambahan.
+- Putih sebagai warna dasar halaman dan card.
+- Biru sebagai warna utama untuk action, link, highlight, dan elemen informatif.
+- Kuning sebagai warna aksen untuk premium, perhatian ringan, badge khusus, atau highlight tambahan.
+
+Dokumen ini berisi planning detail agar implementasi bisa dikerjakan oleh junior programmer atau AI model yang lebih murah secara bertahap dan aman.
 
 ## Tujuan Implementasi
 
-- Membuat dashboard user lebih informatif dan mudah dipahami.
-- Membantu user melihat perkembangan nilai dari sesi ujian yang sudah dilakukan.
-- Memastikan data sesi ujian tetap ditampilkan jelas melalui card yang sudah ada.
-- Menambahkan visualisasi nilai tanpa merusak tampilan atau alur dashboard yang sudah berjalan.
+- Mengubah tampilan aplikasi dari dark tone menjadi light tone.
+- Membuat semua halaman terlihat konsisten dengan palet putih, biru, dan kuning.
+- Memastikan teks tetap mudah dibaca di background terang.
+- Memastikan SweetAlert, modal, card, form, tabel, tombol, dan grafik mengikuti tema baru.
+- Menghindari perubahan logic aplikasi. Fokus pekerjaan hanya pada UI dan styling.
 
-## Ruang Lingkup Pekerjaan
+## Ruang Lingkup
 
-Yang perlu dikerjakan:
+Yang perlu diperhatikan dan dikerjakan:
 
-1. Mengecek implementasi dashboard user yang sudah ada.
-2. Mengecek data sesi ujian yang sudah dilakukan oleh user.
-3. Memastikan card sesi ujian menampilkan informasi dengan jelas.
-4. Menyiapkan data nilai untuk kebutuhan grafik.
-5. Menambahkan grafik nilai di atas section card sesi ujian.
-6. Menangani kondisi ketika user belum memiliki riwayat sesi ujian.
-7. Melakukan testing manual untuk memastikan data dan tampilan benar.
+1. Semua page yang ada di project.
+2. Layout utama aplikasi peserta dan admin.
+3. Component seperti card, glass effect, button, badge, alert, modal, table, form, dan chart.
+4. SweetAlert atau popup lain yang muncul dari JavaScript.
+5. Inline style yang masih memakai warna gelap.
+6. CSS variable atau global style yang menjadi dasar tema.
+7. Responsiveness desktop dan mobile.
 
-Yang tidak termasuk dalam pekerjaan ini:
+Yang tidak perlu dikerjakan:
 
-- Mengubah sistem penilaian ujian.
-- Mengubah alur pengerjaan ujian.
-- Mengubah fitur admin untuk membuat sesi ujian.
-- Mengubah struktur database kecuali benar-benar diperlukan.
-- Menambahkan fitur filter kompleks seperti filter per bulan atau per kategori, kecuali sudah diminta kemudian.
+- Mengubah database.
+- Mengubah alur login, ujian, hasil, atau admin.
+- Mengubah controller atau service kecuali ada data style yang hardcoded dari backend.
+- Mengganti framework CSS.
+- Membuat fitur dark mode toggle, kecuali diminta kemudian.
 
-## Kondisi Saat Ini yang Harus Diperhatikan
+## Warna Tema yang Disarankan
 
-Pada dashboard user terdapat section card sesi ujian. Section ini menampilkan informasi sesi ujian yang sudah dilakukan oleh user, seperti:
+Gunakan warna berikut sebagai panduan utama. Jika project sudah punya CSS variable, simpan warna ini sebagai variable global.
 
-- Nama sesi ujian.
-- Tanggal pelaksanaan sesi ujian.
-- Nilai yang diperoleh user.
+### Warna Dasar
 
-Pastikan section ini tetap ada dan tidak dihapus. Jika tampilannya masih kurang jelas, rapikan agar user mudah memahami informasi yang ditampilkan.
+- Background utama: `#f8fafc` atau `#ffffff`
+- Background card: `#ffffff`
+- Border lembut: `#e2e8f0`
+- Text utama: `#0f172a`
+- Text secondary: `#475569`
+- Text muted: `#64748b`
 
-Contoh tampilan informasi pada card yang diharapkan:
+### Warna Biru
 
-- Nama sesi ujian terlihat sebagai judul utama card.
-- Tanggal pelaksanaan terlihat jelas, misalnya `21 Juni 2026` atau format tanggal lain yang konsisten dengan aplikasi.
-- Nilai terlihat menonjol, misalnya `Nilai: 85`.
-- Jika ada status ujian, tampilkan secara ringkas, misalnya `Selesai`.
+- Primary blue: `#2563eb`
+- Primary blue hover: `#1d4ed8`
+- Blue soft background: `#dbeafe`
+- Blue border: `#93c5fd`
 
-## Fitur Baru yang Akan Ditambahkan
+### Warna Kuning
 
-Tambahkan section grafik nilai pada dashboard user.
+- Accent yellow: `#facc15`
+- Yellow hover: `#eab308`
+- Yellow soft background: `#fef9c3`
+- Yellow border: `#fde047`
+- Yellow text gelap: `#854d0e`
 
-Posisi grafik:
+### Warna Status Tambahan
 
-- Diletakkan di atas section card sesi ujian.
-- Muncul setelah header atau ringkasan dashboard, jika ada.
-- Muncul sebelum daftar card sesi ujian.
+Tetap boleh menggunakan warna status berikut agar user mudah memahami kondisi:
 
-Isi grafik:
+- Success: `#16a34a`
+- Danger: `#dc2626`
+- Warning: `#f59e0b`
+- Info: `#2563eb`
 
-- Grafik menampilkan nilai dari setiap sesi ujian yang sudah dilakukan user.
-- Setiap titik atau batang mewakili satu sesi ujian.
-- Label grafik menggunakan nama sesi ujian atau tanggal sesi ujian.
-- Nilai pada grafik menggunakan nilai yang diperoleh user.
+## Prinsip Desain yang Harus Diikuti
 
-Jenis grafik yang boleh digunakan:
-
-- Grafik garis, cocok untuk menampilkan perkembangan nilai dari waktu ke waktu.
-- Grafik batang, cocok untuk membandingkan nilai antar sesi ujian.
-
-Rekomendasi awal:
-
-- Gunakan grafik garis jika urutan waktu sesi ujian jelas.
-- Gunakan grafik batang jika nama sesi ujian lebih penting untuk dibandingkan.
-- Jika belum ada library grafik di project, gunakan library yang ringan dan mudah, misalnya Chart.js.
+- Gunakan background putih atau sangat terang untuk halaman.
+- Gunakan card putih dengan border tipis dan shadow lembut.
+- Hindari warna teks putih di atas background putih.
+- Hindari background hitam, navy gelap, atau transparansi gelap.
+- Gunakan biru untuk tombol utama dan link penting.
+- Gunakan kuning untuk badge premium, highlight, atau elemen aksen.
+- Pastikan semua teks punya kontras yang cukup.
+- Jangan mengubah struktur HTML besar-besaran jika tidak perlu.
+- Prioritaskan perubahan di CSS variable/global style agar tidak perlu edit terlalu banyak file.
 
 ## Tahapan Implementasi
 
-### 1. Pahami Struktur Project
+### 1. Audit Semua Halaman Project
 
-Langkah pertama adalah memahami struktur project sebelum mengubah kode.
+Sebelum mengubah style, lakukan audit halaman yang ada di project.
 
-Yang harus dicek:
+Cari file view di folder:
 
-- Framework yang digunakan project.
-- Lokasi file route untuk dashboard user.
-- Lokasi controller atau handler yang mengirim data ke dashboard user.
-- Lokasi file view dashboard user.
-- Lokasi model yang berhubungan dengan user, sesi ujian, hasil ujian, atau nilai ujian.
+- `resources/views`
+- `resources/views/layouts`
+- `resources/views/participant`
+- `resources/views/admin`
+- folder view lain jika ada
 
-Petunjuk umum untuk project Laravel:
+Hal yang perlu dicatat:
 
-- Cek route di folder `routes`.
-- Cek controller di folder `app/Http/Controllers`.
-- Cek model di folder `app/Models`.
-- Cek view di folder `resources/views`.
-- Cek asset frontend di folder `resources/js`, `resources/css`, atau file layout Blade.
-
-Output dari tahap ini:
-
-- Mengetahui file dashboard user yang harus diubah.
-- Mengetahui sumber data sesi ujian dan nilai.
-- Mengetahui apakah project sudah memakai library grafik atau belum.
-
-### 2. Identifikasi Data Sesi Ujian User
-
-Cari bagaimana dashboard user saat ini mengambil data sesi ujian.
-
-Hal yang perlu dicari:
-
-- Nama model untuk sesi ujian.
-- Nama model untuk hasil ujian atau attempt ujian.
-- Relasi antara user dan sesi ujian.
-- Kolom yang menyimpan nilai user.
-- Kolom tanggal pelaksanaan atau tanggal selesai ujian.
-
-Contoh kemungkinan nama data:
-
-- `ExamSession`
-- `QuizSession`
-- `TestSession`
-- `ExamResult`
-- `QuizResult`
-- `Attempt`
-- `UserExam`
-
-Jangan langsung membuat model atau tabel baru jika data sebenarnya sudah tersedia. Gunakan data yang sudah dipakai oleh card sesi ujian.
+- Layout utama yang dipakai peserta.
+- Layout utama yang dipakai admin.
+- Halaman login/register.
+- Dashboard peserta.
+- Detail sesi ujian.
+- Halaman ujian.
+- Halaman hasil ujian.
+- Halaman review.
+- Halaman statistik.
+- Halaman admin dashboard.
+- Halaman admin sesi.
+- Halaman admin peserta.
+- Halaman kategori, subkategori, soal, atau page admin lain.
 
 Output dari tahap ini:
 
-- Data nama sesi ujian bisa diambil.
-- Data tanggal pelaksanaan bisa diambil.
-- Data nilai user bisa diambil.
-- Data hanya milik user yang sedang login.
+- Daftar file view yang perlu dicek.
+- Mengetahui file CSS global atau layout yang mengatur tema utama.
+- Mengetahui halaman mana yang punya banyak inline style gelap.
 
-### 3. Pastikan Card Sesi Ujian Tetap Jelas
+### 2. Cari Sumber Style Global
 
-Sebelum menambahkan grafik, pastikan section card sesi ujian tetap menampilkan data utama dengan jelas.
+Cari style utama yang mengatur warna aplikasi.
 
-Checklist card sesi ujian:
+File yang perlu dicek:
 
-- Nama sesi ujian tampil jelas.
-- Tanggal pelaksanaan tampil jelas.
-- Nilai user tampil jelas.
-- Layout card rapi di desktop dan mobile.
-- Jika tidak ada data, tampilkan empty state yang mudah dipahami.
+- `resources/views/layouts/app.blade.php`
+- `resources/views/layouts/admin.blade.php`
+- `resources/css/app.css`
+- `resources/js/app.js`
+- file CSS lain di `public` atau `resources`
+- inline `<style>` di file Blade
 
-Contoh empty state:
+Cari variable atau class seperti:
 
-`Belum ada sesi ujian yang sudah diselesaikan.`
-
-Jika card saat ini sudah cukup baik, jangan ubah terlalu banyak. Fokus hanya pada perapian kecil jika memang diperlukan.
-
-Output dari tahap ini:
-
-- Card sesi ujian tetap berfungsi.
-- Informasi penting tidak hilang setelah grafik ditambahkan.
-
-### 4. Siapkan Data untuk Grafik di Backend
-
-Data grafik sebaiknya disiapkan dari controller atau backend agar view hanya fokus menampilkan.
-
-Format data yang dibutuhkan grafik:
-
-- Label sesi ujian.
-- Nilai setiap sesi ujian.
-- Tanggal sesi ujian jika diperlukan untuk sorting atau label tambahan.
-
-Contoh struktur data yang bisa dikirim ke view:
-
-```php
-$scoreChartData = [
-    'labels' => ['Sesi 1', 'Sesi 2', 'Sesi 3'],
-    'scores' => [75, 82, 90],
-];
-```
-
-Atau jika ingin lebih detail:
-
-```php
-$scoreChartData = [
-    'labels' => $completedSessions->pluck('session_name'),
-    'scores' => $completedSessions->pluck('score'),
-    'dates' => $completedSessions->pluck('completed_at'),
-];
-```
-
-Hal penting:
-
-- Urutkan data berdasarkan tanggal pelaksanaan dari yang paling lama ke paling baru.
-- Pastikan hanya sesi ujian milik user yang sedang login.
-- Pastikan hanya sesi ujian yang sudah memiliki nilai yang masuk grafik.
-- Jika nilai null, jangan masukkan ke grafik kecuali memang ada aturan khusus.
+- `--bg-primary`
+- `--bg-secondary`
+- `--text-primary`
+- `--text-secondary`
+- `--glass-bg`
+- `--glass-border`
+- `.glass`
+- `.btn-primary`
+- `.badge`
+- `.modal`
+- `.card`
 
 Output dari tahap ini:
 
-- View dashboard menerima data grafik siap pakai.
-- Data grafik sudah sesuai dengan user login.
-- Data grafik sudah terurut dengan benar.
+- Menentukan apakah tema bisa diubah dari satu tempat global.
+- Menentukan file mana yang menjadi prioritas pertama.
 
-### 5. Tentukan Cara Render Grafik
+### 3. Ubah CSS Variable Global ke Tema Light
 
-Cek apakah project sudah memakai library grafik.
+Jika project menggunakan CSS variable, ubah variable global terlebih dahulu.
 
-Jika sudah ada library grafik:
+Contoh target variable:
 
-- Gunakan library yang sudah ada.
-- Ikuti pola komponen atau file JavaScript yang sudah tersedia.
-- Jangan menambahkan library baru jika tidak perlu.
-
-Jika belum ada library grafik:
-
-- Gunakan Chart.js karena sederhana dan umum digunakan.
-- Tambahkan dependency melalui package manager jika project menggunakan npm.
-- Alternatif sederhana: gunakan CDN hanya jika pola project memang mengizinkan CDN.
-
-Rekomendasi untuk project modern:
-
-- Jika project memakai Vite, install Chart.js via npm.
-- Import Chart.js di file JavaScript dashboard atau file app utama.
-- Hindari script inline terlalu panjang di Blade jika project sudah punya asset pipeline.
-
-Output dari tahap ini:
-
-- Diputuskan apakah memakai library grafik yang sudah ada atau Chart.js.
-- Tidak ada duplikasi library grafik.
-
-### 6. Tambahkan Section Grafik di View Dashboard
-
-Tambahkan section grafik di file view dashboard user.
-
-Posisi section:
-
-- Di atas section card sesi ujian.
-- Masih berada di dalam layout dashboard user.
-- Tidak mengganggu heading atau menu dashboard.
-
-Contoh struktur tampilan:
-
-```html
-<section class="mb-6">
-    <div class="card">
-        <div class="card-header">
-            <h2>Grafik Nilai Sesi Ujian</h2>
-            <p>Perkembangan nilai dari sesi ujian yang sudah kamu selesaikan.</p>
-        </div>
-        <div class="card-body">
-            <canvas id="scoreChart"></canvas>
-        </div>
-    </div>
-</section>
-```
-
-Catatan:
-
-- Sesuaikan class CSS dengan style yang sudah digunakan project.
-- Jangan membuat style baru berlebihan jika sudah ada komponen card.
-- Gunakan bahasa yang konsisten dengan aplikasi.
-
-Output dari tahap ini:
-
-- Section grafik muncul di dashboard user.
-- Posisi grafik berada sebelum card sesi ujian.
-
-### 7. Kirim Data dari Backend ke JavaScript
-
-Data dari backend perlu dikirim ke JavaScript dengan aman.
-
-Jika menggunakan Blade Laravel, bisa gunakan `@json`.
-
-Contoh:
-
-```html
-<script>
-    window.scoreChartData = @json($scoreChartData);
-</script>
-```
-
-Atau langsung di script inisialisasi grafik:
-
-```js
-const scoreChartData = @json($scoreChartData);
-```
-
-Hal penting:
-
-- Jangan membangun JSON manual dengan string concatenation.
-- Gunakan helper resmi seperti `@json` agar escaping aman.
-- Pastikan jika data kosong, JavaScript tetap tidak error.
-
-Output dari tahap ini:
-
-- JavaScript menerima `labels` dan `scores`.
-- Tidak ada error ketika data kosong.
-
-### 8. Implementasikan Grafik
-
-Buat inisialisasi grafik setelah element canvas tersedia.
-
-Contoh konfigurasi Chart.js grafik garis:
-
-```js
-const chartElement = document.getElementById('scoreChart');
-
-if (chartElement && window.scoreChartData) {
-    new Chart(chartElement, {
-        type: 'line',
-        data: {
-            labels: window.scoreChartData.labels,
-            datasets: [{
-                label: 'Nilai',
-                data: window.scoreChartData.scores,
-                borderWidth: 2,
-                tension: 0.3,
-            }],
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    suggestedMax: 100,
-                },
-            },
-        },
-    });
+```css
+:root {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --accent: #facc15;
+    --glass-bg: #ffffff;
+    --glass-border: #e2e8f0;
 }
 ```
 
-Jika menggunakan grafik batang, ubah `type` menjadi `bar`.
-
-Checklist implementasi grafik:
-
-- Grafik muncul jika data tersedia.
-- Label sesuai dengan sesi ujian.
-- Nilai sesuai dengan nilai pada card.
-- Skala nilai mudah dipahami.
-- Grafik responsive di layar kecil.
-- Tidak ada error JavaScript di console.
-
-Output dari tahap ini:
-
-- Grafik nilai berhasil tampil di dashboard user.
-- Grafik menampilkan data yang sama dengan data sesi ujian user.
-
-### 9. Tangani Kondisi Data Kosong
-
-Jika user belum pernah menyelesaikan sesi ujian, jangan tampilkan grafik kosong yang membingungkan.
-
-Opsi tampilan:
-
-- Tampilkan card informasi kosong.
-- Sembunyikan canvas grafik.
-- Tampilkan pesan singkat.
-
-Contoh pesan:
-
-`Grafik nilai akan muncul setelah kamu menyelesaikan sesi ujian.`
+Jika nama variable berbeda, sesuaikan dengan project sebenarnya.
 
 Hal penting:
 
-- Dashboard tidak boleh error ketika data kosong.
-- Section card sesi ujian juga harus memiliki empty state yang jelas.
-- Jangan menampilkan grafik dengan label kosong dan nilai kosong tanpa penjelasan.
+- Jangan membuat variable baru berlebihan jika variable lama bisa dipakai.
+- Pastikan `body` menggunakan background terang.
+- Pastikan teks default menggunakan warna gelap.
+- Pastikan link dan tombol masih terlihat jelas.
 
 Output dari tahap ini:
 
-- User baru tetap mendapat tampilan dashboard yang rapi.
-- Tidak ada error backend atau frontend ketika data belum ada.
+- Sebagian besar halaman otomatis berubah menjadi terang.
+- Komponen yang memakai variable global ikut berubah.
 
-### 10. Perhatikan Urutan dan Konsistensi Data
+### 4. Ubah Komponen Card dan Glass Effect
 
-Pastikan urutan data pada grafik sama dengan logika yang mudah dipahami user.
+Project kemungkinan memakai class seperti `glass` untuk efek dark glassmorphism. Pada tema terang, efek ini perlu disesuaikan.
+
+Rekomendasi style baru:
+
+```css
+.glass {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+```
+
+Hindari:
+
+```css
+background: rgba(15, 23, 42, 0.8);
+color: white;
+border: 1px solid rgba(255,255,255,0.1);
+```
+
+Checklist:
+
+- Card dashboard terlihat putih.
+- Card admin terlihat putih.
+- Border tidak terlalu tebal.
+- Shadow lembut dan tidak berlebihan.
+- Hover card tetap terasa tapi tidak gelap.
+
+Output dari tahap ini:
+
+- Semua card utama terlihat cocok dengan tema putih cerah.
+
+### 5. Ubah Button, Link, dan Badge
+
+Tombol utama sebaiknya menggunakan biru.
+
+Rekomendasi tombol utama:
+
+```css
+.btn-primary {
+    background: #2563eb;
+    color: #ffffff;
+    border: 1px solid #2563eb;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+}
+```
+
+Untuk tombol premium atau aksen:
+
+```css
+.btn-accent {
+    background: #facc15;
+    color: #0f172a;
+    border: 1px solid #eab308;
+}
+```
+
+Badge premium:
+
+```css
+.badge-premium {
+    background: #fef9c3;
+    color: #854d0e;
+    border: 1px solid #fde047;
+}
+```
+
+Checklist:
+
+- Tombol primary biru dengan teks putih.
+- Tombol danger tetap merah.
+- Tombol success tetap hijau jika memang status berhasil.
+- Badge premium kuning.
+- Badge aktif bisa menggunakan biru atau hijau.
+- Link tidak memakai warna abu gelap yang sulit dibaca.
+
+Output dari tahap ini:
+
+- Action utama di semua halaman terlihat konsisten.
+
+### 6. Audit Inline Style Gelap di Blade
+
+Banyak halaman mungkin memakai inline style seperti:
+
+- `color: white`
+- `background: rgba(15, 23, 42, ...)`
+- `background: rgba(0,0,0,...)`
+- `border: 1px solid rgba(255,255,255,...)`
+- `color: #fff`
+- `background: #0f172a`
+- `background: #111827`
+
+Gunakan search global untuk mencari warna gelap:
+
+```bash
+rg "color:\s*white|#fff|#0f172a|#111827|rgba\(0,0,0|rgba\(15, 23, 42|rgba\(255,255,255" resources/views resources/css public
+```
+
+Untuk setiap hasil:
+
+- Ganti `color: white` menjadi `color: var(--text-primary)` jika background terang.
+- Ganti background gelap menjadi putih atau biru soft.
+- Ganti border putih transparan menjadi `#e2e8f0`.
+- Jangan asal hapus style jika style tersebut masih dibutuhkan untuk status tertentu.
+
+Output dari tahap ini:
+
+- Inline style gelap utama sudah diganti.
+- Teks tetap terbaca setelah background berubah terang.
+
+### 7. Ubah SweetAlert ke Tema Light
+
+Cari semua pemanggilan SweetAlert, biasanya menggunakan `Swal.fire`.
+
+Search:
+
+```bash
+rg "Swal\.fire|sweetalert|SweetAlert" resources/views resources/js public
+```
+
+Jika ada konfigurasi seperti:
+
+```js
+background: 'rgba(15, 23, 42, 0.95)',
+color: '#fff'
+```
+
+ubah menjadi:
+
+```js
+background: '#ffffff',
+color: '#0f172a',
+confirmButtonColor: '#2563eb',
+cancelButtonColor: '#dc2626'
+```
+
+Untuk alert premium atau warning, gunakan kuning sebagai aksen:
+
+```js
+confirmButtonColor: '#facc15'
+```
+
+Tetapi pastikan teks tombol tetap terbaca. Jika tombol kuning, teks sebaiknya gelap.
+
+Checklist SweetAlert:
+
+- Background popup putih.
+- Teks popup gelap.
+- Tombol confirm dominan biru.
+- Tombol cancel merah atau abu.
+- Tidak ada popup dengan teks putih di background putih.
+- Semua popup di halaman peserta dan admin sudah dicek.
+
+Output dari tahap ini:
+
+- SweetAlert konsisten dengan tema light.
+
+### 8. Ubah Modal dan Overlay
+
+Modal saat ini mungkin memakai overlay gelap. Overlay masih boleh gelap transparan agar fokus ke modal, tetapi isi modal harus putih.
 
 Rekomendasi:
 
-- Grafik diurutkan dari sesi paling lama ke sesi paling baru.
-- Card sesi ujian boleh diurutkan dari yang terbaru ke yang paling lama jika itu pola dashboard saat ini.
-- Jika urutan grafik dan card berbeda, pastikan tetap masuk akal.
+- Overlay: `rgba(15, 23, 42, 0.45)`
+- Modal content: `#ffffff`
+- Modal title: `#0f172a`
+- Modal description: `#475569`
+- Modal border: `#e2e8f0`
 
-Contoh:
-
-- Grafik: Januari, Februari, Maret.
-- Card: Maret, Februari, Januari.
-
-Keduanya masih wajar karena grafik menunjukkan perkembangan waktu, sedangkan card menampilkan riwayat terbaru lebih dulu.
+Jika modal header memakai gradient gelap, ubah ke biru atau kombinasi biru-kuning yang soft.
 
 Output dari tahap ini:
 
-- Grafik mudah dibaca sebagai perkembangan nilai.
-- Card tetap nyaman digunakan sebagai daftar riwayat sesi ujian.
+- Modal terlihat terang dan tetap fokus.
+- Konten modal mudah dibaca.
 
-### 11. Validasi Akses Data User
+### 9. Ubah Form dan Input
 
-Pastikan data yang tampil hanya milik user yang sedang login.
+Pastikan semua input terlihat jelas di tema putih.
 
-Checklist keamanan:
+Rekomendasi input:
 
-- Query menggunakan `auth()->id()` atau mekanisme user login yang sudah dipakai project.
-- User A tidak bisa melihat nilai milik User B.
-- Jika ada route API untuk mengambil data grafik, route tersebut harus dilindungi middleware auth.
-- Jangan mengirim data user lain ke frontend.
+```css
+input,
+select,
+textarea {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+}
 
-Output dari tahap ini:
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+```
 
-- Data grafik aman dan sesuai user login.
-- Data card sesi ujian juga tetap aman.
+Checklist:
 
-### 12. Rapikan UI dan Responsiveness
-
-Pastikan tampilan grafik nyaman dilihat di desktop dan mobile.
-
-Checklist UI:
-
-- Section grafik punya judul yang jelas.
-- Ada deskripsi singkat di bawah judul.
-- Tinggi grafik tidak terlalu kecil.
-- Grafik tidak overflow di layar mobile.
-- Warna grafik kontras dan tetap sesuai tema aplikasi.
-- Jarak antara grafik dan card sesi ujian cukup nyaman.
-
-Contoh judul section:
-
-`Grafik Nilai Sesi Ujian`
-
-Contoh deskripsi:
-
-`Lihat perkembangan nilai dari setiap sesi ujian yang sudah kamu selesaikan.`
+- Placeholder tidak terlalu terang.
+- Text input terlihat jelas.
+- Select dropdown terlihat jelas.
+- Textarea admin dan form soal tetap nyaman digunakan.
+- Error validation tetap merah dan jelas.
 
 Output dari tahap ini:
 
-- Dashboard terlihat rapi.
-- Grafik mudah dipahami oleh user.
+- Semua form bisa dipakai dengan nyaman di tema light.
 
-### 13. Testing Manual
+### 10. Ubah Table dan Admin Page
 
-Lakukan testing manual minimal dengan beberapa kondisi data.
+Halaman admin biasanya banyak memakai tabel. Pastikan tabel mengikuti tema terang.
 
-Skenario testing:
+Rekomendasi:
 
-1. User belum punya sesi ujian selesai.
-   - Dashboard tidak error.
-   - Grafik tidak tampil kosong membingungkan.
-   - Pesan empty state muncul.
+- Header table: biru soft atau abu sangat terang.
+- Row background: putih.
+- Border row: `#e2e8f0`.
+- Hover row: `#f1f5f9`.
+- Text: `#0f172a`.
 
-2. User punya satu sesi ujian selesai.
-   - Card menampilkan nama sesi, tanggal, dan nilai.
-   - Grafik menampilkan satu data nilai.
+Checklist admin:
 
-3. User punya beberapa sesi ujian selesai.
-   - Card menampilkan semua data sesuai aturan dashboard.
-   - Grafik menampilkan semua nilai.
-   - Urutan grafik sesuai tanggal pelaksanaan.
-
-4. Ada sesi ujian tanpa nilai.
-   - Sesi tersebut tidak masuk grafik, kecuali aturan aplikasi menyatakan lain.
-   - Dashboard tetap tidak error.
-
-5. Login sebagai user berbeda.
-   - Data grafik berubah sesuai user yang login.
-   - Tidak ada data user lain yang tampil.
+- Dashboard admin terbaca.
+- Tabel sesi ujian terbaca.
+- Tabel peserta terbaca.
+- Tabel soal terbaca.
+- Action edit/delete tetap jelas.
+- Badge status tetap jelas.
 
 Output dari tahap ini:
 
-- Fitur sudah aman untuk diuji lebih lanjut.
-- Bug umum pada data kosong dan data user lain sudah dicegah.
+- Admin panel tidak lagi terlihat gelap.
 
-## Rekomendasi Detail Teknis
+### 11. Ubah Halaman Ujian
 
-### Backend
+Halaman ujian sangat penting karena user harus fokus mengerjakan soal.
 
-- Ambil data dari sumber yang sama dengan card sesi ujian jika memungkinkan.
-- Buat variable khusus untuk grafik, misalnya `$scoreChartData`.
-- Urutkan data grafik berdasarkan tanggal pelaksanaan atau tanggal selesai ujian ascending.
-- Filter data agar hanya mengambil sesi ujian yang sudah selesai dan memiliki nilai.
+Checklist halaman ujian:
 
-Contoh pseudocode:
+- Background utama putih atau `#f8fafc`.
+- Container soal putih.
+- Teks soal gelap dan jelas.
+- Opsi jawaban mudah dibaca.
+- Opsi terpilih menggunakan biru soft atau kuning soft.
+- Tombol next/submit menggunakan biru.
+- Timer tetap terlihat jelas.
+- Warning waktu hampir habis tetap terlihat jelas.
 
-```php
-$completedSessions = $user->examSessions()
-    ->whereNotNull('score')
-    ->orderBy('completed_at')
-    ->get();
+Output dari tahap ini:
 
-$scoreChartData = [
-    'labels' => $completedSessions->pluck('name'),
-    'scores' => $completedSessions->pluck('score'),
-];
+- Halaman ujian nyaman dipakai dan tidak membuat mata lelah.
+
+### 12. Ubah Chart dan Grafik
+
+Jika ada grafik, pastikan warna axis dan label cocok dengan tema terang.
+
+Rekomendasi Chart.js:
+
+```js
+ticks: {
+    color: '#475569'
+},
+grid: {
+    color: 'rgba(148, 163, 184, 0.25)'
+}
+```
+
+Dataset:
+
+- Garis utama: biru `#2563eb`
+- Fill biru soft: `rgba(37, 99, 235, 0.12)`
+- Dataset aksen: kuning `#facc15`
+
+Checklist:
+
+- Label grafik terbaca.
+- Grid tidak terlalu gelap.
+- Legend tidak memakai warna putih.
+- Tooltip tetap terbaca.
+
+Output dari tahap ini:
+
+- Grafik selaras dengan tema putih-biru-kuning.
+
+### 13. Periksa Semua Page Secara Manual
+
+Setelah perubahan CSS dan inline style, buka semua halaman utama secara manual.
+
+Minimal halaman yang harus dicek:
+
+- Login.
+- Dashboard peserta.
+- Detail sesi peserta.
+- Halaman term.
+- Halaman ujian.
+- Halaman hasil.
+- Halaman review.
+- Statistik peserta.
+- Dashboard admin.
+- List sesi admin.
+- Form buat/edit sesi.
+- Halaman peserta admin.
+- Halaman kategori dan soal.
+
+Untuk setiap halaman, cek:
+
+- Background sudah terang.
+- Teks terbaca.
+- Button terlihat jelas.
+- Card tidak gelap.
+- Modal tidak gelap.
+- SweetAlert tidak gelap.
+- Mobile layout tetap rapi.
+
+Output dari tahap ini:
+
+- Daftar halaman yang sudah OK.
+- Daftar halaman yang masih perlu perbaikan kecil.
+
+### 14. Testing Interaksi Popup dan Modal
+
+Jangan hanya melihat halaman statis. Test juga interaksi.
+
+Yang perlu dicoba:
+
+- Logout confirmation jika ada.
+- Retake confirmation.
+- Delete confirmation di admin.
+- Submit ujian confirmation.
+- Modal analisis AI.
+- Modal import/export jika ada.
+- Alert error dan success.
+
+Output dari tahap ini:
+
+- Semua SweetAlert dan modal tampil dengan tema light.
+- Tidak ada popup dengan warna dark lama.
+
+### 15. Cleanup dan Konsistensi
+
+Setelah semua halaman selesai, lakukan cleanup.
+
+Checklist cleanup:
+
+- Tidak ada style gelap yang tidak sengaja tertinggal.
+- Tidak ada duplikasi CSS berlebihan.
+- Variable warna digunakan konsisten.
+- Inline style yang sulit dirawat dikurangi jika memungkinkan.
+- Tidak ada perubahan logic bisnis.
+- Tidak ada perubahan route atau database.
+
+Search akhir yang disarankan:
+
+```bash
+rg "color:\s*white|#fff|#0f172a|#111827|#020617|rgba\(0,0,0|rgba\(15, 23, 42|background:\s*black" resources/views resources/css public
 ```
 
 Catatan:
 
-- Sesuaikan nama relasi, kolom, dan model dengan struktur project sebenarnya.
-- Jangan copy mentah pseudocode jika nama model berbeda.
+- Tidak semua hasil harus dihapus. Contohnya `color: white` masih boleh dipakai untuk teks di tombol biru.
+- Evaluasi setiap hasil berdasarkan konteks.
 
-### Frontend
+## Urutan Kerja yang Disarankan
 
-- Tambahkan container grafik di view dashboard user.
-- Gunakan `canvas` jika memakai Chart.js.
-- Inisialisasi grafik hanya jika element canvas ditemukan.
-- Gunakan data dari backend melalui JSON yang aman.
-- Tambahkan empty state jika data grafik kosong.
-
-### UI Copy
-
-Gunakan teks sederhana dan mudah dipahami:
-
-- Judul: `Grafik Nilai Sesi Ujian`
-- Deskripsi: `Lihat perkembangan nilai dari setiap sesi ujian yang sudah kamu selesaikan.`
-- Empty state: `Grafik nilai akan muncul setelah kamu menyelesaikan sesi ujian.`
+1. Audit semua file view dan CSS.
+2. Ubah variable/global theme terlebih dahulu.
+3. Ubah layout utama peserta dan admin.
+4. Ubah komponen umum seperti `.glass`, `.btn-primary`, `.badge`, form, table.
+5. Ubah inline style gelap di halaman peserta.
+6. Ubah inline style gelap di halaman admin.
+7. Ubah SweetAlert dan modal.
+8. Ubah grafik dan chart.
+9. Test manual semua halaman utama.
+10. Cleanup style yang masih tidak konsisten.
 
 ## Acceptance Criteria
 
 Fitur dianggap selesai jika semua poin berikut terpenuhi:
 
-- Dashboard user tetap menampilkan section card sesi ujian.
-- Card sesi ujian menampilkan nama sesi ujian, tanggal pelaksanaan, dan nilai dengan jelas.
-- Section grafik nilai tampil di atas section card sesi ujian.
-- Grafik menampilkan nilai dari sesi ujian yang sudah dilakukan user.
-- Data grafik sesuai dengan data user yang sedang login.
-- Data grafik tidak menampilkan sesi ujian user lain.
-- Dashboard tidak error ketika user belum punya sesi ujian selesai.
-- Ada empty state yang jelas ketika data grafik kosong.
-- Tampilan grafik responsive di desktop dan mobile.
-- Tidak ada error JavaScript di console browser.
-
-## Estimasi Urutan Kerja yang Disarankan
-
-1. Cari file dashboard user dan controller terkait.
-2. Pahami query data card sesi ujian yang sudah ada.
-3. Pastikan data card berisi nama sesi, tanggal, dan nilai.
-4. Buat data `$scoreChartData` dari hasil sesi ujian user.
-5. Kirim `$scoreChartData` ke view dashboard.
-6. Tambahkan section grafik di atas section card sesi ujian.
-7. Integrasikan Chart.js atau library grafik yang sudah tersedia.
-8. Tambahkan empty state untuk data kosong.
-9. Rapikan tampilan desktop dan mobile.
-10. Test manual dengan user tanpa data, satu data, banyak data, dan user berbeda.
+- Semua halaman utama tidak lagi menggunakan tone gelap sebagai tema dominan.
+- Background halaman menggunakan putih atau warna sangat terang.
+- Card dan container utama menggunakan putih dengan border/shadow lembut.
+- Warna utama action adalah biru.
+- Warna aksen utama adalah kuning.
+- Badge premium menggunakan nuansa kuning.
+- SweetAlert menggunakan background putih dan teks gelap.
+- Modal content menggunakan background putih dan teks gelap.
+- Form dan table terbaca jelas.
+- Grafik menggunakan warna label yang cocok untuk background terang.
+- Tidak ada teks putih di atas background putih.
+- Tidak ada teks gelap di atas background gelap yang tersisa dari tema lama.
+- Tampilan mobile tetap rapi.
+- Tidak ada perubahan logic bisnis aplikasi.
 
 ## Catatan untuk Junior Programmer atau AI Model
 
-- Jangan mengubah fitur lain di luar dashboard user kecuali diperlukan.
-- Jangan membuat tabel baru sebelum memastikan data nilai memang belum tersedia.
-- Jangan menampilkan semua data ujian dari semua user.
-- Selalu filter data berdasarkan user yang sedang login.
-- Jika bingung memilih grafik, gunakan grafik garis terlebih dahulu.
-- Jika project sudah punya komponen card atau style khusus, ikuti style yang sudah ada.
-- Jika ada perbedaan nama model atau kolom, sesuaikan dengan kode project yang sebenarnya.
-- Setelah implementasi, bandingkan nilai di grafik dengan nilai di card untuk memastikan datanya sama.
+- Kerjakan bertahap, jangan ubah semua file sekaligus tanpa validasi.
+- Mulai dari style global agar perubahan besar bisa terjadi dari satu tempat.
+- Setelah itu baru perbaiki inline style per halaman.
+- Jangan hapus class yang dipakai JavaScript.
+- Jangan ubah nama route, nama variable backend, atau logic controller.
+- Kalau menemukan `color: white`, cek dulu background-nya. Jika background tombol biru, teks putih boleh tetap dipakai.
+- Kalau menemukan background gelap untuk overlay modal, boleh tetap digunakan transparan, tetapi isi modal harus putih.
+- Prioritaskan readability dan konsistensi dibanding efek visual yang terlalu ramai.
+- Jika ragu memilih warna, gunakan putih untuk background, biru untuk action, kuning untuk premium/aksen.

@@ -5,7 +5,7 @@
 @section('content')
 <div class="container" style="padding: 40px 20px;">
     <div style="margin-bottom: 30px;">
-        <a href="{{ route('participant.dashboard') }}" style="color: var(--text-secondary); text-decoration: none; font-size: 0.9rem;">
+        <a href="{{ route('participant.dashboard') }}" style="color: #475569; text-decoration: none; font-size: 0.9rem;">
             <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
         </a>
     </div>
@@ -17,17 +17,17 @@
                     <i class="{{ $isClosed ? 'fas fa-trophy' : 'fas fa-list-ol' }}" style="color: {{ $isClosed ? '#eab308' : '#3b82f6' }}; margin-right: 12px;"></i>
                     {{ $isClosed ? 'Statistik Final' : 'Statistik Sementara' }}
                 </h1>
-                <p style="color: var(--text-secondary); font-size: 1rem; margin: 0;">Sesi: <span style="color: white; font-weight: 600;">{{ $session->name }}</span></p>
+                <p style="color: #475569; font-size: 1rem; margin: 0;">Sesi: <span style="color: #0f172a; font-weight: 600;">{{ $session->name }}</span></p>
             </div>
             <div>
-                <span class="badge" style="background: rgba(255,255,255,0.05); padding: 8px 16px; font-size: 0.9rem;">
+                <span class="badge" style="background: #eff6ff; padding: 8px 16px; font-size: 0.9rem;">
                     Total Peserta Selesai: <strong>{{ $rankings->count() }}</strong>
                 </span>
             </div>
         </div>
 
         @if(!$isClosed)
-            <div style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; margin-bottom: 24px; color: #bfdbfe; font-size: 0.9rem;">
+            <div style="background: #dbeafe; border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; margin-bottom: 24px; color: #bfdbfe; font-size: 0.9rem;">
                 <i class="fas fa-info-circle" style="margin-right: 8px;"></i> Ini adalah <strong>Statistik Sementara</strong> yang diurutkan berdasarkan <strong>Skor Raw</strong>. Sesi ini belum ditutup. Peringkat masih bisa berubah.
             </div>
         @else
@@ -41,11 +41,11 @@
             <table style="width: 100%; border-collapse: separate; border-spacing: 0; min-width: 600px;">
                 <thead>
                     <tr>
-                        <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: var(--text-secondary); border-top-left-radius: 12px; border-bottom-left-radius: 12px;">Peringkat</th>
-                        <th style="text-align: left; padding: 16px; background: rgba(0,0,0,0.3); color: var(--text-secondary);">Nama Peserta</th>
-                        <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: var(--text-secondary);">Skor Raw</th>
+                        <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: #475569; border-top-left-radius: 12px; border-bottom-left-radius: 12px;">Peringkat</th>
+                        <th style="text-align: left; padding: 16px; background: rgba(0,0,0,0.3); color: #475569;">Nama Peserta</th>
+                        <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: #475569;">Skor Raw</th>
                         @if($isClosed)
-                            <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: var(--text-secondary); border-top-right-radius: 12px; border-bottom-right-radius: 12px;">Skor IRT</th>
+                            <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: #475569; border-top-right-radius: 12px; border-bottom-right-radius: 12px;">Skor IRT</th>
                         @else
                             <th style="background: rgba(0,0,0,0.3); border-top-right-radius: 12px; border-bottom-right-radius: 12px;"></th>
                         @endif
@@ -73,14 +73,14 @@
                             </td>
                             <td style="padding: 16px; border-bottom: 1px solid {{ $borderColor }};">
                                 <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-secondary);">
+                                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #475569;">
                                         {{ strtoupper(substr($res->participant->name, 0, 1)) }}
                                     </div>
                                     <div>
                                         <div style="font-weight: 600; color: {{ $isCurrentUser ? '#60a5fa' : 'white' }};">
                                             {{ $res->participant->name }}
                                             @if($isCurrentUser)
-                                                <span class="badge" style="background: #3b82f6; color: white; padding: 2px 6px; font-size: 0.7rem; margin-left: 8px;">Anda</span>
+                                                <span class="badge" style="background: #3b82f6; color: #0f172a; padding: 2px 6px; font-size: 0.7rem; margin-left: 8px;">Anda</span>
                                             @endif
                                         </div>
                                     </div>
@@ -100,7 +100,7 @@
                     @endforeach
                     @if($rankings->isEmpty())
                         <tr>
-                            <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <td colspan="4" style="text-align: center; padding: 40px; color: #475569;">
                                 Belum ada peserta yang menyelesaikan sesi ini.
                             </td>
                         </tr>

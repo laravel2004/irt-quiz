@@ -3,8 +3,9 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. perhatikan bahwa pada dashboard user, terdapat section card sesi ujian yang menampilkan informasi tentang sesi ujian yang sudah dilakukan oleh user, seperti nama sesi ujian, tanggal pelaksanaan, dan nilai yang diperoleh. Pastikan bahwa informasi ini ditampilkan dengan jelas dan mudah dipahami oleh user.
-2. Buatkan saya di dahsboard user itu di atas sebelum section card sesi ujian itu ada grafik nilai dari sesi ujian yang sudah dilakukan, grafik ini akan menampilkan nilai dari setiap sesi ujian yang sudah dilakukan oleh user. Grafik ini bisa berupa grafik garis atau grafik batang, yang menampilkan nilai dari setiap sesi ujian dalam bentuk visual.
+1. perhatikan semua page page yang ada di project ini.
+2. lihat kayak sweetalert nya dan lain lain nya.
+3. aku pengen mengubah tone nya dati gelap ke tone putih cerah ya dengan warna putih biru dan kuning sebagai warna utama.
 
 
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail

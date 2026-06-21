@@ -104,7 +104,7 @@
         </div>
         
         <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
-            <button class="btn-primary" onclick="closePreviewModal()" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white;">Tutup Preview</button>
+            <button class="btn-primary" onclick="closePreviewModal()" style="background: #eff6ff; border: 1px solid var(--glass-border); color: #0f172a;">Tutup Preview</button>
         </div>
     </div>
 </div>
@@ -204,7 +204,7 @@
                     const isCorrect = q.correct_answer.includes(idx.toString());
                     optionsContainer.innerHTML += `
                         <div class="preview-option-item ${isCorrect ? 'correct' : ''}">
-                            <div style="width: 24px; height: 24px; border-radius: 50%; background: ${isCorrect ? '#10b981' : 'rgba(255,255,255,0.1)'}; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 50%; background: ${isCorrect ? '#10b981' : 'rgba(255,255,255,0.1)'}; color: #0f172a; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">
                                 ${isCorrect ? '<i class="fas fa-check"></i>' : String.fromCharCode(65 + idx)}
                             </div>
                             <span>${opt}</span>

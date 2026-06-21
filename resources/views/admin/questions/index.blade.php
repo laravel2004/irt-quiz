@@ -157,7 +157,7 @@
         flex: 1;
         background: transparent;
         border: none;
-        color: white;
+        color: #0f172a;
         outline: none;
     }
     .mbs-toggle-group {
@@ -234,7 +234,7 @@
     .math-modal-header h3 {
         font-family: 'Outfit', sans-serif;
         font-size: 1.2rem;
-        color: white;
+        color: #0f172a;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -250,7 +250,7 @@
         cursor: pointer;
         transition: color 0.2s;
     }
-    .math-close-btn:hover { color: white; }
+    .math-close-btn:hover { color: #0f172a; }
 
     /* MathLive field styling */
     math-field {
@@ -262,7 +262,7 @@
         border: 2px solid rgba(255, 255, 255, 0.15);
         border-radius: 12px;
         padding: 16px;
-        color: white;
+        color: #0f172a;
         --caret-color: #3b82f6;
         --selection-background-color: rgba(59, 130, 246, 0.3);
         --contains-highlight-background-color: transparent;
@@ -300,7 +300,7 @@
     .math-quick-btn:hover {
         background: rgba(59, 130, 246, 0.15);
         border-color: var(--accent);
-        color: white;
+        color: #0f172a;
         transform: translateY(-1px);
     }
 
@@ -340,7 +340,7 @@
     }
     .math-insert-btn {
         background: linear-gradient(135deg, #3b82f6, #2563eb);
-        color: white;
+        color: #0f172a;
         border: none;
         padding: 14px 32px;
         border-radius: 12px;
@@ -533,7 +533,7 @@
             </div>
 
             <div class="flex-stack-mobile" style="display: flex; gap: 16px; margin-top: 32px; justify-content: flex-end; padding-top: 24px; border-top: 1px solid var(--glass-border);">
-                <button type="button" class="btn-primary" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-primary); min-width: 120px;" onclick="closeQuestionModal()">
+                <button type="button" class="btn-primary" style="background: #eff6ff; border: 1px solid var(--glass-border); color: var(--text-primary); min-width: 120px;" onclick="closeQuestionModal()">
                     <i class="fas fa-times"></i> Batal
                 </button>
                 <button type="submit" class="btn-primary" style="min-width: 180px; background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">
@@ -575,7 +575,7 @@
         </div>
         
         <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
-            <button class="btn-primary" onclick="closePreviewModal()" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white;">Tutup Preview</button>
+            <button class="btn-primary" onclick="closePreviewModal()" style="background: #eff6ff; border: 1px solid var(--glass-border); color: #0f172a;">Tutup Preview</button>
         </div>
     </div>
 </div>
@@ -601,7 +601,7 @@
         <!-- Visual Editor (MathLive) -->
         <div id="mathVisualMode">
             <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 12px;">
-                Ketik rumus langsung atau gunakan tombol cepat di bawah. Gunakan keyboard: <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">^</code> untuk pangkat, <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">/</code> untuk pecahan.
+                Ketik rumus langsung atau gunakan tombol cepat di bawah. Gunakan keyboard: <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">^</code> untuk pangkat, <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">/</code> untuk pecahan.
             </p>
             <math-field id="mathLiveField" virtual-keyboard-mode="manual"></math-field>
 
@@ -610,26 +610,26 @@
                 <span class="math-preview-label">Rumus Cepat</span>
             </div>
             <div class="math-quick-formulas">
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\frac{a}{b}')" title="Pecahan">⅟</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('x^{2}')" title="Pangkat">x²</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('x_{n}')" title="Subskrip">xₙ</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\sqrt{x}')" title="Akar">√x</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\sqrt[n]{x}')" title="Akar-n">ⁿ√x</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\sum_{i=1}^{n}')" title="Sigma">∑</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\int_{a}^{b}')" title="Integral">∫</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\frac{a}{b}')" title="Pecahan">â…Ÿ</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('x^{2}')" title="Pangkat">xÂ²</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('x_{n}')" title="Subskrip">xâ‚™</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\sqrt{x}')" title="Akar">âˆšx</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\sqrt[n]{x}')" title="Akar-n">â¿âˆšx</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\sum_{i=1}^{n}')" title="Sigma">âˆ‘</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\int_{a}^{b}')" title="Integral">âˆ«</button>
                 <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\lim_{x \\\\to \\\\infty}')" title="Limit">lim</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\pi')" title="Pi">π</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\alpha')" title="Alpha">α</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\beta')" title="Beta">β</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\theta')" title="Theta">θ</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\Delta')" title="Delta">Δ</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\pm')" title="Plus Minus">±</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\times')" title="Kali">×</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\div')" title="Bagi">÷</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\neq')" title="Tidak sama dengan">≠</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\leq')" title="Kurang sama dengan">≤</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\geq')" title="Lebih sama dengan">≥</button>
-                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\infty')" title="Infinity">∞</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\pi')" title="Pi">Ï€</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\alpha')" title="Alpha">Î±</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\beta')" title="Beta">Î²</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\theta')" title="Theta">Î¸</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\Delta')" title="Delta">Î”</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\pm')" title="Plus Minus">Â±</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\times')" title="Kali">Ã—</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\div')" title="Bagi">Ã·</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\neq')" title="Tidak sama dengan">â‰ </button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\leq')" title="Kurang sama dengan">â‰¤</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\geq')" title="Lebih sama dengan">â‰¥</button>
+                <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\infty')" title="Infinity">âˆž</button>
                 <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\log_{a}')" title="Logaritma">log</button>
                 <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\sin')" title="Sin">sin</button>
                 <button type="button" class="math-quick-btn" onclick="insertQuickFormula('\\\\cos')" title="Cos">cos</button>
@@ -711,7 +711,7 @@
             setup: function(editor) {
                 questionEditor = editor;
                 editor.ui.registry.addButton('mathBtn', {
-                    text: '∑ Math',
+                    text: 'âˆ‘ Math',
                     tooltip: 'Sisipkan Rumus Matematika',
                     onAction: function() {
                         activeMathTarget = editor;
@@ -742,7 +742,7 @@
             setup: function(editor) {
                 explanationEditor = editor;
                 editor.ui.registry.addButton('mathBtn', {
-                    text: '∑ Math',
+                    text: 'âˆ‘ Math',
                     tooltip: 'Sisipkan Rumus Matematika',
                     onAction: function() {
                         activeMathTarget = editor;
@@ -1156,7 +1156,7 @@
                     const isCorrect = q.correct_answer.includes(idx.toString());
                     optionsContainer.innerHTML += `
                         <div class="preview-option-item ${isCorrect ? 'correct' : ''}">
-                            <div style="width: 24px; height: 24px; border-radius: 50%; background: ${isCorrect ? '#10b981' : 'rgba(255,255,255,0.1)'}; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 50%; background: ${isCorrect ? '#10b981' : 'rgba(255,255,255,0.1)'}; color: #0f172a; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">
                                 ${isCorrect ? '<i class="fas fa-check"></i>' : String.fromCharCode(65 + idx)}
                             </div>
                             <span>${opt}</span>

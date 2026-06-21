@@ -5,7 +5,7 @@
 @section('content')
 <div class="container" style="padding: 40px 20px; max-width: 1000px; margin: 0 auto;">
     <div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
-        <a href="{{ route('participant.session.show', $registration->exam_session_id) }}" style="color: var(--text-secondary); text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+        <a href="{{ route('participant.session.show', $registration->exam_session_id) }}" style="color: #475569; text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
             <i class="fas fa-arrow-left"></i> Kembali ke Detail Sesi
         </a>
         <div style="text-align: right;">
@@ -42,8 +42,8 @@
 
     <!-- SCORE OVERVIEW -->
     <div class="glass animate-fade-in" style="padding: 32px; border-radius: 24px; text-align: center; margin-bottom: 32px; display: flex; flex-direction: column; align-items: center;">
-        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Total Skor Mentah (Raw Score)</div>
-        <div style="font-size: 3.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: white; line-height: 1;">
+        <div style="font-size: 0.85rem; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Total Skor Mentah (Raw Score)</div>
+        <div style="font-size: 3.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #0f172a; line-height: 1;">
             {{ $rawScore }}
         </div>
         
@@ -57,8 +57,8 @@
                 <div style="font-size: 1.25rem; font-weight: 700; color: #ef4444;">{{ $totalIncorrect }}</div>
             </div>
             <div style="text-align: center;">
-                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">KOSONG</div>
-                <div style="font-size: 1.25rem; font-weight: 700; color: white;">{{ $totalBlank }}</div>
+                <div style="font-size: 0.75rem; color: #475569; margin-bottom: 4px;">KOSONG</div>
+                <div style="font-size: 1.25rem; font-weight: 700; color: #0f172a;">{{ $totalBlank }}</div>
             </div>
         </div>
     </div>
@@ -66,10 +66,10 @@
     <!-- AI ANALYSIS -->
     <div class="glass animate-fade-in" style="padding: 32px; border-radius: 24px; margin-bottom: 32px; text-align: left;">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
-            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #8b5cf6, #d946ef); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #8b5cf6, #d946ef); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #0f172a;">
                 <i class="fas fa-robot"></i>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; margin: 0; color: white;">AI Smart Analysis</h3>
+            <h3 style="font-family: 'Outfit', sans-serif; margin: 0; color: #0f172a;">AI Smart Analysis</h3>
         </div>
 
         @if($registration->privilege === 'premium')
@@ -79,38 +79,38 @@
                     $analysis = is_string($aiData) ? json_decode($aiData, true) : $aiData; 
                 @endphp
                 <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
-                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #10b981; background: rgba(255,255,255,0.02);">
+                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #10b981; background: #ffffff;">
                         <h4 style="color: #10b981; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-plus-circle"></i> Kelebihan</h4>
-                        <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">{{ $analysis['kelebihan'] ?? '' }}</p>
+                        <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; margin: 0;">{{ $analysis['kelebihan'] ?? '' }}</p>
                     </div>
-                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444; background: rgba(255,255,255,0.02);">
+                    <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444; background: #ffffff;">
                         <h4 style="color: #ef4444; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-minus-circle"></i> Kekurangan</h4>
-                        <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">{{ $analysis['kekurangan'] ?? '' }}</p>
+                        <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; margin: 0;">{{ $analysis['kekurangan'] ?? '' }}</p>
                     </div>
                     <div style="padding: 20px; border-radius: 12px; border-left: 4px solid var(--accent); background: rgba(var(--accent-rgb), 0.05);">
                         <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-lightbulb"></i> Rekomendasi</h4>
-                        <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">{{ $analysis['rekomendasi'] ?? '' }}</p>
+                        <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; margin: 0;">{{ $analysis['rekomendasi'] ?? '' }}</p>
                     </div>
                 </div>
             @else
-                <div id="aiPlaceholder" style="text-align: center; padding: 40px; background: rgba(255,255,255,0.02); border: 1px dashed var(--glass-border); border-radius: 20px;">
-                    <p style="color: var(--text-secondary); margin-bottom: 24px;">Dapatkan analisis mendalam dari AI mengenai performa Anda secara otomatis.</p>
+                <div id="aiPlaceholder" style="text-align: center; padding: 40px; background: #ffffff; border: 1px dashed var(--glass-border); border-radius: 20px;">
+                    <p style="color: #475569; margin-bottom: 24px;">Dapatkan analisis mendalam dari AI mengenai performa Anda secara otomatis.</p>
                     <button onclick="generateAIAnalysis()" id="aiBtn" class="btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #d946ef); border: none;">
                         <i class="fas fa-sparkles"></i> Generate Analisis AI
                     </button>
                 </div>
                 <div id="aiLoading" style="display: none; text-align: center; padding: 40px;">
                     <div style="width: 50px; height: 50px; border: 3px solid rgba(139, 92, 246, 0.3); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-                    <p style="color: var(--text-secondary);">AI sedang menganalisis hasil Anda, mohon tunggu sebentar...</p>
+                    <p style="color: #475569;">AI sedang menganalisis hasil Anda, mohon tunggu sebentar...</p>
                 </div>
             @endif
         @else
-            <div style="text-align: center; padding: 40px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(234, 179, 8, 0.3); border-radius: 20px;">
+            <div style="text-align: center; padding: 40px; background: #ffffff; border: 1px dashed rgba(234, 179, 8, 0.3); border-radius: 20px;">
                 <div style="width: 60px; height: 60px; background: rgba(234, 179, 8, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
                     <i class="fas fa-lock" style="font-size: 1.5rem; color: #eab308;"></i>
                 </div>
-                <h4 style="color: white; margin-bottom: 8px;">Fitur Eksklusif Premium</h4>
-                <p style="color: var(--text-secondary); margin-bottom: 0;">Analisis AI hanya tersedia untuk peserta dengan akses Premium. Silakan hubungi Admin untuk upgrade akun Anda.</p>
+                <h4 style="color: #0f172a; margin-bottom: 8px;">Fitur Eksklusif Premium</h4>
+                <p style="color: #475569; margin-bottom: 0;">Analisis AI hanya tersedia untuk peserta dengan akses Premium. Silakan hubungi Admin untuk upgrade akun Anda.</p>
             </div>
         @endif
     </div>
@@ -136,7 +136,7 @@
     @endphp
 
     <div id="pembahasan-hub">
-        <h3 style="font-family: 'Outfit', sans-serif; color: white; margin-bottom: 24px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">Pilih Rincian Pembahasan per Mata Pelajaran</h3>
+        <h3 style="font-family: 'Outfit', sans-serif; color: #0f172a; margin-bottom: 24px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">Pilih Rincian Pembahasan per Mata Pelajaran</h3>
         
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 32px;">
             @foreach($questionsByCategory as $categoryId => $categoryQuestions)
@@ -162,7 +162,7 @@
                     $catIncorrect = $catAnswered - $catCorrect;
                     $catBlank = $catTotal - $catAnswered;
                 @endphp
-                <a href="{{ route('participant.review.category', [$registration->id, $categoryId]) }}" class="btn-primary" style="background: rgba(255, 255, 255, 0.03); color: white; border: 1px solid rgba(255, 255, 255, 0.1); padding: 20px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; transition: all 0.3s ease; text-decoration: none; border-radius: 16px; height: auto;">
+                <a href="{{ route('participant.review.category', [$registration->id, $categoryId]) }}" class="btn-primary" style="background: #f8fafc; color: #0f172a; border: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; transition: all 0.3s ease; text-decoration: none; border-radius: 16px; height: auto;">
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <span style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 600;">{{ $categoryName }}</span>
                         <span style="font-size: 1.2rem; font-weight: 700; color: var(--accent); font-family: 'Outfit', sans-serif;">{{ $catScore }}</span>
@@ -177,14 +177,14 @@
                             <div style="font-size: 0.65rem; color: #ef4444; margin-bottom: 4px;">SALAH</div>
                             <div style="font-size: 1rem; font-weight: 600; color: #ef4444;">{{ $catIncorrect }}</div>
                         </div>
-                        <div style="background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 8px; text-align: center;">
-                            <div style="font-size: 0.65rem; color: var(--text-secondary); margin-bottom: 4px;">KOSONG</div>
-                            <div style="font-size: 1rem; font-weight: 600; color: white;">{{ $catBlank }}</div>
+                        <div style="background: #eff6ff; padding: 8px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.65rem; color: #475569; margin-bottom: 4px;">KOSONG</div>
+                            <div style="font-size: 1rem; font-weight: 600; color: #0f172a;">{{ $catBlank }}</div>
                         </div>
                     </div>
                     
                     <div style="width: 100%; text-align: center; margin-top: 8px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Lihat Pembahasan <i class="fas fa-arrow-right" style="margin-left: 4px;"></i></span>
+                        <span style="font-size: 0.8rem; color: #475569;">Lihat Pembahasan <i class="fas fa-arrow-right" style="margin-left: 4px;"></i></span>
                     </div>
                 </a>
             @endforeach
@@ -219,8 +219,8 @@
                     icon: 'error',
                     title: 'Gagal',
                     text: data.message || 'Gagal generate analisis AI',
-                    background: 'rgba(15, 23, 42, 0.9)',
-                    color: '#fff',
+                    background: '#ffffff',
+                    color: '#0f172a',
                     confirmButtonColor: '#3b82f6'
                 });
                 placeholder.style.display = 'block';
@@ -233,8 +233,8 @@
                 icon: 'error',
                 title: 'Error sistem',
                 text: 'Terjadi kesalahan sistem, silakan coba lagi.',
-                background: 'rgba(15, 23, 42, 0.9)',
-                color: '#fff',
+                background: '#ffffff',
+                color: '#0f172a',
                 confirmButtonColor: '#3b82f6'
             });
             placeholder.style.display = 'block';
@@ -266,8 +266,8 @@
                 responsive: true, 
                 maintainAspectRatio: false,
                 plugins: { 
-                    title: { display: true, text: 'Grafik Mata Pelajaran (Utama)', color: '#fff', font: {size: 16, family: "'Outfit', sans-serif"} },
-                    legend: { labels: { color: '#fff' } }
+                    title: { display: true, text: 'Grafik Mata Pelajaran (Utama)', color: '#0f172a', font: {size: 16, family: "'Outfit', sans-serif"} },
+                    legend: { labels: { color: '#0f172a' } }
                 },
                 scales: {
                     y: { grid: { color: 'rgba(255, 255, 255, 0.1)' } },
@@ -310,8 +310,8 @@
                     responsive: true, 
                     maintainAspectRatio: false,
                     plugins: { 
-                        title: { display: true, text: 'Rincian Sub Bab: ' + mapelName, color: '#fff', font: {size: 16, family: "'Outfit', sans-serif"} },
-                        legend: { labels: { color: '#fff' } }
+                        title: { display: true, text: 'Rincian Sub Bab: ' + mapelName, color: '#0f172a', font: {size: 16, family: "'Outfit', sans-serif"} },
+                        legend: { labels: { color: '#0f172a' } }
                     },
                     scales: {
                         y: { grid: { color: 'rgba(255, 255, 255, 0.1)' } },
