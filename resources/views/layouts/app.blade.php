@@ -122,9 +122,33 @@
             z-index: 1000;
             padding: 20px;
         }
-        .modal-overlay.active { display: flex; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .close-modal { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; }
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+            height: 320px;
+        }
+
+        @media (max-width: 768px) {
+            .chart-wrap {
+                height: 240px;
+            }
+
+            .chart-legend-stack {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .chart-header-stack {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+            }
+
+            .chart-header-stack .badge {
+                white-space: normal !important;
+            }
+        }
     </style>
 </head>
 <body>

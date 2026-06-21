@@ -154,6 +154,7 @@ const scoreChartData = @json($scoreChartData);
 
 if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && scoreChartData.scores.length) {
     const chartContext = document.getElementById('scoreChart');
+    const isMobileChart = window.matchMedia('(max-width: 768px)').matches;
 
     new Chart(chartContext, {
         type: 'line',
@@ -166,9 +167,9 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
                 backgroundColor: 'rgba(59, 130, 246, 0.18)',
                 pointBackgroundColor: '#60a5fa',
                 pointBorderColor: '#ffffff',
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                borderWidth: 3,
+                pointRadius: isMobileChart ? 3 : 4,
+                pointHoverRadius: isMobileChart ? 5 : 6,
+                borderWidth: isMobileChart ? 2 : 3,
                 fill: true,
                 tension: 0.3,
             }]
@@ -178,15 +179,30 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
             maintainAspectRatio: false,
             plugins: {
                 legend: {
+                    display: !isMobileChart,
                     labels: {
                         color: '#334155'
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        }
                     }
                 }
             },
             scales: {
                 x: {
                     ticks: {
-                        color: '#475569'
+                        color: '#475569',
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: isMobileChart ? 4 : 8,
+                        callback: function(value) {
+                            const label = this.getLabelForValue(value);
+                            return isMobileChart && label.length > 8 ? label.slice(0, 8) + '...' : label;
+                        }
                     },
                     grid: {
                         color: 'rgba(148, 163, 184, 0.12)'
@@ -196,7 +212,8 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
                     beginAtZero: true,
                     suggestedMax: 100,
                     ticks: {
-                        color: '#475569'
+                        color: '#475569',
+                        maxTicksLimit: isMobileChart ? 5 : 8
                     },
                     grid: {
                         color: 'rgba(148, 163, 184, 0.12)'
