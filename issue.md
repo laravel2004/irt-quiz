@@ -1,607 +1,670 @@
-# Planning Implementasi Perubahan Tone UI ke Tema Putih Cerah
+﻿# Planning Implementasi Filter Mata Pelajaran di Menu Bank Soal
 
 ## Ringkasan Kebutuhan
 
-Project saat ini memiliki banyak halaman dengan tone gelap. Beberapa komponen seperti layout utama, card, modal, tombol, badge, SweetAlert, grafik, dan section dashboard masih menggunakan warna gelap atau transparansi gelap.
+Pada halaman admin Bank Soal `http://127.0.0.1:8000/admin/questions`, perlu ditambahkan fitur filter berdasarkan mata pelajaran.
 
-Kebutuhan baru adalah mengubah tone visual seluruh project menjadi tema putih cerah dengan warna utama:
+Saat ini halaman Bank Soal sudah menampilkan kolom `MATA PELAJARAN`, tetapi belum ada filter khusus untuk memilih mata pelajaran tertentu. Fitur yang perlu dibuat adalah dropdown filter agar admin bisa melihat daftar soal berdasarkan mata pelajaran yang dipilih.
 
-- Putih sebagai warna dasar halaman dan card.
-- Biru sebagai warna utama untuk action, link, highlight, dan elemen informatif.
-- Kuning sebagai warna aksen untuk premium, perhatian ringan, badge khusus, atau highlight tambahan.
-
-Dokumen ini berisi planning detail agar implementasi bisa dikerjakan oleh junior programmer atau AI model yang lebih murah secara bertahap dan aman.
+Dokumen ini berisi tahapan implementasi detail agar bisa dikerjakan oleh junior programmer atau AI model yang lebih murah secara aman dan bertahap.
 
 ## Tujuan Implementasi
 
-- Mengubah tampilan aplikasi dari dark tone menjadi light tone.
-- Membuat semua halaman terlihat konsisten dengan palet putih, biru, dan kuning.
-- Memastikan teks tetap mudah dibaca di background terang.
-- Memastikan SweetAlert, modal, card, form, tabel, tombol, dan grafik mengikuti tema baru.
-- Menghindari perubahan logic aplikasi. Fokus pekerjaan hanya pada UI dan styling.
+- Menambahkan filter `Mata Pelajaran` pada halaman Bank Soal admin.
+- Filter mengambil data dari tabel/model `Category` yang sudah digunakan sebagai mata pelajaran.
+- Saat admin memilih mata pelajaran, tabel hanya menampilkan soal dari mata pelajaran tersebut.
+- Filter harus tetap kompatibel dengan pagination.
+- Filter harus mempertahankan nilai yang dipilih setelah halaman reload atau pindah pagination.
+- Tidak mengubah fitur tambah, edit, preview, hapus, dan search existing kecuali memang diperlukan untuk integrasi filter.
 
-## Ruang Lingkup
+## Lokasi Halaman
 
-Yang perlu diperhatikan dan dikerjakan:
+Halaman target:
 
-1. Semua page yang ada di project.
-2. Layout utama aplikasi peserta dan admin.
-3. Component seperti card, glass effect, button, badge, alert, modal, table, form, dan chart.
-4. SweetAlert atau popup lain yang muncul dari JavaScript.
-5. Inline style yang masih memakai warna gelap.
-6. CSS variable atau global style yang menjadi dasar tema.
-7. Responsiveness desktop dan mobile.
+```text
+/admin/questions
+```
 
-Yang tidak perlu dikerjakan:
+Route terkait:
 
-- Mengubah database.
-- Mengubah alur login, ujian, hasil, atau admin.
-- Mengubah controller atau service kecuali ada data style yang hardcoded dari backend.
-- Mengganti framework CSS.
-- Membuat fitur dark mode toggle, kecuali diminta kemudian.
+```php
+Route::resource('/admin/questions', \App\Http\Controllers\Admin\QuestionBankController::class)->names('admin.questions');
+```
 
-## Warna Tema yang Disarankan
+File utama yang perlu diperhatikan:
 
-Gunakan warna berikut sebagai panduan utama. Jika project sudah punya CSS variable, simpan warna ini sebagai variable global.
+- `routes/web.php`
+- `app/Http/Controllers/Admin/QuestionBankController.php`
+- `app/Services/QuestionBankService.php`
+- `app/Repositories/QuestionBankRepository.php`
+- `app/Models/QuestionBank.php`
+- `app/Models/Category.php`
+- `resources/views/admin/questions/index.blade.php`
 
-### Warna Dasar
+## Kondisi Kode Saat Ini
 
-- Background utama: `#f8fafc` atau `#ffffff`
-- Background card: `#ffffff`
-- Border lembut: `#e2e8f0`
-- Text utama: `#0f172a`
-- Text secondary: `#475569`
-- Text muted: `#64748b`
+### Controller
 
-### Warna Biru
+Di `QuestionBankController@index`, data soal saat ini diambil dengan:
 
-- Primary blue: `#2563eb`
-- Primary blue hover: `#1d4ed8`
-- Blue soft background: `#dbeafe`
-- Blue border: `#93c5fd`
+```php
+$questions = $this->questionService->getPaginated(10);
+$categories = Category::all();
+```
 
-### Warna Kuning
+Kemudian dikirim ke view:
 
-- Accent yellow: `#facc15`
-- Yellow hover: `#eab308`
-- Yellow soft background: `#fef9c3`
-- Yellow border: `#fde047`
-- Yellow text gelap: `#854d0e`
+```php
+return view('admin.questions.index', compact('questions', 'categories'));
+```
 
-### Warna Status Tambahan
+Artinya:
 
-Tetap boleh menggunakan warna status berikut agar user mudah memahami kondisi:
+- Data kategori/mata pelajaran sudah tersedia di view sebagai `$categories`.
+- Namun query soal belum membaca parameter filter dari request.
 
-- Success: `#16a34a`
-- Danger: `#dc2626`
-- Warning: `#f59e0b`
-- Info: `#2563eb`
+### Repository
 
-## Prinsip Desain yang Harus Diikuti
+Di `QuestionBankRepository`, method `paginate()` saat ini mengambil semua soal:
 
-- Gunakan background putih atau sangat terang untuk halaman.
-- Gunakan card putih dengan border tipis dan shadow lembut.
-- Hindari warna teks putih di atas background putih.
-- Hindari background hitam, navy gelap, atau transparansi gelap.
-- Gunakan biru untuk tombol utama dan link penting.
-- Gunakan kuning untuk badge premium, highlight, atau elemen aksen.
-- Pastikan semua teks punya kontras yang cukup.
-- Jangan mengubah struktur HTML besar-besaran jika tidak perlu.
-- Prioritaskan perubahan di CSS variable/global style agar tidak perlu edit terlalu banyak file.
+```php
+return $this->model->with(['category', 'subCategory'])->latest()->paginate($perPage);
+```
+
+Artinya:
+
+- Query sudah eager load relasi `category` dan `subCategory`.
+- Belum ada kondisi `where('category_id', ...)`.
+
+### View
+
+Di `resources/views/admin/questions/index.blade.php`, sudah ada area search dan tombol tambah soal. Filter mata pelajaran paling cocok ditambahkan di area header ini, dekat input pencarian.
+
+Kolom tabel sudah menampilkan mata pelajaran lewat:
+
+```php
+{{ $question->category->name }}
+```
+
+Artinya data relasi mata pelajaran sudah dipakai dan tidak perlu dibuat dari nol.
+
+## Definisi Fitur yang Diinginkan
+
+Tambahkan dropdown filter dengan pilihan:
+
+- `Semua Mata Pelajaran`
+- daftar mata pelajaran dari `$categories`
+
+Contoh parameter URL:
+
+```text
+/admin/questions?category_id=3
+```
+
+Jika memilih `Semua Mata Pelajaran`, URL kembali ke:
+
+```text
+/admin/questions
+```
+
+Jika user sedang di halaman pagination, link pagination harus tetap membawa filter:
+
+```text
+/admin/questions?category_id=3&page=2
+```
 
 ## Tahapan Implementasi
 
-### 1. Audit Semua Halaman Project
+### 1. Pahami Relasi Data
 
-Sebelum mengubah style, lakukan audit halaman yang ada di project.
+Sebelum coding, pastikan struktur data berikut sudah benar:
 
-Cari file view di folder:
+- `QuestionBank` memiliki kolom `category_id`.
+- `QuestionBank` memiliki relasi `category()` ke model `Category`.
+- `Category` memiliki field nama, kemungkinan `name`.
+- View Bank Soal sudah menerima `$categories` dari controller.
 
-- `resources/views`
-- `resources/views/layouts`
-- `resources/views/participant`
-- `resources/views/admin`
-- folder view lain jika ada
+Checklist tahap ini:
 
-Hal yang perlu dicatat:
+- Buka `app/Models/QuestionBank.php`.
+- Pastikan ada relasi `category()`.
+- Buka `app/Models/Category.php`.
+- Pastikan nama mata pelajaran bisa ditampilkan dengan `$category->name`.
+- Jangan membuat tabel atau migration baru karena data mata pelajaran sudah ada.
 
-- Layout utama yang dipakai peserta.
-- Layout utama yang dipakai admin.
-- Halaman login/register.
-- Dashboard peserta.
-- Detail sesi ujian.
-- Halaman ujian.
-- Halaman hasil ujian.
-- Halaman review.
-- Halaman statistik.
-- Halaman admin dashboard.
-- Halaman admin sesi.
-- Halaman admin peserta.
-- Halaman kategori, subkategori, soal, atau page admin lain.
+### 2. Tentukan Cara Filter
 
-Output dari tahap ini:
+Gunakan server-side filter, bukan hanya JavaScript client-side.
 
-- Daftar file view yang perlu dicek.
-- Mengetahui file CSS global atau layout yang mengatur tema utama.
-- Mengetahui halaman mana yang punya banyak inline style gelap.
+Alasannya:
 
-### 2. Cari Sumber Style Global
+- Data Bank Soal memakai pagination.
+- Jika filter hanya dilakukan di JavaScript, yang terfilter hanya data pada halaman pagination saat ini.
+- Server-side filter lebih benar karena query database langsung dibatasi berdasarkan `category_id`.
 
-Cari style utama yang mengatur warna aplikasi.
+Format request yang disarankan:
+
+```text
+GET /admin/questions?category_id=ID_KATEGORI
+```
+
+Contoh:
+
+```text
+GET /admin/questions?category_id=2
+```
+
+### 3. Update Repository agar Mendukung Filter
+
+File yang perlu diubah:
+
+```text
+app/Repositories/QuestionBankRepository.php
+```
+
+Saat ini method `paginate()` hanya menerima `$perPage`.
+
+Ubah agar bisa menerima parameter filter opsional. Contoh pendekatan:
+
+```php
+public function paginate(int $perPage = 10, array $filters = [])
+{
+    $query = $this->model->with(['category', 'subCategory'])->latest();
+
+    if (!empty($filters['category_id'])) {
+        $query->where('category_id', $filters['category_id']);
+    }
+
+    return $query->paginate($perPage);
+}
+```
+
+Catatan penting:
+
+- Jangan menghapus eager load `with(['category', 'subCategory'])`.
+- Jangan mengubah urutan `latest()` kecuali ada kebutuhan lain.
+- Gunakan filter hanya jika `category_id` tidak kosong.
+- Jangan langsung memasukkan semua request ke query tanpa validasi.
+
+### 4. Update Service bila Diperlukan
 
 File yang perlu dicek:
 
-- `resources/views/layouts/app.blade.php`
-- `resources/views/layouts/admin.blade.php`
-- `resources/css/app.css`
-- `resources/js/app.js`
-- file CSS lain di `public` atau `resources`
-- inline `<style>` di file Blade
+```text
+app/Services/QuestionBankService.php
+```
 
-Cari variable atau class seperti:
+Saat ini `QuestionBankService` mewarisi behavior dari `BaseService`. Perlu dicek apakah `getPaginated(10)` bisa meneruskan filter atau tidak.
 
-- `--bg-primary`
-- `--bg-secondary`
-- `--text-primary`
-- `--text-secondary`
-- `--glass-bg`
-- `--glass-border`
-- `.glass`
-- `.btn-primary`
-- `.badge`
-- `.modal`
-- `.card`
+Ada dua opsi implementasi.
 
-Output dari tahap ini:
+#### Opsi A: Tambahkan Method Khusus di Service
 
-- Menentukan apakah tema bisa diubah dari satu tempat global.
-- Menentukan file mana yang menjadi prioritas pertama.
+Ini opsi yang disarankan karena jelas dan aman untuk junior programmer.
 
-### 3. Ubah CSS Variable Global ke Tema Light
+Tambahkan method seperti:
 
-Jika project menggunakan CSS variable, ubah variable global terlebih dahulu.
-
-Contoh target variable:
-
-```css
-:root {
-    --bg-primary: #f8fafc;
-    --bg-secondary: #ffffff;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
-    --accent: #facc15;
-    --glass-bg: #ffffff;
-    --glass-border: #e2e8f0;
+```php
+public function getPaginatedWithFilters(int $perPage = 10, array $filters = [])
+{
+    return $this->repository->paginate($perPage, $filters);
 }
 ```
 
-Jika nama variable berbeda, sesuaikan dengan project sebenarnya.
+Lalu controller memanggil method ini.
 
-Hal penting:
+Kelebihan:
 
-- Jangan membuat variable baru berlebihan jika variable lama bisa dipakai.
-- Pastikan `body` menggunakan background terang.
-- Pastikan teks default menggunakan warna gelap.
-- Pastikan link dan tombol masih terlihat jelas.
+- Tidak mengganggu method `getPaginated()` yang mungkin dipakai fitur lain.
+- Perubahan lebih eksplisit.
 
-Output dari tahap ini:
+#### Opsi B: Ubah BaseService
 
-- Sebagian besar halaman otomatis berubah menjadi terang.
-- Komponen yang memakai variable global ikut berubah.
+Jangan pilih opsi ini kecuali benar-benar paham dampaknya.
 
-### 4. Ubah Komponen Card dan Glass Effect
+Mengubah `BaseService` bisa memengaruhi fitur lain yang memakai service/repository lain.
 
-Project kemungkinan memakai class seperti `glass` untuk efek dark glassmorphism. Pada tema terang, efek ini perlu disesuaikan.
+### 5. Update Controller untuk Membaca Filter
 
-Rekomendasi style baru:
+File yang perlu diubah:
 
-```css
-.glass {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+```text
+app/Http/Controllers/Admin/QuestionBankController.php
+```
+
+Di method `index(Request $request)`, ambil parameter `category_id` dari query string.
+
+Contoh implementasi:
+
+```php
+public function index(Request $request)
+{
+    $filters = [
+        'category_id' => $request->query('category_id'),
+    ];
+
+    $questions = $this->questionService->getPaginatedWithFilters(10, $filters);
+    $categories = Category::all();
+
+    if ($request->ajax()) {
+        return $this->successResponse($questions);
+    }
+
+    return view('admin.questions.index', compact('questions', 'categories', 'filters'));
 }
 ```
 
-Hindari:
+Hal yang perlu diperhatikan:
 
-```css
-background: rgba(15, 23, 42, 0.8);
-color: white;
-border: 1px solid rgba(255,255,255,0.1);
-```
+- Kirim `$filters` ke view agar dropdown bisa menandai pilihan aktif.
+- Jika `category_id` kosong, tampilkan semua soal.
+- Sebaiknya validasi ringan dilakukan agar `category_id` hanya dipakai jika ada di tabel `categories`.
 
-Checklist:
+Rekomendasi validasi ringan:
 
-- Card dashboard terlihat putih.
-- Card admin terlihat putih.
-- Border tidak terlalu tebal.
-- Shadow lembut dan tidak berlebihan.
-- Hover card tetap terasa tapi tidak gelap.
+```php
+$categoryId = $request->query('category_id');
 
-Output dari tahap ini:
-
-- Semua card utama terlihat cocok dengan tema putih cerah.
-
-### 5. Ubah Button, Link, dan Badge
-
-Tombol utama sebaiknya menggunakan biru.
-
-Rekomendasi tombol utama:
-
-```css
-.btn-primary {
-    background: #2563eb;
-    color: #ffffff;
-    border: 1px solid #2563eb;
-}
-
-.btn-primary:hover {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
+if ($categoryId && !Category::whereKey($categoryId)->exists()) {
+    $categoryId = null;
 }
 ```
 
-Untuk tombol premium atau aksen:
+Dengan begitu, jika user membuka URL `/admin/questions?category_id=999999`, aplikasi tidak error dan bisa kembali menampilkan semua data.
 
-```css
-.btn-accent {
-    background: #facc15;
-    color: #0f172a;
-    border: 1px solid #eab308;
-}
+### 6. Tambahkan Dropdown Filter di View
+
+File yang perlu diubah:
+
+```text
+resources/views/admin/questions/index.blade.php
 ```
 
-Badge premium:
+Tambahkan `<select>` di area header, dekat input search `Cari soal...`.
 
-```css
-.badge-premium {
-    background: #fef9c3;
-    color: #854d0e;
-    border: 1px solid #fde047;
-}
+Saat ini ada struktur kurang lebih seperti:
+
+```html
+<div class="flex-stack-mobile" style="display: flex; gap: 16px;">
+    <div style="position: relative; width: 300px;">
+        <input type="text" id="searchInput" ...>
+    </div>
+    <button class="btn-primary" onclick="openQuestionModal('create')">...</button>
+</div>
 ```
 
-Checklist:
-
-- Tombol primary biru dengan teks putih.
-- Tombol danger tetap merah.
-- Tombol success tetap hijau jika memang status berhasil.
-- Badge premium kuning.
-- Badge aktif bisa menggunakan biru atau hijau.
-- Link tidak memakai warna abu gelap yang sulit dibaca.
-
-Output dari tahap ini:
-
-- Action utama di semua halaman terlihat konsisten.
-
-### 6. Audit Inline Style Gelap di Blade
-
-Banyak halaman mungkin memakai inline style seperti:
-
-- `color: white`
-- `background: rgba(15, 23, 42, ...)`
-- `background: rgba(0,0,0,...)`
-- `border: 1px solid rgba(255,255,255,...)`
-- `color: #fff`
-- `background: #0f172a`
-- `background: #111827`
-
-Gunakan search global untuk mencari warna gelap:
-
-```bash
-rg "color:\s*white|#fff|#0f172a|#111827|rgba\(0,0,0|rgba\(15, 23, 42|rgba\(255,255,255" resources/views resources/css public
-```
-
-Untuk setiap hasil:
-
-- Ganti `color: white` menjadi `color: var(--text-primary)` jika background terang.
-- Ganti background gelap menjadi putih atau biru soft.
-- Ganti border putih transparan menjadi `#e2e8f0`.
-- Jangan asal hapus style jika style tersebut masih dibutuhkan untuk status tertentu.
-
-Output dari tahap ini:
-
-- Inline style gelap utama sudah diganti.
-- Teks tetap terbaca setelah background berubah terang.
-
-### 7. Ubah SweetAlert ke Tema Light
-
-Cari semua pemanggilan SweetAlert, biasanya menggunakan `Swal.fire`.
-
-Search:
-
-```bash
-rg "Swal\.fire|sweetalert|SweetAlert" resources/views resources/js public
-```
-
-Jika ada konfigurasi seperti:
-
-```js
-background: 'rgba(15, 23, 42, 0.95)',
-color: '#fff'
-```
-
-ubah menjadi:
-
-```js
-background: '#ffffff',
-color: '#0f172a',
-confirmButtonColor: '#2563eb',
-cancelButtonColor: '#dc2626'
-```
-
-Untuk alert premium atau warning, gunakan kuning sebagai aksen:
-
-```js
-confirmButtonColor: '#facc15'
-```
-
-Tetapi pastikan teks tombol tetap terbaca. Jika tombol kuning, teks sebaiknya gelap.
-
-Checklist SweetAlert:
-
-- Background popup putih.
-- Teks popup gelap.
-- Tombol confirm dominan biru.
-- Tombol cancel merah atau abu.
-- Tidak ada popup dengan teks putih di background putih.
-- Semua popup di halaman peserta dan admin sudah dicek.
-
-Output dari tahap ini:
-
-- SweetAlert konsisten dengan tema light.
-
-### 8. Ubah Modal dan Overlay
-
-Modal saat ini mungkin memakai overlay gelap. Overlay masih boleh gelap transparan agar fokus ke modal, tetapi isi modal harus putih.
-
-Rekomendasi:
-
-- Overlay: `rgba(15, 23, 42, 0.45)`
-- Modal content: `#ffffff`
-- Modal title: `#0f172a`
-- Modal description: `#475569`
-- Modal border: `#e2e8f0`
-
-Jika modal header memakai gradient gelap, ubah ke biru atau kombinasi biru-kuning yang soft.
-
-Output dari tahap ini:
-
-- Modal terlihat terang dan tetap fokus.
-- Konten modal mudah dibaca.
-
-### 9. Ubah Form dan Input
-
-Pastikan semua input terlihat jelas di tema putih.
-
-Rekomendasi input:
-
-```css
-input,
-select,
-textarea {
-    background: #ffffff;
-    color: #0f172a;
-    border: 1px solid #cbd5e1;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-```
-
-Checklist:
-
-- Placeholder tidak terlalu terang.
-- Text input terlihat jelas.
-- Select dropdown terlihat jelas.
-- Textarea admin dan form soal tetap nyaman digunakan.
-- Error validation tetap merah dan jelas.
-
-Output dari tahap ini:
-
-- Semua form bisa dipakai dengan nyaman di tema light.
-
-### 10. Ubah Table dan Admin Page
-
-Halaman admin biasanya banyak memakai tabel. Pastikan tabel mengikuti tema terang.
-
-Rekomendasi:
-
-- Header table: biru soft atau abu sangat terang.
-- Row background: putih.
-- Border row: `#e2e8f0`.
-- Hover row: `#f1f5f9`.
-- Text: `#0f172a`.
-
-Checklist admin:
-
-- Dashboard admin terbaca.
-- Tabel sesi ujian terbaca.
-- Tabel peserta terbaca.
-- Tabel soal terbaca.
-- Action edit/delete tetap jelas.
-- Badge status tetap jelas.
-
-Output dari tahap ini:
-
-- Admin panel tidak lagi terlihat gelap.
-
-### 11. Ubah Halaman Ujian
-
-Halaman ujian sangat penting karena user harus fokus mengerjakan soal.
-
-Checklist halaman ujian:
-
-- Background utama putih atau `#f8fafc`.
-- Container soal putih.
-- Teks soal gelap dan jelas.
-- Opsi jawaban mudah dibaca.
-- Opsi terpilih menggunakan biru soft atau kuning soft.
-- Tombol next/submit menggunakan biru.
-- Timer tetap terlihat jelas.
-- Warning waktu hampir habis tetap terlihat jelas.
-
-Output dari tahap ini:
-
-- Halaman ujian nyaman dipakai dan tidak membuat mata lelah.
-
-### 12. Ubah Chart dan Grafik
-
-Jika ada grafik, pastikan warna axis dan label cocok dengan tema terang.
-
-Rekomendasi Chart.js:
-
-```js
-ticks: {
-    color: '#475569'
-},
-grid: {
-    color: 'rgba(148, 163, 184, 0.25)'
-}
-```
-
-Dataset:
-
-- Garis utama: biru `#2563eb`
-- Fill biru soft: `rgba(37, 99, 235, 0.12)`
-- Dataset aksen: kuning `#facc15`
-
-Checklist:
-
-- Label grafik terbaca.
-- Grid tidak terlalu gelap.
-- Legend tidak memakai warna putih.
-- Tooltip tetap terbaca.
-
-Output dari tahap ini:
-
-- Grafik selaras dengan tema putih-biru-kuning.
-
-### 13. Periksa Semua Page Secara Manual
-
-Setelah perubahan CSS dan inline style, buka semua halaman utama secara manual.
-
-Minimal halaman yang harus dicek:
-
-- Login.
-- Dashboard peserta.
-- Detail sesi peserta.
-- Halaman term.
-- Halaman ujian.
-- Halaman hasil.
-- Halaman review.
-- Statistik peserta.
-- Dashboard admin.
-- List sesi admin.
-- Form buat/edit sesi.
-- Halaman peserta admin.
-- Halaman kategori dan soal.
-
-Untuk setiap halaman, cek:
-
-- Background sudah terang.
-- Teks terbaca.
-- Button terlihat jelas.
-- Card tidak gelap.
-- Modal tidak gelap.
-- SweetAlert tidak gelap.
-- Mobile layout tetap rapi.
-
-Output dari tahap ini:
-
-- Daftar halaman yang sudah OK.
-- Daftar halaman yang masih perlu perbaikan kecil.
-
-### 14. Testing Interaksi Popup dan Modal
-
-Jangan hanya melihat halaman statis. Test juga interaksi.
-
-Yang perlu dicoba:
-
-- Logout confirmation jika ada.
-- Retake confirmation.
-- Delete confirmation di admin.
-- Submit ujian confirmation.
-- Modal analisis AI.
-- Modal import/export jika ada.
-- Alert error dan success.
-
-Output dari tahap ini:
-
-- Semua SweetAlert dan modal tampil dengan tema light.
-- Tidak ada popup dengan warna dark lama.
-
-### 15. Cleanup dan Konsistensi
-
-Setelah semua halaman selesai, lakukan cleanup.
-
-Checklist cleanup:
-
-- Tidak ada style gelap yang tidak sengaja tertinggal.
-- Tidak ada duplikasi CSS berlebihan.
-- Variable warna digunakan konsisten.
-- Inline style yang sulit dirawat dikurangi jika memungkinkan.
-- Tidak ada perubahan logic bisnis.
-- Tidak ada perubahan route atau database.
-
-Search akhir yang disarankan:
-
-```bash
-rg "color:\s*white|#fff|#0f172a|#111827|#020617|rgba\(0,0,0|rgba\(15, 23, 42|background:\s*black" resources/views resources/css public
+Tambahkan dropdown sebelum search atau sesudah search. Contoh:
+
+```blade
+<form method="GET" action="{{ route('admin.questions.index') }}" style="display: flex; gap: 12px; align-items: center; margin: 0;">
+    <select name="category_id" class="form-input" onchange="this.form.submit()" style="width: 220px; margin-bottom: 0;">
+        <option value="">Semua Mata Pelajaran</option>
+        @foreach($categories as $category)
+            <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
+                {{ $category->name }}
+            </option>
+        @endforeach
+    </select>
+</form>
 ```
 
 Catatan:
 
-- Tidak semua hasil harus dihapus. Contohnya `color: white` masih boleh dipakai untuk teks di tombol biru.
-- Evaluasi setiap hasil berdasarkan konteks.
+- Gunakan method `GET` agar filter muncul di URL.
+- Gunakan `onchange="this.form.submit()"` agar user tidak perlu klik tombol filter.
+- Pastikan style tidak merusak layout mobile.
+- Jangan memberi `id="searchInput"` ke dropdown karena ID tersebut sudah dipakai untuk pencarian soal.
 
-## Urutan Kerja yang Disarankan
+### 7. Pastikan Search Existing Tetap Berjalan
 
-1. Audit semua file view dan CSS.
-2. Ubah variable/global theme terlebih dahulu.
-3. Ubah layout utama peserta dan admin.
-4. Ubah komponen umum seperti `.glass`, `.btn-primary`, `.badge`, form, table.
-5. Ubah inline style gelap di halaman peserta.
-6. Ubah inline style gelap di halaman admin.
-7. Ubah SweetAlert dan modal.
-8. Ubah grafik dan chart.
-9. Test manual semua halaman utama.
-10. Cleanup style yang masih tidak konsisten.
+Di view saat ini ada input:
+
+```html
+<input type="text" id="searchInput" class="form-input" placeholder="Cari soal...">
+```
+
+Kemungkinan ada JavaScript yang melakukan search client-side berdasarkan isi tabel.
+
+Setelah menambah filter:
+
+- Jangan menghapus `id="searchInput"`.
+- Jangan mengubah struktur tabel secara besar-besaran.
+- Pastikan search tetap bisa menyaring baris yang sedang tampil.
+- Filter mata pelajaran bekerja dari server, search bekerja di halaman hasil saat ini.
+
+Catatan untuk implementer:
+
+- Search client-side dan filter server-side boleh berjalan berdampingan.
+- Jika search diketik setelah filter mata pelajaran dipilih, search hanya mencari di data soal yang sudah difilter pada halaman tersebut.
+
+### 8. Preserve Filter di Pagination
+
+Ini bagian penting.
+
+Jika pagination tidak diupdate, saat user klik halaman 2 filter bisa hilang.
+
+Di view saat ini kemungkinan pagination seperti:
+
+```blade
+{{ $questions->links() }}
+```
+
+Ubah menjadi:
+
+```blade
+{{ $questions->appends(request()->query())->links() }}
+```
+
+Tujuannya:
+
+- Semua query string aktif, termasuk `category_id`, tetap ikut di link pagination.
+- Contoh link menjadi `/admin/questions?category_id=3&page=2`.
+
+Checklist:
+
+- Pilih mata pelajaran.
+- Klik page 2.
+- Pastikan dropdown masih memilih mata pelajaran yang sama.
+- Pastikan data masih terfilter.
+
+### 9. Tambahkan Tombol Reset Opsional
+
+Tombol reset tidak wajib, tapi disarankan agar UX lebih jelas.
+
+Jika ingin ditambahkan, letakkan dekat dropdown filter.
+
+Contoh:
+
+```blade
+@if(request('category_id'))
+    <a href="{{ route('admin.questions.index') }}" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center;">
+        Reset
+    </a>
+@endif
+```
+
+Catatan:
+
+- Pastikan class `btn-secondary` memang ada. Jika tidak ada, gunakan style sederhana yang konsisten dengan UI existing.
+- Reset harus menghapus query `category_id`.
+
+### 10. Tampilkan State Kosong yang Jelas
+
+Saat filter dipilih tapi tidak ada soal, pesan kosong saat ini kemungkinan:
+
+```text
+Belum ada soal.
+```
+
+Boleh ditingkatkan agar lebih informatif:
+
+```blade
+@if(request('category_id'))
+    Tidak ada soal untuk mata pelajaran yang dipilih.
+@else
+    Belum ada soal.
+@endif
+```
+
+Tujuannya agar admin tahu bahwa data kosong karena filter, bukan karena Bank Soal benar-benar kosong.
+
+### 11. Validasi Manual
+
+Setelah implementasi, lakukan testing manual di browser.
+
+Skenario yang wajib diuji:
+
+1. Buka `/admin/questions` tanpa filter.
+   - Semua soal tampil.
+   - Dropdown menampilkan `Semua Mata Pelajaran`.
+
+2. Pilih salah satu mata pelajaran.
+   - URL berubah menjadi `/admin/questions?category_id=...`.
+   - Tabel hanya menampilkan soal dari mata pelajaran tersebut.
+   - Dropdown tetap memilih mata pelajaran yang dipilih.
+
+3. Klik pagination setelah filter aktif.
+   - Query `category_id` tetap ada di URL.
+   - Data tetap terfilter.
+   - Dropdown tetap sesuai.
+
+4. Pilih `Semua Mata Pelajaran`.
+   - Filter hilang atau `category_id` kosong.
+   - Semua soal tampil kembali.
+
+5. Gunakan search setelah filter aktif.
+   - Search tetap berjalan pada data yang sedang tampil.
+   - Tidak ada error JavaScript di console.
+
+6. Klik Tambah Soal.
+   - Modal tambah soal tetap terbuka.
+   - Dropdown dalam modal tambah soal tetap berjalan.
+   - Fitur sub kategori dan kode soal tidak rusak.
+
+7. Klik Edit, Preview, dan Delete.
+   - Semua action tetap berjalan seperti sebelumnya.
+
+### 12. Testing dengan Data Tidak Valid
+
+Uji URL manual:
+
+```text
+/admin/questions?category_id=999999
+/admin/questions?category_id=abc
+```
+
+Expected result:
+
+- Aplikasi tidak error.
+- Halaman tetap bisa dibuka.
+- Filter invalid diabaikan atau kembali ke semua soal.
+
+Jika terjadi error SQL atau exception, perbaiki validasi controller.
+
+### 13. Perintah Cek yang Disarankan
+
+Gunakan perintah berikut untuk mencari lokasi kode terkait:
+
+```bash
+rg "QuestionBankController|admin.questions|questions->links|searchInput|Category::all" app resources routes
+```
+
+Jika project menggunakan Laravel Pint atau test suite, jalankan sesuai setup project. Minimal cek syntax PHP:
+
+```bash
+php -l app/Http/Controllers/Admin/QuestionBankController.php
+php -l app/Repositories/QuestionBankRepository.php
+php -l app/Services/QuestionBankService.php
+```
+
+Jika ingin menjalankan server lokal:
+
+```bash
+php artisan serve
+```
+
+Lalu buka:
+
+```text
+http://127.0.0.1:8000/admin/questions
+```
+
+## Rekomendasi Bentuk Perubahan Kode
+
+### Repository
+
+Target perubahan:
+
+```text
+app/Repositories/QuestionBankRepository.php
+```
+
+Ubah method `paginate()` agar menerima `$filters`.
+
+Contoh final yang diharapkan:
+
+```php
+public function paginate(int $perPage = 10, array $filters = [])
+{
+    $query = $this->model->with(['category', 'subCategory'])->latest();
+
+    if (!empty($filters['category_id'])) {
+        $query->where('category_id', $filters['category_id']);
+    }
+
+    return $query->paginate($perPage);
+}
+```
+
+### Service
+
+Target perubahan:
+
+```text
+app/Services/QuestionBankService.php
+```
+
+Tambahkan method khusus:
+
+```php
+public function getPaginatedWithFilters(int $perPage = 10, array $filters = [])
+{
+    return $this->repository->paginate($perPage, $filters);
+}
+```
+
+### Controller
+
+Target perubahan:
+
+```text
+app/Http/Controllers/Admin/QuestionBankController.php
+```
+
+Update method `index()` agar membaca `category_id`.
+
+Contoh:
+
+```php
+public function index(Request $request)
+{
+    $categoryId = $request->query('category_id');
+
+    if ($categoryId && !Category::whereKey($categoryId)->exists()) {
+        $categoryId = null;
+    }
+
+    $filters = [
+        'category_id' => $categoryId,
+    ];
+
+    $questions = $this->questionService->getPaginatedWithFilters(10, $filters);
+    $categories = Category::all();
+
+    if ($request->ajax()) {
+        return $this->successResponse($questions);
+    }
+
+    return view('admin.questions.index', compact('questions', 'categories', 'filters'));
+}
+```
+
+### View
+
+Target perubahan:
+
+```text
+resources/views/admin/questions/index.blade.php
+```
+
+Tambahkan dropdown filter di area header.
+
+Contoh:
+
+```blade
+<form method="GET" action="{{ route('admin.questions.index') }}" style="display: flex; gap: 12px; align-items: center; margin: 0;">
+    <select name="category_id" class="form-input" onchange="this.form.submit()" style="width: 220px; margin-bottom: 0;">
+        <option value="">Semua Mata Pelajaran</option>
+        @foreach($categories as $category)
+            <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
+                {{ $category->name }}
+            </option>
+        @endforeach
+    </select>
+</form>
+```
+
+Update pagination:
+
+```blade
+{{ $questions->appends(request()->query())->links() }}
+```
 
 ## Acceptance Criteria
 
 Fitur dianggap selesai jika semua poin berikut terpenuhi:
 
-- Semua halaman utama tidak lagi menggunakan tone gelap sebagai tema dominan.
-- Background halaman menggunakan putih atau warna sangat terang.
-- Card dan container utama menggunakan putih dengan border/shadow lembut.
-- Warna utama action adalah biru.
-- Warna aksen utama adalah kuning.
-- Badge premium menggunakan nuansa kuning.
-- SweetAlert menggunakan background putih dan teks gelap.
-- Modal content menggunakan background putih dan teks gelap.
-- Form dan table terbaca jelas.
-- Grafik menggunakan warna label yang cocok untuk background terang.
-- Tidak ada teks putih di atas background putih.
-- Tidak ada teks gelap di atas background gelap yang tersisa dari tema lama.
-- Tampilan mobile tetap rapi.
-- Tidak ada perubahan logic bisnis aplikasi.
+- Di halaman `/admin/questions` ada dropdown filter mata pelajaran.
+- Dropdown berisi opsi `Semua Mata Pelajaran` dan daftar mata pelajaran dari database.
+- Saat memilih mata pelajaran, URL membawa query `category_id`.
+- Tabel hanya menampilkan soal dari mata pelajaran yang dipilih.
+- Saat memilih `Semua Mata Pelajaran`, semua soal tampil kembali.
+- Pagination tetap mempertahankan filter aktif.
+- Dropdown tetap menampilkan pilihan aktif setelah reload dan pagination.
+- Search existing tetap berfungsi.
+- Fitur tambah soal tetap berfungsi.
+- Fitur edit soal tetap berfungsi.
+- Fitur preview soal tetap berfungsi.
+- Fitur hapus soal tetap berfungsi.
+- URL dengan `category_id` invalid tidak menyebabkan error.
+- Tidak ada perubahan database atau migration baru.
+- Tidak ada perubahan route baru yang tidak diperlukan.
 
 ## Catatan untuk Junior Programmer atau AI Model
 
-- Kerjakan bertahap, jangan ubah semua file sekaligus tanpa validasi.
-- Mulai dari style global agar perubahan besar bisa terjadi dari satu tempat.
-- Setelah itu baru perbaiki inline style per halaman.
-- Jangan hapus class yang dipakai JavaScript.
-- Jangan ubah nama route, nama variable backend, atau logic controller.
-- Kalau menemukan `color: white`, cek dulu background-nya. Jika background tombol biru, teks putih boleh tetap dipakai.
-- Kalau menemukan background gelap untuk overlay modal, boleh tetap digunakan transparan, tetapi isi modal harus putih.
-- Prioritaskan readability dan konsistensi dibanding efek visual yang terlalu ramai.
-- Jika ragu memilih warna, gunakan putih untuk background, biru untuk action, kuning untuk premium/aksen.
+- Fokus pekerjaan hanya pada filter mata pelajaran di Bank Soal.
+- Jangan mengubah fitur lain di halaman Bank Soal.
+- Jangan menghapus JavaScript existing karena halaman ini punya banyak logic modal, TinyMCE, Math editor, sub kategori, kode soal, preview, edit, dan delete.
+- Jangan mengubah nama route `admin.questions.index`.
+- Jangan membuat migration baru karena data mata pelajaran sudah berasal dari model `Category`.
+- Jangan melakukan filter hanya dengan JavaScript karena data tabel memakai pagination.
+- Pastikan perubahan query dilakukan di repository/service agar struktur project tetap konsisten.
+- Jika ragu, buat perubahan kecil dulu: repository, service, controller, view, lalu test manual.
+
+## Estimasi File yang Akan Berubah
+
+Kemungkinan hanya 4 file berikut yang perlu diubah:
+
+- `app/Repositories/QuestionBankRepository.php`
+- `app/Services/QuestionBankService.php`
+- `app/Http/Controllers/Admin/QuestionBankController.php`
+- `resources/views/admin/questions/index.blade.php`
+
+Tidak perlu mengubah:
+
+- `routes/web.php`
+- database migration
+- model `QuestionBank`
+- model `Category`
+
+## Risiko yang Perlu Dihindari
+
+- Filter hilang saat klik pagination.
+- Dropdown filter merusak layout header di mobile.
+- Search client-side berhenti bekerja karena struktur HTML diubah terlalu banyak.
+- Modal tambah/edit soal rusak karena ID elemen existing berubah.
+- Query error saat `category_id` invalid.
+- Mengubah `BaseService` atau `BaseRepository` sehingga fitur lain ikut terdampak.
+
+## Urutan Kerja Singkat
+
+1. Baca `QuestionBankController@index`.
+2. Baca `QuestionBankRepository::paginate()`.
+3. Tambahkan filter `category_id` di repository.
+4. Tambahkan method service khusus untuk filter.
+5. Update controller agar membaca query `category_id`.
+6. Kirim `$filters` ke view jika diperlukan.
+7. Tambahkan dropdown filter di view.
+8. Update pagination dengan `appends(request()->query())`.
+9. Test manual semua skenario.
+10. Pastikan fitur CRUD soal tetap normal.

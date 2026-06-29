@@ -10,8 +10,14 @@ class QuestionBankRepository extends BaseRepository
     {
         parent::__construct($model);
     }
-    public function paginate(int $perPage = 10)
+    public function paginate(int $perPage = 10, array $filters = [])
     {
-        return $this->model->with(['category', 'subCategory'])->latest()->paginate($perPage);
+        $query = $this->model->with(['category', 'subCategory'])->latest();
+
+        if (!empty($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        return $query->paginate($perPage);
     }
 }

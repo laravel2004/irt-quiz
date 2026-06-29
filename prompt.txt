@@ -3,9 +3,8 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. perhatikan semua page page yang ada di project ini.
-2. lihat kayak sweetalert nya dan lain lain nya.
-3. aku pengen mengubah tone nya dati gelap ke tone putih cerah ya dengan warna putih biru dan kuning sebagai warna utama.
+1. perhatikan pada menu bank soal http://127.0.0.1:8000/admin/questions
+2. disitu tambahkan filter by mata pelajaran.
 
 
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail

@@ -123,9 +123,9 @@
             <div style="display: flex; align-items: center; gap: 20px;">
                 <div style="position: relative;">
                     <i class="fas fa-bell" style="color: var(--text-secondary); font-size: 1.2rem; cursor: pointer;"></i>
-                    <span style="position: absolute; top: -5px; right: -5px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; border: 2px solid var(--bg-dark);"></span>
+                    <span style="position: absolute; top: -5px; right: -5px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; border: 2px solid #ffffff;"></span>
                 </div>
-                <div class="glass" style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-radius: 50px; cursor: pointer;" onclick="document.getElementById('logout-form').submit();">
+                <div class="glass" style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-radius: 50px; cursor: pointer; background: #ffffff; border: 1px solid var(--glass-border);" onclick="document.getElementById('logout-form').submit();">
                     <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'U') }}&background=3b82f6&color=fff" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%;">
                     <span style="font-weight: 500; font-size: 0.9rem;">{{ auth()->user()->name ?? 'User' }}</span>
                     <i class="fas fa-sign-out-alt" style="font-size: 0.8rem; color: var(--text-secondary); margin-left: 4px;"></i>
@@ -151,8 +151,8 @@
             <h3 style="margin-bottom: 12px; font-family: 'Outfit', sans-serif;">Apakah Anda yakin?</h3>
             <p id="confirmMessage" style="color: var(--text-secondary); margin-bottom: 32px;">Tindakan ini tidak dapat dibatalkan.</p>
             <div style="display: flex; gap: 12px;">
-                <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary); flex: 1;" onclick="closeConfirm(false)">Batal</button>
-                <button type="button" id="confirmBtn" class="btn-primary" style="background: #ef4444; flex: 1;" onclick="closeConfirm(true)">Ya, Hapus</button>
+                <button type="button" class="btn-primary" style="background: #ffffff; border: 1px solid var(--glass-border); color: var(--text-primary); flex: 1;" onclick="closeConfirm(false)">Batal</button>
+                <button type="button" id="confirmBtn" class="btn-primary" style="background: #ef4444; color: #ffffff; flex: 1;" onclick="closeConfirm(true)">Ya, Hapus</button>
             </div>
         </div>
     </div>

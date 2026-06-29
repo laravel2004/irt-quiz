@@ -19,6 +19,49 @@ class ExamController extends Controller
         $this->sessionService = $sessionService;
     }
 
+
+    private function normalizeAnswerValue($value): string
+    {
+        if (is_array($value)) {
+            $value = json_encode($value);
+        }
+
+        return strtolower(trim(preg_replace('/\s+/', ' ', strip_tags((string) $value))));
+    }
+
+    private function resolveCorrectValues(array $correctAnswers, array $options): array
+    {
+        $values = [];
+
+        foreach ($correctAnswers as $correctAnswer) {
+            $key = (string) $correctAnswer;
+            $upperKey = strtoupper(trim($key));
+
+            if (array_key_exists($key, $options)) {
+                $values[] = $options[$key];
+                continue;
+            }
+
+            if (preg_match('/^[A-Z]$/', $upperKey)) {
+                $index = ord($upperKey) - 65;
+                if (array_key_exists($index, $options)) {
+                    $values[] = $options[$index];
+                    continue;
+                }
+            }
+
+            $values[] = $correctAnswer;
+        }
+
+        return array_values(array_filter($values, fn ($value) => $value !== null));
+    }
+
+    private function answersMatch($expected, $actual): bool
+    {
+        return (string) $expected === (string) $actual
+            || $this->normalizeAnswerValue($expected) === $this->normalizeAnswerValue($actual);
+    }
+
     private function getParticipant($code)
     {
         $userId = auth()->id();
@@ -209,18 +252,18 @@ class ExamController extends Controller
                 $options = (array) $question->options;
                 
                 if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
-                    $correctIndex = $correctArr[0] ?? null;
-                    $correctValue = $options[$correctIndex] ?? null;
-                    $isCorrect = ($correctValue !== null && $correctValue == $answer);
+                    $correctValue = $this->resolveCorrectValues($correctArr, $options)[0] ?? null;
+                    $isCorrect = ($correctValue !== null && $this->answersMatch($correctValue, $answer));
                     $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
                 } elseif ($question->type === 'multiple_choice') {
-                    $correctValues = array_map(fn($idx) => $options[$idx] ?? null, $correctArr);
-                    $correctValues = array_filter($correctValues, fn($v) => $v !== null);
+                    $correctValues = $this->resolveCorrectValues($correctArr, $options);
                     
                     if (is_array($answer)) {
-                        sort($answer);
-                        sort($correctValues);
-                        $isCorrect = ($answer === $correctValues);
+                        $normalizedAnswers = array_map(fn($value) => $this->normalizeAnswerValue($value), $answer);
+                        $normalizedCorrect = array_map(fn($value) => $this->normalizeAnswerValue($value), $correctValues);
+                        sort($normalizedAnswers);
+                        sort($normalizedCorrect);
+                        $isCorrect = ($normalizedAnswers === $normalizedCorrect);
                     }
                     $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
                 } elseif ($question->type === 'multiple_benar_salah') {

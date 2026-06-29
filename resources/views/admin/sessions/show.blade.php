@@ -4,6 +4,28 @@
 @section('header_title', 'Detail Sesi Ujian')
 
 @section('content')
+
+<style>
+    .session-detail-light-panel {
+        background: #ffffff !important;
+        border: 1px solid var(--glass-border) !important;
+    }
+    .session-detail-soft-panel {
+        background: #f8fafc !important;
+        border: 1px solid var(--glass-border) !important;
+    }
+    #participantModal .form-input,
+    #newUserModal .form-input,
+    #participantModal select.form-input,
+    #newUserModal select.form-input,
+    #participantModal input,
+    #newUserModal input {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid var(--glass-border) !important;
+    }
+</style>
+
 <div style="margin-bottom: 24px;">
     <a href="{{ route('admin.sessions.index') }}" style="color: var(--text-secondary); text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
         <i class="fas fa-arrow-left"></i> Kembali ke Daftar Sesi
@@ -17,7 +39,7 @@
             <div>
                 <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 8px;">{{ $session->name }}</h2>
                 <div style="display: flex; gap: 12px; align-items: center;">
-                    <code style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; color: var(--accent);">{{ $session->code }}</code>
+                    <code style="background: #eff6ff; padding: 4px 8px; border-radius: 4px; color: var(--accent);">{{ $session->code }}</code>
                     <span class="badge {{ $session->is_active ? 'active' : '' }}">
                         {{ $session->is_active ? 'Aktif' : 'Non-Aktif' }}
                     </span>
@@ -67,7 +89,7 @@
         <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; margin-bottom: 20px;">Konfigurasi Mata Pelajaran</h3>
         <div style="display: flex; flex-direction: column; gap: 24px;">
             @foreach($session->sessionCategories as $sc)
-            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px;">
+            <div class="session-detail-light-panel" style="border-radius: 12px; padding: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
                     <div>
                         <h4 style="font-size: 1.1rem; color: var(--accent); margin-bottom: 4px;">{{ data_get($sc->category, 'name') }}</h4>
@@ -80,7 +102,7 @@
                 </div>
                 
                 @if($sc->subCategories->count() > 0)
-                <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 16px;">
+                <div class="session-detail-soft-panel" style="border-radius: 8px; padding: 16px;">
                     <h5 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">Persentase Sub Mata Pelajaran:</h5>
                     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
                         @foreach($sc->subCategories as $subCat)
@@ -89,7 +111,7 @@
                                 <span>{{ data_get($subCat->subCategory, 'name') }}</span>
                                 <span style="font-weight: 600; color: #10b981;">{{ $subCat->percentage }}%</span>
                             </div>
-                            <div style="height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden;">
+                            <div style="height: 4px; background: #eff6ff; border-radius: 2px; overflow: hidden;">
                                 <div style="height: 100%; width: {{ $subCat->percentage }}%; background: #10b981;"></div>
                             </div>
                         </div>
@@ -184,7 +206,7 @@
     </div>
 
     <!-- Pagination Controls -->
-    <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+    <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 20px;">
         <div style="font-size: 0.85rem; color: var(--text-secondary);">
             Menampilkan <span id="startIdx">0</span> - <span id="endIdx">0</span> dari <span id="totalParticipantsCount">{{ $session->participants->count() }}</span> peserta
         </div>
@@ -260,7 +282,7 @@
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeParticipantModal()">Batal</button>
+                <button type="button" class="btn-primary" style="background: #ffffff; border: 1px solid var(--glass-border); color: var(--text-primary);" onclick="closeParticipantModal()">Batal</button>
                 <button type="submit" class="btn-primary" id="submitBtn" disabled>Tambahkan Terpilih</button>
             </div>
         </form>
@@ -304,7 +326,7 @@
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeNewUserModal()">Batal</button>
+                <button type="button" class="btn-primary" style="background: #ffffff; border: 1px solid var(--glass-border); color: var(--text-primary);" onclick="closeNewUserModal()">Batal</button>
                 <button type="submit" class="btn-primary" id="submitNewUserBtn">Buat & Tambahkan</button>
             </div>
         </form>
@@ -334,7 +356,7 @@
     </div>
 
     <!-- Upload Discussion PDF -->
-    <div style="background: #f8fafc; border: 1px dashed rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+    <div class="session-detail-soft-panel" style="border-style: dashed !important; border-radius: 16px; padding: 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
         <div style="display: flex; align-items: center; gap: 16px;">
             <div style="width: 48px; height: 48px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1.5rem;">
                 <i class="fas fa-file-pdf"></i>
@@ -353,7 +375,7 @@
         <form id="uploadDiscussionForm" style="display: flex; gap: 12px; align-items: center;">
             @csrf
             <input type="file" name="discussion_pdf" id="discussion_pdf" accept=".pdf" style="display: none;" onchange="submitDiscussionPdf()">
-            <button type="button" class="btn-primary" onclick="document.getElementById('discussion_pdf').click()" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary); height: 40px; font-size: 0.85rem;">
+            <button type="button" class="btn-primary" onclick="document.getElementById('discussion_pdf').click()" style="background: #ffffff; border: 1px solid var(--glass-border); color: var(--text-primary); height: 40px; font-size: 0.85rem;">
                 <i class="fas fa-upload"></i> {{ $session->discussion_pdf ? 'Ganti File' : 'Pilih PDF' }}
             </button>
         </form>
@@ -391,7 +413,7 @@
                                 3
                             </div>
                         @else
-                            <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--text-secondary); font-size: 0.85rem;">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #eff6ff; border: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--text-secondary); font-size: 0.85rem;">
                                 {{ $loop->iteration }}
                             </div>
                         @endif
@@ -423,7 +445,7 @@
     </div>
 
     <!-- IRT Pagination Controls -->
-    <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+    <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 20px;">
         <div style="font-size: 0.85rem; color: var(--text-secondary);">
             Menampilkan <span id="irtStartIdx">0</span> - <span id="irtEndIdx">0</span> dari <span id="totalIRTCount">{{ $session->results->count() }}</span> hasil
         </div>
@@ -546,7 +568,7 @@
             btn.style.width = '34px';
             btn.style.height = '34px';
             btn.style.borderRadius = '8px';
-            btn.style.background = currentPage === i ? 'var(--accent)' : 'rgba(255,255,255,0.05)';
+            btn.style.background = currentPage === i ? 'var(--accent)' : '#ffffff';
             btn.style.color = 'white';
             btn.onclick = () => { currentPage = i; renderParticipants(); };
             container.appendChild(btn);
@@ -619,7 +641,7 @@
             } else if (rankIdx === 2) {
                 rankHtml = `<div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #92400e, #451a03); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #0f172a; box-shadow: 0 4px 10px rgba(69, 26, 3, 0.2);">3</div>`;
             } else {
-                rankHtml = `<div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--text-secondary); font-size: 0.85rem;">${rankIdx + 1}</div>`;
+                rankHtml = `<div style="width: 32px; height: 32px; border-radius: 50%; background: #eff6ff; border: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--text-secondary); font-size: 0.85rem;">${rankIdx + 1}</div>`;
             }
 
             return `
@@ -675,7 +697,7 @@
             btn.className = `btn-icon ${irtCurrentPage === i ? 'active' : ''}`;
             btn.innerText = i;
             btn.style.width = '34px'; btn.style.height = '34px'; btn.style.borderRadius = '8px';
-            btn.style.background = irtCurrentPage === i ? 'var(--accent)' : 'rgba(255,255,255,0.05)';
+            btn.style.background = irtCurrentPage === i ? 'var(--accent)' : '#ffffff';
             btn.style.color = 'white';
             btn.onclick = () => { irtCurrentPage = i; renderIRTResults(); };
             container.appendChild(btn);

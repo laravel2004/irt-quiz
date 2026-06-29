@@ -24,14 +24,28 @@ class QuestionBankController extends Controller
 
     public function index(Request $request)
     {
-        $questions = $this->questionService->getPaginated(10);
+        $categoryId = $request->query('category_id');
+
+        if ($categoryId && !ctype_digit((string) $categoryId)) {
+            $categoryId = null;
+        }
+
+        if ($categoryId && !Category::whereKey($categoryId)->exists()) {
+            $categoryId = null;
+        }
+
+        $filters = [
+            'category_id' => $categoryId,
+        ];
+
+        $questions = $this->questionService->getPaginatedWithFilters(10, $filters);
         $categories = Category::all();
         
         if ($request->ajax()) {
             return $this->successResponse($questions);
         }
 
-        return view('admin.questions.index', compact('questions', 'categories'));
+        return view('admin.questions.index', compact('questions', 'categories', 'filters'));
     }
 
     public function store(Request $request)

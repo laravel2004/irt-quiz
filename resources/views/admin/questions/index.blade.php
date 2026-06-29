@@ -10,7 +10,24 @@
             <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">Bank Soal</h3>
             <p style="color: var(--text-secondary); font-size: 0.9rem;">Kelola pertanyaan ujian untuk berbagai kategori.</p>
         </div>
-        <div class="flex-stack-mobile" style="display: flex; gap: 16px;">
+        <div class="flex-stack-mobile" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+            <form method="GET" action="{{ route('admin.questions.index') }}" style="display: flex; gap: 12px; align-items: center; margin: 0; flex-wrap: wrap;">
+                <select name="category_id" class="form-input" onchange="this.form.submit()" style="width: 220px; margin-bottom: 0; color: #000;">
+                    <option value="">Semua Mata Pelajaran</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" {{ (string) ($filters['category_id'] ?? '') === (string) $category->id ? 'selected' : '' }}>
+                            {{ $category->name }}
+                        </option>
+                    @endforeach
+                </select>
+
+                @if($filters['category_id'] ?? null)
+                    <a href="{{ route('admin.questions.index') }}" class="form-input" style="width: auto; margin-bottom: 0; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; padding: 0 16px; white-space: nowrap;">
+                        Reset
+                    </a>
+                @endif
+            </form>
+
             <div style="position: relative; width: 300px;">
                 <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
                 <input type="text" id="searchInput" class="form-input" placeholder="Cari soal..." style="padding-left: 44px; margin-bottom: 0;">
@@ -74,7 +91,9 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-secondary);">Belum ada soal.</td>
+                    <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        {{ ($filters['category_id'] ?? null) ? 'Tidak ada soal untuk mata pelajaran yang dipilih.' : 'Belum ada soal.' }}
+                    </td>
                 </tr>
                 @endforelse
             </tbody>
@@ -82,7 +101,7 @@
     </div>
     
     <div style="margin-top: 24px; display: flex; justify-content: center;">
-        {{ $questions->links() }}
+        {{ $questions->appends(array_filter($filters))->links() }}
     </div>
 </div>
 
@@ -106,8 +125,8 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background: #f8fafc !important;
+        border: 1px solid var(--glass-border) !important;
         border-radius: 12px !important;
         color: var(--text-secondary) !important;
         text-decoration: none !important;
@@ -128,7 +147,7 @@
         background: transparent !important;
     }
     .page-item .page-link:hover:not(.disabled):not(.active) {
-        background: rgba(255, 255, 255, 0.1) !important;
+        background: #eff6ff !important;
         transform: translateY(-2px) !important;
         color: white !important;
     }
@@ -148,7 +167,7 @@
         align-items: center;
         gap: 12px;
         margin-bottom: 12px;
-        background: rgba(255, 255, 255, 0.03);
+        background: #f8fafc;
         padding: 12px;
         border-radius: 8px;
         border: 1px solid var(--glass-border);
@@ -187,13 +206,116 @@
         color: #ef4444;
     }
 
-    /* TinyMCE dark theme overrides */
+    /* Option Editor Styles */
+    .option-editor-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+    .option-editor-toolbar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .option-editor-toolbar .math-quick-btn {
+        min-width: auto;
+        padding: 8px 10px;
+    }
+    .option-editor-toolbar .option-image-btn {
+        border: 1px solid var(--glass-border);
+        background: #ffffff;
+        color: var(--text-secondary);
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+    }
+    .option-editor-toolbar .option-image-btn:hover {
+        background: #eff6ff;
+        color: var(--accent);
+    }
+    .option-editor-content {
+        min-height: 88px;
+        width: 100%;
+        background: #ffffff;
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px 14px;
+        color: var(--text-primary);
+        outline: none;
+        line-height: 1.6;
+    }
+    .option-editor-content:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+    .option-editor-content img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin-top: 8px;
+    }
+    .option-editor-placeholder {
+        color: var(--text-secondary);
+    }
+    .option-editor-hidden-input {
+        display: none;
+    }
+
+    /* TinyMCE light theme overrides */
     .tox-tinymce {
         border: 1px solid var(--glass-border) !important;
         border-radius: 8px !important;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08) !important;
     }
-    .tox .tox-toolbar__primary {
-        background: rgba(255, 255, 255, 0.05) !important;
+    .tox-tinymce,
+    .tox .tox-editor-container,
+    .tox .tox-edit-area,
+    .tox .tox-statusbar,
+    .tox .tox-toolbar,
+    .tox .tox-toolbar__primary,
+    .tox .tox-toolbar-overlord,
+    .tox .tox-menubar,
+    .tox .tox-edit-area__iframe {
+        background: #ffffff !important;
+        color: #0f172a !important;
+    }
+    .tox .tox-tbtn,
+    .tox .tox-mbtn,
+    .tox .tox-statusbar__path-item,
+    .tox .tox-statusbar__wordcount,
+    .tox .tox-statusbar__branding svg,
+    .tox .tox-icon svg {
+        color: #334155 !important;
+        fill: #334155 !important;
+    }
+    .tox .tox-tbtn:hover,
+    .tox .tox-tbtn--enabled,
+    .tox .tox-mbtn:hover {
+        background: #eff6ff !important;
+        color: #2563eb !important;
+    }
+    .tox .tox-collection,
+    .tox .tox-menu,
+    .tox .tox-pop,
+    .tox .tox-dialog {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border-color: var(--glass-border) !important;
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12) !important;
+    }
+    .tox .tox-collection__item,
+    .tox .tox-collection__item-label,
+    .tox .tox-form__group label,
+    .tox .tox-dialog__title {
+        color: #0f172a !important;
+    }
+    .tox .tox-collection__item--active,
+    .tox .tox-collection__item:hover {
+        background: #eff6ff !important;
     }
     /* Fix TinyMCE dropdowns/menus appearing behind the question modal */
     .tox-tinymce-aux {
@@ -204,7 +326,7 @@
     .math-modal-overlay {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0, 0, 0, 0.85);
+        background: rgba(15, 23, 42, 0.18);
         backdrop-filter: blur(8px);
         z-index: 5000;
         display: none;
@@ -216,13 +338,13 @@
         display: flex;
     }
     .math-modal {
-        background: #1e293b;
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: #ffffff;
+        border: 1px solid var(--glass-border);
         border-radius: 20px;
         width: 100%;
         max-width: 720px;
         padding: 32px;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 25px 50px rgba(15, 23, 42, 0.12);
         animation: fadeIn 0.3s ease;
     }
     .math-modal-header {
@@ -258,8 +380,8 @@
         width: 100%;
         min-height: 80px;
         font-size: 1.4rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 2px solid rgba(255, 255, 255, 0.15);
+        background: #f8fafc;
+        border: 2px solid var(--glass-border);
         border-radius: 12px;
         padding: 16px;
         color: #0f172a;
@@ -284,8 +406,8 @@
         margin-bottom: 20px;
     }
     .math-quick-btn {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #ffffff;
+        border: 1px solid var(--glass-border);
         border-radius: 8px;
         padding: 8px 14px;
         color: var(--text-secondary);
@@ -298,7 +420,7 @@
         min-width: 44px;
     }
     .math-quick-btn:hover {
-        background: rgba(59, 130, 246, 0.15);
+        background: rgba(59, 130, 246, 0.08);
         border-color: var(--accent);
         color: #0f172a;
         transform: translateY(-1px);
@@ -306,8 +428,8 @@
 
     /* Preview box */
     .math-preview-box {
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #ffffff;
+        border: 1px solid var(--glass-border);
         border-radius: 12px;
         padding: 20px;
         min-height: 60px;
@@ -328,13 +450,13 @@
         margin-bottom: 8px;
     }
     .math-latex-raw {
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #ffffff;
+        border: 1px solid var(--glass-border);
         border-radius: 8px;
         padding: 10px 14px;
         font-family: 'Courier New', monospace;
         font-size: 0.85rem;
-        color: #94a3b8;
+        color: var(--text-secondary);
         word-break: break-all;
         margin-bottom: 20px;
     }
@@ -367,7 +489,7 @@
     .math-mode-tab {
         flex: 1;
         padding: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--glass-border);
         border-radius: 8px;
         background: transparent;
         color: var(--text-secondary);
@@ -386,12 +508,36 @@
     /* Preview Modal Custom Styling */
     .preview-option-item {
         padding: 12px 16px;
-        background: rgba(255,255,255,0.03);
+        background: #ffffff;
         border-radius: 8px;
         border: 1px solid var(--glass-border);
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 12px;
+        overflow: hidden;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+    .preview-option-html {
+        flex: 1;
+        min-width: 0;
+        max-width: 100%;
+    }
+    .preview-option-item img,
+    .preview-option-html img,
+    #previewText img,
+    #previewExplanation img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        border-radius: 8px;
+        object-fit: contain;
+    }
+    .preview-option-item .katex-display,
+    .preview-option-html .katex-display {
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
     }
     .preview-option-item.correct {
         background: rgba(16, 185, 129, 0.1);
@@ -412,7 +558,7 @@
             
             <div style="display: flex; flex-direction: column; gap: 24px;">
                 <!-- Informasi Dasar Section -->
-                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px;">
+                <div style="background: #ffffff; border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px;">
                     <h4 style="margin-bottom: 20px; color: var(--text-primary); font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
                         <div style="background: rgba(59, 130, 246, 0.2); color: var(--accent); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-info-circle"></i>
@@ -461,50 +607,48 @@
                     </div>
                 </div>
 
-                <div class="responsive-grid" style="gap: 24px;">
-                    <!-- Gambar Soal Section -->
-                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column;">
-                        <h4 style="margin-bottom: 20px; color: var(--text-primary); font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
-                            <div style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-image"></i>
-                            </div>
-                            Gambar Soal (Opsional)
-                        </h4>
-                        
-                        <div class="form-group" style="flex: 1; margin-bottom: 0; display: flex; flex-direction: column;">
-                            <div class="image-preview-container" onclick="document.getElementById('imageInput').click()" style="flex: 1; min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                                <img id="imagePreview" src="" style="display: none; max-height: 100%; object-fit: contain;">
-                                <div class="placeholder" id="imagePlaceholder">
-                                    <i class="fas fa-cloud-upload-alt" style="font-size: 2.5rem; margin-bottom: 12px; color: var(--accent);"></i>
-                                    <p>Klik untuk upload gambar pendukung</p>
-                                </div>
-                            </div>
-                            <input type="file" name="question_image" id="imageInput" style="display: none;" onchange="previewImage(this)">
+                <!-- Gambar Soal Section -->
+                <div style="background: #ffffff; border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column;">
+                    <h4 style="margin-bottom: 20px; color: var(--text-primary); font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
+                        <div style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-image"></i>
                         </div>
+                        Gambar Soal (Opsional)
+                    </h4>
+                    
+                    <div class="form-group" style="margin-bottom: 0; display: flex; flex-direction: column;">
+                        <div class="image-preview-container" onclick="document.getElementById('imageInput').click()" style="min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <img id="imagePreview" src="" style="display: none; max-height: 100%; object-fit: contain;">
+                            <div class="placeholder" id="imagePlaceholder">
+                                <i class="fas fa-cloud-upload-alt" style="font-size: 2.5rem; margin-bottom: 12px; color: var(--accent);"></i>
+                                <p>Klik untuk upload gambar pendukung</p>
+                            </div>
+                        </div>
+                        <input type="file" name="question_image" id="imageInput" style="display: none;" onchange="previewImage(this)">
                     </div>
+                </div>
 
-                    <!-- Opsi Jawaban Section -->
-                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column;">
-                        <h4 style="margin-bottom: 20px; color: var(--text-primary); font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
-                            <div style="background: rgba(16, 185, 129, 0.2); color: #10b981; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-list-ul"></i>
-                            </div>
-                            <span id="optionsLabelText">Opsi Jawaban</span>
-                        </h4>
-                        
-                        <div id="optionsContainer" style="flex: 1; display: flex; flex-direction: column;">
-                            <div id="optionsList" style="flex: 1; max-height: 350px; overflow-y: auto; padding-right: 8px; margin-bottom: 12px;">
-                                <!-- Dynamic Options Based on Type -->
-                            </div>
-                            <button type="button" id="addOptionBtn" class="btn-primary" style="background: rgba(59, 130, 246, 0.1); border: 1px dashed var(--accent); color: var(--accent); width: 100%; font-weight: 600;" onclick="addOption()">
-                                <i class="fas fa-plus"></i> Tambah Opsi
-                            </button>
+                <!-- Opsi Jawaban Section -->
+                <div style="background: #ffffff; border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column;">
+                    <h4 style="margin-bottom: 20px; color: var(--text-primary); font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
+                        <div style="background: rgba(16, 185, 129, 0.2); color: #10b981; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-list-ul"></i>
                         </div>
+                        <span id="optionsLabelText">Opsi Jawaban</span>
+                    </h4>
+                    
+                    <div id="optionsContainer" style="display: flex; flex-direction: column;">
+                        <div id="optionsList" style="max-height: 350px; overflow-y: auto; padding-right: 8px; margin-bottom: 12px;">
+                            <!-- Dynamic Options Based on Type -->
+                        </div>
+                        <button type="button" id="addOptionBtn" class="btn-primary" style="background: rgba(59, 130, 246, 0.1); border: 1px dashed var(--accent); color: var(--accent); width: 100%; font-weight: 600;" onclick="addOption()">
+                            <i class="fas fa-plus"></i> Tambah Opsi
+                        </button>
                     </div>
                 </div>
 
                 <!-- Konten Soal (Teks) Section -->
-                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px;">
+                <div style="background: #ffffff; border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px;">
                     <h4 style="margin-bottom: 20px; color: var(--text-primary); font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
                         <div style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-align-left"></i>
@@ -518,7 +662,7 @@
                 </div>
 
                 <!-- Pembahasan Section -->
-                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px;">
+                <div style="background: #ffffff; border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px;">
                     <h4 style="margin-bottom: 20px; color: var(--text-primary); font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
                         <div style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-lightbulb"></i>
@@ -694,16 +838,16 @@
             selector: '#qText',
             height: 250,
             menubar: false,
-            skin: 'oxide-dark',
-            content_css: 'dark',
+            skin: 'oxide',
+            content_css: false,
             plugins: 'lists link code table charmap',
             toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | charmap code | mathBtn',
             content_style: `
                 body { 
                     font-family: 'Inter', sans-serif; 
                     font-size: 14px; 
-                    color: #e2e8f0; 
-                    background: #1e293b;
+                    color: #0f172a; 
+                    background: #ffffff;
                     padding: 12px;
                 }
                 p { margin: 0 0 10px; }
@@ -711,7 +855,7 @@
             setup: function(editor) {
                 questionEditor = editor;
                 editor.ui.registry.addButton('mathBtn', {
-                    text: 'âˆ‘ Math',
+                    text: '∑ Math',
                     tooltip: 'Sisipkan Rumus Matematika',
                     onAction: function() {
                         activeMathTarget = editor;
@@ -725,16 +869,16 @@
             selector: '#explanationText',
             height: 200,
             menubar: false,
-            skin: 'oxide-dark',
-            content_css: 'dark',
+            skin: 'oxide',
+            content_css: false,
             plugins: 'lists link code table charmap',
             toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | charmap code | mathBtn',
             content_style: `
                 body { 
                     font-family: 'Inter', sans-serif; 
                     font-size: 14px; 
-                    color: #e2e8f0; 
-                    background: #1e293b;
+                    color: #0f172a; 
+                    background: #ffffff;
                     padding: 12px;
                 }
                 p { margin: 0 0 10px; }
@@ -742,7 +886,7 @@
             setup: function(editor) {
                 explanationEditor = editor;
                 editor.ui.registry.addButton('mathBtn', {
-                    text: 'âˆ‘ Math',
+                    text: '∑ Math',
                     tooltip: 'Sisipkan Rumus Matematika',
                     onAction: function() {
                         activeMathTarget = editor;
@@ -789,11 +933,15 @@
             explanationEditor.destroy();
             explanationEditor = null;
         }
+        optionEditors.clear();
+        optionImageInputs.clear();
         questionModal.classList.remove('active');
     }
 
     function handleTypeChange() {
         const type = typeSelect.value;
+        optionEditors.clear();
+        optionImageInputs.clear();
         optionsList.innerHTML = '';
         
         if (type === 'multiple_benar_salah') {
@@ -871,19 +1019,19 @@
     }
 
     function addOptionItem(text = '', isCorrect = false, type = 'pilihan_ganda') {
-        const index = optionsList.children.length;
-        const div = document.createElement('div');
-        div.className = `option-item ${isCorrect ? 'correct' : ''}`;
-        
-        const inputType = type === 'multiple_choice' ? 'checkbox' : 'radio';
-        const name = 'correct_answer[]';
+        if (type === 'benar_salah') {
+            const index = optionsList.children.length;
+            const div = document.createElement('div');
+            div.className = `option-item ${isCorrect ? 'correct' : ''}`;
+            div.innerHTML = `
+                <input type="radio" name="correct_answer[]" value="${index}" ${isCorrect ? 'checked' : ''} onchange="handleCorrectChange(this)">
+                <input type="text" name="options[]" value="${text}" placeholder="Pilihan ${String.fromCharCode(65 + index)}" readonly required>
+            `;
+            optionsList.appendChild(div);
+            return;
+        }
 
-        div.innerHTML = `
-            <input type="${inputType}" name="${name}" value="${index}" ${isCorrect ? 'checked' : ''} onchange="handleCorrectChange(this)">
-            <input type="text" name="options[]" value="${text}" placeholder="Pilihan ${String.fromCharCode(65 + index)}" ${type === 'benar_salah' ? 'readonly' : ''} required>
-            ${type !== 'benar_salah' ? '<button type="button" class="btn-icon delete" onclick="this.parentElement.remove()" style="border:none; background:none;"><i class="fas fa-times"></i></button>' : ''}
-        `;
-        optionsList.appendChild(div);
+        addQuestionOption(text, isCorrect, type);
     }
 
     function handleCorrectChange(el) {
@@ -909,6 +1057,125 @@
         }
     }
 
+    const optionEditors = new Map();
+    const optionImageInputs = new Map();
+    let optionEditorUid = 0;
+
+    function createOptionEditor(initialHtml = '') {
+        const editorId = `optionEditor_${Date.now()}_${optionEditorUid++}`;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'option-editor-wrapper';
+        wrapper.innerHTML = `
+            <div class="option-editor-toolbar">
+                <button type="button" class="math-quick-btn" data-action="bold"><b>B</b></button>
+                <button type="button" class="math-quick-btn" data-action="italic"><i>I</i></button>
+                <button type="button" class="math-quick-btn" data-action="underline"><u>U</u></button>
+                <button type="button" class="math-quick-btn" data-action="math">∑ Rumus</button>
+                <button type="button" class="option-image-btn" data-action="image"><i class="fas fa-image"></i> Gambar</button>
+                <input type="file" accept="image/*" class="option-editor-hidden-input">
+            </div>
+            <div class="option-editor-content" contenteditable="true" data-placeholder="Ketik jawaban, rumus, atau tempel gambar di sini...">${initialHtml || '<span class="option-editor-placeholder">Ketik jawaban, rumus, atau tempel gambar di sini...</span>'}</div>
+        `;
+        const content = wrapper.querySelector('.option-editor-content');
+        const fileInput = wrapper.querySelector('.option-editor-hidden-input');
+        const toolbarButtons = wrapper.querySelectorAll('[data-action]');
+
+        toolbarButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const action = this.dataset.action;
+                content.focus();
+                if (action === 'math') {
+                    activeMathTarget = {
+                        insertContent(html) {
+                            content.innerHTML = content.innerHTML.replace('<span class="option-editor-placeholder">Ketik jawaban, rumus, atau tempel gambar di sini...</span>', '');
+                            content.insertAdjacentHTML('beforeend', html);
+                        }
+                    };
+                    openMathEditor();
+                } else if (action === 'image') {
+                    fileInput.click();
+                } else {
+                    document.execCommand(action, false, null);
+                }
+            });
+        });
+
+        fileInput.addEventListener('change', function() {
+            const file = this.files && this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                content.innerHTML = content.innerHTML.replace('<span class="option-editor-placeholder">Ketik jawaban, rumus, atau tempel gambar di sini...</span>', '');
+                content.insertAdjacentHTML('beforeend', `<img src="${e.target.result}" alt="Gambar jawaban">`);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        content.addEventListener('input', function() {
+            if (content.textContent.trim() || content.querySelector('img, .math-tex')) {
+                const placeholder = content.querySelector('.option-editor-placeholder');
+                if (placeholder) placeholder.remove();
+            }
+        });
+
+        content.addEventListener('paste', function(e) {
+            const items = e.clipboardData?.items || [];
+            for (const item of items) {
+                if (item.type && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (!file) continue;
+                    e.preventDefault();
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        content.innerHTML = content.innerHTML.replace('<span class="option-editor-placeholder">Ketik jawaban, rumus, atau tempel gambar di sini...</span>', '');
+                        content.insertAdjacentHTML('beforeend', `<img src="${ev.target.result}" alt="Gambar tempel">`);
+                    };
+                    reader.readAsDataURL(file);
+                    break;
+                }
+            }
+        });
+
+        return { wrapper, content, fileInput };
+    }
+
+    function addQuestionOption(value = '', checked = false, type = 'pilihan_ganda') {
+        const optionId = `option_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const optionWrap = document.createElement('div');
+        const inputType = type === 'multiple_choice' ? 'checkbox' : 'radio';
+        optionWrap.className = `option-item ${checked ? 'correct' : ''}`;
+        optionWrap.dataset.optionId = optionId;
+        optionWrap.innerHTML = `
+            <input type="${inputType}" name="correct_answer[]" value="${optionId}" ${checked ? 'checked' : ''} onchange="handleCorrectChange(this)" style="margin-top: 8px;">
+            <div style="flex: 1;"></div>
+            <button type="button" class="btn-icon delete" style="flex-shrink: 0; border:none; background:none; margin-top: 4px;" onclick="const item = this.closest('.option-item'); optionEditors.delete(item.dataset.optionId); item.remove();" title="Hapus Opsi"><i class="fas fa-times"></i></button>
+        `;
+        const editorMount = optionWrap.querySelector('div');
+        const editor = createOptionEditor(value);
+        editorMount.appendChild(editor.wrapper);
+        optionsList.appendChild(optionWrap);
+        optionEditors.set(optionId, editor.content);
+        optionImageInputs.set(optionId, editor.fileInput);
+        return optionId;
+    }
+
+    function getOptionPayload() {
+        const payload = [];
+        document.querySelectorAll('.option-item').forEach((item, index) => {
+            const optionId = item.dataset.optionId;
+            const content = optionEditors.get(optionId);
+            const checker = item.querySelector('input[type="radio"], input[type="checkbox"]');
+            payload.push({
+                id: optionId,
+                index,
+                label: String.fromCharCode(65 + index),
+                html: content ? content.innerHTML : '',
+                isChecked: !!checker?.checked
+            });
+        });
+        return payload;
+    }
+
     questionForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -925,6 +1192,20 @@
         const url = mode === 'create' ? "{{ route('admin.questions.store') }}" : `/admin/questions/${id}`;
         
         if (mode === 'edit') formData.append('_method', 'PUT');
+
+        if (typeSelect.value === 'pilihan_ganda' || typeSelect.value === 'multiple_choice') {
+            formData.delete('options[]');
+            formData.delete('correct_answer[]');
+            formData.delete('correct_answer');
+
+            const optionPayload = getOptionPayload();
+            optionPayload.forEach((item) => {
+                formData.append('options[]', item.html);
+                if (item.isChecked) {
+                    formData.append('correct_answer[]', item.label);
+                }
+            });
+        }
 
         // For multiple_benar_salah, we need to convert correct_answer to indices of "benar" answers
         const type = formData.get('type');
@@ -1085,7 +1366,8 @@
                 document.getElementById('addOptionBtn').style.display = q.type === 'benar_salah' ? 'none' : 'block';
                 
                 q.options.forEach((opt, idx) => {
-                    const isCorrect = q.correct_answer.includes(idx.toString());
+                    const label = String.fromCharCode(65 + idx);
+                    const isCorrect = q.correct_answer.includes(idx.toString()) || q.correct_answer.includes(label);
                     addOptionItem(opt, isCorrect, q.type);
                 });
             }
@@ -1146,20 +1428,21 @@
                     const isBenar = q.correct_answer.includes(idx.toString());
                     optionsContainer.innerHTML += `
                         <div class="preview-option-item">
-                            <span style="flex: 1;">${opt}</span>
+                            <div class="preview-option-html">${opt}</div>
                             <span class="badge" style="background: ${isBenar ? 'rgba(16,185,129,0.2); color:#10b981' : 'rgba(239,68,68,0.2); color:#ef4444'}">Jawaban: ${isBenar ? 'Benar' : 'Salah'}</span>
                         </div>
                     `;
                 });
             } else {
                 q.options.forEach((opt, idx) => {
-                    const isCorrect = q.correct_answer.includes(idx.toString());
+                    const label = String.fromCharCode(65 + idx);
+                    const isCorrect = q.correct_answer.includes(idx.toString()) || q.correct_answer.includes(label);
                     optionsContainer.innerHTML += `
                         <div class="preview-option-item ${isCorrect ? 'correct' : ''}">
-                            <div style="width: 24px; height: 24px; border-radius: 50%; background: ${isCorrect ? '#10b981' : 'rgba(255,255,255,0.1)'}; color: #0f172a; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 50%; background: ${isCorrect ? '#10b981' : '#eff6ff'}; color: #0f172a; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">
                                 ${isCorrect ? '<i class="fas fa-check"></i>' : String.fromCharCode(65 + idx)}
                             </div>
-                            <span>${opt}</span>
+                            <div class="preview-option-html">${opt}</div>
                         </div>
                     `;
                 });

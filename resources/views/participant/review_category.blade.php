@@ -3,6 +3,41 @@
 @section('title', 'Pembahasan: ' . $category->name)
 
 @section('content')
+
+<style>
+    .review-question-content,
+    .review-option-content,
+    .review-explanation {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .review-question-content img,
+    .review-option-content img,
+    .review-explanation img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        border-radius: 8px;
+    }
+    .review-question-content .math-tex,
+    .review-option-content .math-tex,
+    .review-explanation .math-tex,
+    .review-question-content .katex,
+    .review-option-content .katex,
+    .review-explanation .katex {
+        max-width: 100%;
+    }
+    .review-question-content .katex-display,
+    .review-option-content .katex-display,
+    .review-explanation .katex-display {
+        overflow-x: auto;
+        overflow-y: hidden;
+        margin: 8px 0;
+    }
+    .review-option-item {
+        min-width: 0;
+    }
+</style>
 <div class="container" style="padding: 40px 20px; max-width: 1000px; margin: 0 auto;">
     <div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
         <a href="{{ route('participant.review', $registration->id) }}" class="btn-primary" style="background: #dbeafe; color: #0f172a; border: none; padding: 10px 20px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
@@ -14,6 +49,41 @@
         </div>
     </div>
 
+
+    @php
+        $normalizeAnswer = function ($value) {
+            if (is_array($value)) {
+                $value = json_encode($value);
+            }
+            return strtolower(trim(preg_replace('/\s+/', ' ', strip_tags((string) $value))));
+        };
+
+        $resolveCorrectValues = function (array $correctAnswers, array $options) {
+            $values = [];
+            foreach ($correctAnswers as $correctAnswer) {
+                $key = (string) $correctAnswer;
+                $upperKey = strtoupper(trim($key));
+
+                if (array_key_exists($key, $options)) {
+                    $values[] = $options[$key];
+                    continue;
+                }
+
+                if (preg_match('/^[A-Z]$/', $upperKey)) {
+                    $index = ord($upperKey) - 65;
+                    if (array_key_exists($index, $options)) {
+                        $values[] = $options[$index];
+                        continue;
+                    }
+                }
+
+                $values[] = $correctAnswer;
+            }
+
+            return array_values(array_filter($values, fn ($value) => $value !== null));
+        };
+    @endphp
+
     @foreach($registration->questions as $index => $question)
     @php 
         $participantAnswer = $answers[$question->id] ?? null;
@@ -21,15 +91,15 @@
         
         $options = is_string($question->options) ? json_decode($question->options, true) : $question->options;
         $correctIndices = is_string($question->correct_answer) ? json_decode($question->correct_answer, true) : $question->correct_answer;
+        $correctValues = $resolveCorrectValues((array) $correctIndices, (array) $options);
         
         // Handle correction check based on type
         if ($question->type === 'multiple_choice') {
-            $correctValues = array_map(fn($idx) => $options[$idx] ?? null, $correctIndices);
-            sort($correctValues);
-            if (is_array($participantAnswer)) {
-                sort($participantAnswer);
-                $isCorrect = ($participantAnswer === $correctValues);
-            }
+            $participantNormalized = array_map($normalizeAnswer, is_array($participantAnswer) ? $participantAnswer : []);
+            $correctNormalized = array_map($normalizeAnswer, $correctValues);
+            sort($participantNormalized);
+            sort($correctNormalized);
+            $isCorrect = ($participantNormalized === $correctNormalized);
         } elseif ($question->type === 'multiple_benar_salah') {
             $totalStatements = count($options);
             $correctCount = 0;
@@ -44,9 +114,8 @@
             }
             $isCorrect = ($correctCount === $totalStatements);
         } else {
-            $correctIndex = $correctIndices[0] ?? null;
-            $correctValue = $options[$correctIndex] ?? null;
-            $isCorrect = ($participantAnswer == $correctValue);
+            $correctValue = $correctValues[0] ?? null;
+            $isCorrect = ($correctValue !== null && $normalizeAnswer($correctValue) === $normalizeAnswer($participantAnswer));
         }
     @endphp
     <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px; border-left: 6px solid {{ $participantAnswer === null ? '#94a3b8' : ($isCorrect ? '#10b981' : '#ef4444') }};">
@@ -55,7 +124,7 @@
             <span class="badge" style="background: rgba(var(--accent-rgb), 0.1); color: var(--accent);">{{ $question->category->name }}</span>
         </div>
 
-        <div style="font-size: 1.15rem; line-height: 1.6; margin-bottom: 24px; color: #0f172a;">
+        <div class="review-question-content" style="font-size: 1.15rem; line-height: 1.6; margin-bottom: 24px; color: #0f172a;">
             {!! $question->question_text !!}
             @if($question->question_image)
             <div style="margin-top: 16px;">
@@ -69,7 +138,7 @@
         <div style="display: grid; gap: 12px; margin-bottom: 24px;">
             @foreach($options as $optIndex => $option)
             @php
-                $shouldBeBenar = in_array(strval($optIndex), array_map('strval', $correctIndices));
+                $shouldBeBenar = in_array(strval($optIndex), array_map('strval', $correctIndices)) || in_array(strtoupper(chr(65 + $optIndex)), array_map('strtoupper', (array) $correctIndices));
                 $userAns = is_array($participantAnswer) ? ($participantAnswer[strval($optIndex)] ?? null) : null;
                 $statementCorrect = ($shouldBeBenar && $userAns === 'benar') || (!$shouldBeBenar && $userAns === 'salah');
                 
@@ -78,7 +147,7 @@
             @endphp
             <div style="padding: 16px; border-radius: 12px; border: 1px solid {{ $borderColor }}; background: {{ $bgColor }};">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="color: #0f172a; font-weight: 500;">{{ $optIndex + 1 }}. {{ $option }}</span>
+                    <span style="color: #0f172a; font-weight: 500;">{{ $optIndex + 1 }}. {!! $option !!}</span>
                 </div>
                 <div style="display: flex; gap: 12px; align-items: center; font-size: 0.85rem;">
                     <span style="color: #475569;">Jawaban Anda: <strong style="color: {{ $userAns ? ($statementCorrect ? '#10b981' : '#ef4444') : '#94a3b8' }};">{{ $userAns ? ucfirst($userAns) : 'Tidak dijawab' }}</strong></span>
@@ -98,12 +167,19 @@
         <div style="display: grid; gap: 12px; margin-bottom: 24px;">
             @foreach($options as $optIndex => $option)
             @php 
-                $isThisCorrect = in_array($optIndex, $correctIndices);
+                $correctKey = (string) $optIndex;
+                $correctLabel = chr(65 + $optIndex);
+                $optionNormalized = $normalizeAnswer($option);
+                $correctNormalizedValues = array_map($normalizeAnswer, $correctValues);
+                $isThisCorrect = in_array($correctKey, array_map('strval', (array) $correctIndices))
+                    || in_array($correctLabel, array_map('strtoupper', (array) $correctIndices))
+                    || in_array($optionNormalized, $correctNormalizedValues, true);
                 $isThisParticipantAnswer = false;
                 if ($question->type === 'multiple_choice') {
-                    $isThisParticipantAnswer = is_array($participantAnswer) && in_array($option, $participantAnswer);
+                    $participantNormalized = array_map($normalizeAnswer, is_array($participantAnswer) ? $participantAnswer : []);
+                    $isThisParticipantAnswer = in_array($optionNormalized, $participantNormalized, true);
                 } else {
-                    $isThisParticipantAnswer = ($participantAnswer == $option);
+                    $isThisParticipantAnswer = $normalizeAnswer($participantAnswer) === $normalizeAnswer($option);
                 }
                 
                 $bgColor = 'rgba(255, 255, 255, 0.03)';
@@ -122,8 +198,8 @@
                 <div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: {{ $isThisCorrect ? '#10b981' : ($isThisParticipantAnswer ? '#ef4444' : 'rgba(255,255,255,0.1)') }}; color: #0f172a;">
                     @if($isThisCorrect) <i class="fas fa-check"></i> @elseif($isThisParticipantAnswer) <i class="fas fa-times"></i> @else {{ chr(65 + $optIndex) }} @endif
                 </div>
-                <div style="color: {{ $isThisCorrect ? 'white' : ($isThisParticipantAnswer ? '#ef4444' : 'var(--text-secondary)') }}; font-weight: {{ ($isThisCorrect || $isThisParticipantAnswer) ? '600' : '400' }};">
-                    {{ $option }}
+                <div style="color: {{ $isThisCorrect ? '#0f172a' : ($isThisParticipantAnswer ? '#ef4444' : 'var(--text-secondary)') }}; font-weight: {{ ($isThisCorrect || $isThisParticipantAnswer) ? '600' : '400' }};">
+                    {!! $option !!}
                 </div>
                 @if($isThisCorrect)
                 <span style="margin-left: auto; font-size: 0.7rem; color: #10b981; font-weight: 700; text-transform: uppercase;">Jawaban Benar</span>
@@ -138,7 +214,7 @@
         @if($question->explanation)
         <div style="background: #f8fafc; border-radius: 12px; padding: 20px; border-top: 2px solid var(--accent);">
             <div style="font-size: 0.8rem; color: var(--accent); font-weight: 700; margin-bottom: 8px; text-transform: uppercase;">Pembahasan:</div>
-            <div style="font-size: 0.95rem; color: #475569; line-height: 1.5;">
+            <div class="review-explanation" style="font-size: 0.95rem; color: #475569; line-height: 1.5;">
                 {!! $question->explanation !!}
             </div>
         </div>
@@ -147,3 +223,23 @@
     @endforeach
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.renderMathInElement) {
+            document.querySelectorAll('.review-question-content, .review-option-content, .review-explanation').forEach(function(el) {
+                renderMathInElement(el, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            });
+        }
+    });
+</script>
+@endpush

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -62,18 +62,38 @@
             flex: 1;
             display: flex;
             overflow: hidden;
+            min-width: 0;
         }
         .exam-left-pane {
-            flex: 1;
+            flex: 1 1 0;
+            min-width: 0;
+            max-width: 50%;
             border-right: 2px dashed #cbd5e1;
             padding: 30px;
-            overflow-y: auto;
+            overflow: auto;
             display: none;
+            position: relative;
+            z-index: 1;
+        }
+        .exam-left-pane img {
+            max-width: 100% !important;
+            height: auto !important;
+            object-fit: contain;
+            display: block;
+            pointer-events: none;
         }
         .exam-right-pane {
-            flex: 1;
+            flex: 1 1 0;
+            min-width: 0;
             padding: 30px;
             overflow-y: auto;
+            position: relative;
+            z-index: 5;
+            pointer-events: auto;
+        }
+        #optionsList {
+            position: relative;
+            z-index: 6;
         }
         .exam-footer {
             padding: 20px 30px;
@@ -166,6 +186,26 @@
         }
         .option-row:hover {
             background: #eff6ff;
+        }
+        .option-row, .option-row * { cursor: pointer; }
+        .option-content { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+        .option-content img, .question-text img { max-width: 100% !important; height: auto !important; display: block; border-radius: 8px; pointer-events: none; }
+        .option-row,
+        .option-row * {
+            cursor: pointer;
+        }
+        .option-content {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .option-content img,
+        .question-text img {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block;
+            border-radius: 8px;
+            pointer-events: none;
         }
         .radio-btn {
             width: 20px; height: 20px;
@@ -396,26 +436,24 @@
 
             if (q.type === 'pilihan_ganda' || q.type === 'benar_salah') {
                 optionsHtml = options.map((opt, i) => {
-                    const escapedOpt = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     const isSelected = selectedVal == opt;
                     return `
-                    <label class="option-row" onclick="selectOption('${q.id}', '${escapedOpt}')">
+                    <div class="option-row" data-question-id="${q.id}" data-option-index="${i}" data-option-type="single" role="button" tabindex="0">
                         <div class="radio-btn ${isSelected ? 'selected' : ''}"></div>
-                        <div style="font-size: var(--question-font-size); color: #0f172a; flex: 1;">${opt}</div>
-                    </label>`;
+                        <div class="option-content" style="font-size: var(--question-font-size); color: #0f172a; flex: 1; min-width: 0;">${opt}</div>
+                    </div>`;
                 }).join('');
             } else if (q.type === 'multiple_choice') {
                 const currentAnswers = Array.isArray(selectedVal) ? selectedVal : [];
                 optionsHtml = options.map((opt, i) => {
-                    const escapedOpt = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     const isSelected = currentAnswers.includes(opt);
                     return `
-                    <label class="option-row" onclick="toggleOption('${q.id}', '${escapedOpt}')">
+                    <div class="option-row" data-question-id="${q.id}" data-option-index="${i}" data-option-type="multi" role="button" tabindex="0">
                         <div class="check-btn ${isSelected ? 'selected' : ''}">
                             ${isSelected ? '<i class="fas fa-check" style="color: #0f172a; font-size: 12px;"></i>' : ''}
                         </div>
-                        <div style="font-size: var(--question-font-size); color: #0f172a; flex: 1;">${opt}</div>
-                    </label>`;
+                        <div class="option-content" style="font-size: var(--question-font-size); color: #0f172a; flex: 1; min-width: 0;">${opt}</div>
+                    </div>`;
                 }).join('');
             } else if (q.type === 'multiple_benar_salah') {
                 const currentMBS = (typeof selectedVal === 'object' && selectedVal !== null && !Array.isArray(selectedVal)) ? selectedVal : {};
@@ -438,7 +476,7 @@
             const leftPane = document.getElementById('examLeftPane');
             if (q.question_image) {
                 leftPane.style.display = 'block';
-                leftPane.innerHTML = `<img src="/storage/${q.question_image}" style="max-width: 100%; border-radius: 8px; border: 1px solid #e2e8f0;">`;
+                leftPane.innerHTML = `<img src="/storage/${q.question_image}" alt="Gambar soal" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #e2e8f0; pointer-events: none;">`;
             } else {
                 leftPane.style.display = 'none';
             }
@@ -476,6 +514,21 @@
                     throwOnError: false
                 });
             }
+        }
+
+
+        function getCurrentOptionByIndex(index) {
+            const currentQuestion = questions[currentIdx];
+            const options = typeof currentQuestion.options === 'string' ? JSON.parse(currentQuestion.options) : currentQuestion.options;
+            return options[index];
+        }
+
+        function selectOptionByIndex(qId, index) {
+            selectOption(qId, getCurrentOptionByIndex(index));
+        }
+
+        function toggleOptionByIndex(qId, index) {
+            toggleOption(qId, getCurrentOptionByIndex(index));
         }
 
         function selectOption(qId, val) {
@@ -539,6 +592,37 @@
             renderQuestion();
         }
 
+
+        document.addEventListener('click', function(event) {
+            const optionRow = event.target.closest('.option-row');
+            if (!optionRow) return;
+            const qId = optionRow.dataset.questionId;
+            const index = Number(optionRow.dataset.optionIndex);
+            const type = optionRow.dataset.optionType;
+            if (Number.isNaN(index) || !qId) return;
+            if (type === 'multi') {
+                toggleOptionByIndex(qId, index);
+            } else {
+                selectOptionByIndex(qId, index);
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            const optionRow = event.target.closest('.option-row');
+            if (!optionRow) return;
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            const qId = optionRow.dataset.questionId;
+            const index = Number(optionRow.dataset.optionIndex);
+            const type = optionRow.dataset.optionType;
+            if (Number.isNaN(index) || !qId) return;
+            if (type === 'multi') {
+                toggleOptionByIndex(qId, index);
+            } else {
+                selectOptionByIndex(qId, index);
+            }
+        });
+
         function startTimer() {
             const display = document.getElementById('timeDisplay');
             const interval = setInterval(() => {
@@ -570,7 +654,9 @@
                     icon: 'warning',
                     background: '#ffffff',
                     color: '#0f172a',
-                    confirmButtonColor: '#3b82f6'
+                    confirmButtonColor: '#3b82f6',
+                    buttonsStyling: true,
+                    customClass: { popup: 'swal2-popup', title: 'swal2-title', confirmButton: 'swal2-confirm' }
                 });
                 return;
             }
@@ -581,11 +667,15 @@
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#ef4444',
-                cancelButtonColor: 'transparent',
+                cancelButtonColor: '#ffffff',
                 confirmButtonText: 'Ya, Kumpulkan',
                 cancelButtonText: 'Batal',
                 background: '#ffffff',
-                color: '#0f172a'
+                color: '#0f172a',
+                customClass: {
+                    cancelButton: 'swal2-cancel',
+                    confirmButton: 'swal2-confirm'
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
                     Swal.fire({
@@ -593,6 +683,8 @@
                         allowOutsideClick: false,
                         background: '#ffffff',
                         color: '#0f172a',
+                        buttonsStyling: true,
+                        customClass: { popup: 'swal2-popup', title: 'swal2-title' },
                         didOpen: () => Swal.showLoading()
                     });
                     autoSubmit();
@@ -647,6 +739,8 @@
                         allowOutsideClick: false,
                         background: '#ffffff',
                         color: '#0f172a',
+                        buttonsStyling: true,
+                        customClass: { popup: 'swal2-popup', title: 'swal2-title' },
                         showConfirmButton: false,
                         timer: 3000
                     }).then(() => {
@@ -660,7 +754,9 @@
                         confirmButtonColor: '#ef4444',
                         confirmButtonText: 'Saya Mengerti',
                         background: '#ffffff',
-                        color: '#0f172a'
+                        color: '#0f172a',
+                        buttonsStyling: true,
+                        customClass: { popup: 'swal2-popup', title: 'swal2-title', confirmButton: 'swal2-confirm' },
                     });
                 }
             }
@@ -672,3 +768,5 @@
     </script>
 </body>
 </html>
+
+

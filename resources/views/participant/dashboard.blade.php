@@ -130,7 +130,7 @@
 </div>
 
 <!-- Modal Aggregate Analysis -->
-<div id="aggregateModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(15, 23, 42, 0.35); backdrop-filter: blur(5px);">
+<div id="aggregateModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(15, 23, 42, 0.18); backdrop-filter: blur(5px);">
     <div class="modal-content glass animate-fade-in" style="margin: 5% auto; padding: 0; border-radius: 24px; width: 90%; max-width: 800px; border: 1px solid var(--glass-border); overflow: hidden;">
         <div style="background: linear-gradient(135deg, #2563eb, #facc15); padding: 24px 32px; display: flex; justify-content: space-between; align-items: center;">
             <h2 style="color: #ffffff; margin: 0; font-family: 'Outfit', sans-serif;"><i class="fas fa-chart-line" style="margin-right: 12px;"></i> Analisis Perkembangan AI</h2>

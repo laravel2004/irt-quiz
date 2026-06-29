@@ -344,3 +344,23 @@
     }
 </style>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.renderMathInElement) {
+            document.querySelectorAll('.review-question-content, .review-option-content, .review-explanation').forEach(function(el) {
+                renderMathInElement(el, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            });
+        }
+    });
+</script>
+@endpush

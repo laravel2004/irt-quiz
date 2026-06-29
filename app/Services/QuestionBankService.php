@@ -10,4 +10,9 @@ class QuestionBankService extends BaseService
     {
         parent::__construct($repository);
     }
+
+    public function getPaginatedWithFilters(int $perPage = 10, array $filters = [])
+    {
+        return $this->repository->paginate($perPage, $filters);
+    }
 }

@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            background-color: #f8fafc;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
@@ -23,10 +23,10 @@
             max-width: 800px;
             width: 100%;
             background: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
             border-radius: 24px;
             padding: 40px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
             position: relative;
             overflow: hidden;
         }
@@ -34,16 +34,16 @@
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
+            background: linear-gradient(90deg, #2563eb, #facc15);
         }
         .terms-content {
-            background: rgba(0,0,0,0.2);
+            background: #f8fafc;
             border-radius: 12px;
             padding: 24px;
             margin: 24px 0;
             max-height: 400px;
             overflow-y: auto;
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
         }
         .terms-content h4 {
             color: var(--accent);
@@ -66,10 +66,10 @@
     <div class="terms-container animate-fade-in">
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="width: 64px; height: 64px; background: #dbeafe; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                <i class="fas fa-clipboard-list" style="font-size: 1.8rem; color: var(--primary);"></i>
+                <i class="fas fa-clipboard-list" style="font-size: 1.8rem; color: var(--accent);"></i>
             </div>
-            <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 8px;">Syarat & Ketentuan Ujian</h2>
-            <p style="color: #475569;">Sesi: <strong>{{ $session->name }}</strong></p>
+            <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 8px; color: #0f172a;">Syarat & Ketentuan Ujian</h2>
+            <p style="color: #475569;">Sesi: <strong style="color: #0f172a;">{{ $session->name }}</strong></p>
         </div>
 
         <div class="terms-content">
@@ -98,12 +98,12 @@
 
         <form action="{{ route('exam.agree', $session->code) }}" method="POST">
             @csrf
-            <label style="display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <label style="display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--glass-border);">
                 <input type="checkbox" name="agree_terms" required style="margin-top: 4px; width: 18px; height: 18px; accent-color: #3b82f6;">
                 <span style="color: #475569; line-height: 1.6; font-size: 0.95rem;">Saya telah membaca seluruh syarat dan ketentuan ujian, memahami aturan yang berlaku, dan setuju untuk melanjutkan ujian sesuai ketentuan tersebut.</span>
             </label>
             <div style="display: flex; gap: 16px; margin-top: 32px;">
-                <a href="{{ route('participant.session.show', $session->id) }}" class="btn-primary" style="flex: 1; background: transparent; border: 1px solid var(--glass-border); color: #475569; text-align: center; text-decoration: none;">
+                <a href="{{ route('participant.session.show', $session->id) }}" class="btn-primary" style="flex: 1; background: #ffffff; border: 1px solid var(--glass-border); color: #0f172a; text-align: center; text-decoration: none;">
                     Kembali ke Detail
                 </a>
                 <button type="submit" class="btn-primary" style="flex: 2; font-weight: 600;">

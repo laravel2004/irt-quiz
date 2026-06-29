@@ -4,6 +4,32 @@
 @section('header_title', 'Manajemen Sesi Ujian')
 
 @section('content')
+
+<style>
+    #sessionModal .form-input,
+    #sessionModal select.form-input,
+    #sessionModal input[type="date"],
+    #sessionModal input[type="time"],
+    #sessionModal input[type="number"],
+    #sessionModal input[type="text"] {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid var(--glass-border) !important;
+    }
+    #sessionModal .form-input::placeholder {
+        color: #94a3b8 !important;
+    }
+    #sessionModal .category-row {
+        background: #ffffff !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 8px;
+    }
+    #sessionModal [id^="subCategoryContainer_"] {
+        background: #f8fafc !important;
+        border: 1px solid var(--glass-border);
+    }
+</style>
+
 <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
     <div class="flex-stack-mobile" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; gap: 20px;">
         <div>
@@ -142,7 +168,7 @@
             
             <div style="display: flex; flex-direction: column; gap: 24px;">
                 <!-- Basic Info -->
-                <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                <div style="background: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">
                     <h4 style="margin-bottom: 16px; font-family: 'Outfit', sans-serif; color: var(--accent);"><i class="fas fa-info-circle"></i> Informasi Dasar Sesi</h4>
                     
                     <div class="form-group">
@@ -174,7 +200,7 @@
                 </div>
 
                 <!-- Subject Configurations -->
-                <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                <div style="background: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <h4 style="margin-bottom: 0; font-family: 'Outfit', sans-serif; color: #10b981;"><i class="fas fa-layer-group"></i> Konfigurasi Mata Pelajaran</h4>
                         <button type="button" class="btn-primary" style="padding: 6px 14px; font-size: 0.85rem;" onclick="addCategoryRow()">
@@ -189,7 +215,7 @@
             </div>
 
             <div class="flex-stack-mobile" style="display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end;">
-                <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeSessionModal()">Batal</button>
+                <button type="button" class="btn-primary" style="background: #ffffff; border: 1px solid var(--glass-border); color: var(--text-primary);" onclick="closeSessionModal()">Batal</button>
                 <button type="submit" class="btn-primary">Simpan Sesi</button>
             </div>
         </form>
@@ -269,10 +295,10 @@
         const div = document.createElement('div');
         div.className = 'category-row';
         div.dataset.index = idx;
-        div.style.background = 'rgba(15, 23, 42, 0.4)';
+        div.style.background = '#ffffff';
         div.style.padding = '16px';
         div.style.borderRadius = '8px';
-        div.style.border = '1px solid rgba(255,255,255,0.1)';
+        div.style.border = '1px solid var(--glass-border)';
         div.style.position = 'relative';
 
         const catId = data ? data.category_id : '';
@@ -315,7 +341,7 @@
             </div>
 
             <!-- Sub Categories Container -->
-            <div id="subCategoryContainer_${idx}" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; display: ${catId ? 'block' : 'none'};">
+            <div id="subCategoryContainer_${idx}" style="background: #f8fafc; padding: 12px; border-radius: 6px; display: ${catId ? 'block' : 'none'};">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <label style="margin-bottom: 0; font-size: 0.85rem; color: var(--text-secondary);">Persentase Sub Mata Pelajaran</label>
                     <button type="button" class="btn-primary" style="padding: 2px 8px; font-size: 0.75rem; background: var(--accent);" onclick="addSubCategoryRow(${idx})">
