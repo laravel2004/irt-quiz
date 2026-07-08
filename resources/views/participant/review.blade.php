@@ -76,20 +76,22 @@
             @if($registration->result && $registration->result->ai_analysis)
                 @php 
                     $aiData = $registration->result->ai_analysis;
-                    $analysis = is_string($aiData) ? json_decode($aiData, true) : $aiData; 
+                    $analysis = is_string($aiData) ? json_decode($aiData, true) : $aiData;
+                    // Guard: jika value berupa array (AI kadang mengembalikan list), ubah jadi string
+                    $safeStr = fn($val) => is_array($val) ? implode(' ', array_map(fn($v) => is_array($v) ? json_encode($v) : (string)$v, $val)) : (string)($val ?? '');
                 @endphp
                 <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
                     <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #10b981; background: #ffffff;">
                         <h4 style="color: #10b981; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-plus-circle"></i> Kelebihan</h4>
-                        <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; margin: 0;">{{ $analysis['kelebihan'] ?? '' }}</p>
+                        <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; margin: 0;">{{ $safeStr($analysis['kelebihan'] ?? '') }}</p>
                     </div>
                     <div style="padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444; background: #ffffff;">
                         <h4 style="color: #ef4444; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-minus-circle"></i> Kekurangan</h4>
-                        <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; margin: 0;">{{ $analysis['kekurangan'] ?? '' }}</p>
+                        <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; margin: 0;">{{ $safeStr($analysis['kekurangan'] ?? '') }}</p>
                     </div>
                     <div style="padding: 20px; border-radius: 12px; border-left: 4px solid var(--accent); background: rgba(var(--accent-rgb), 0.05);">
                         <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase;"><i class="fas fa-lightbulb"></i> Rekomendasi</h4>
-                        <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; margin: 0;">{{ $analysis['rekomendasi'] ?? '' }}</p>
+                        <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; margin: 0;">{{ $safeStr($analysis['rekomendasi'] ?? '') }}</p>
                     </div>
                 </div>
             @else

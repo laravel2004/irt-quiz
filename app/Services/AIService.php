@@ -38,7 +38,18 @@ class AIService
             if ($response->successful()) {
                 $content = $response->json()['choices'][0]['message']['content'];
                 $content = str_replace(['```json', '```'], '', $content);
-                return json_decode(trim($content), true);
+                $decoded = json_decode(trim($content), true);
+
+                // Normalize: ensure expected keys are plain strings, not arrays
+                if (is_array($decoded)) {
+                    foreach (['kelebihan', 'kekurangan', 'rekomendasi'] as $key) {
+                        if (isset($decoded[$key]) && is_array($decoded[$key])) {
+                            $decoded[$key] = implode(' ', array_map(fn($v) => is_array($v) ? json_encode($v) : (string)$v, $decoded[$key]));
+                        }
+                    }
+                }
+
+                return $decoded;
             }
 
             Log::error('OpenAI Error: ' . $response->body());
