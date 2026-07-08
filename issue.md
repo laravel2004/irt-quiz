@@ -1,670 +1,608 @@
-﻿# Planning Implementasi Filter Mata Pelajaran di Menu Bank Soal
+# Planning: Tambah Detail Nilai per Mata Pelajaran di Halaman Hasil & Laporan
 
 ## Ringkasan Kebutuhan
 
-Pada halaman admin Bank Soal `http://127.0.0.1:8000/admin/questions`, perlu ditambahkan fitur filter berdasarkan mata pelajaran.
+Pada dua halaman berikut:
 
-Saat ini halaman Bank Soal sudah menampilkan kolom `MATA PELAJARAN`, tetapi belum ada filter khusus untuk memilih mata pelajaran tertentu. Fitur yang perlu dibuat adalah dropdown filter agar admin bisa melihat daftar soal berdasarkan mata pelajaran yang dipilih.
+1. **Halaman Hasil** → `http://127.0.0.1:8000/dashboard/result/{registrationId}`
+2. **Halaman Laporan** → `http://127.0.0.1:8000/dashboard/review/{registrationId}`
+
+Perlu ditambahkan **section Detail Nilai per Mata Pelajaran** di bawah section total skor yang sudah ada.
+
+Detail nilai ini menampilkan breakdown skor untuk setiap mata pelajaran (category), sehingga peserta bisa melihat performa per bidang pelajaran, bukan hanya total keseluruhan.
 
 Dokumen ini berisi tahapan implementasi detail agar bisa dikerjakan oleh junior programmer atau AI model yang lebih murah secara aman dan bertahap.
 
+---
+
 ## Tujuan Implementasi
 
-- Menambahkan filter `Mata Pelajaran` pada halaman Bank Soal admin.
-- Filter mengambil data dari tabel/model `Category` yang sudah digunakan sebagai mata pelajaran.
-- Saat admin memilih mata pelajaran, tabel hanya menampilkan soal dari mata pelajaran tersebut.
-- Filter harus tetap kompatibel dengan pagination.
-- Filter harus mempertahankan nilai yang dipilih setelah halaman reload atau pindah pagination.
-- Tidak mengubah fitur tambah, edit, preview, hapus, dan search existing kecuali memang diperlukan untuk integrasi filter.
+- Menampilkan tabel/card detail nilai per mata pelajaran di bawah section total skor.
+- Setiap mata pelajaran menampilkan: nama, skor raw, skor IRT, jumlah benar, jumlah salah, jumlah kosong.
+- Data diambil dari tabel `exam_category_results` yang **sudah ada** di database.
+- Tidak perlu membuat migration baru.
+- Tidak perlu mengubah logika perhitungan skor.
+- Hanya perlu menambah eager loading di controller dan section HTML di view.
+
+---
 
 ## Lokasi Halaman
 
-Halaman target:
+### Halaman Hasil (Result)
 
 ```text
-/admin/questions
+Route:   GET /dashboard/result/{registrationId}
+Name:    participant.result
 ```
 
-Route terkait:
-
-```php
-Route::resource('/admin/questions', \App\Http\Controllers\Admin\QuestionBankController::class)->names('admin.questions');
-```
-
-File utama yang perlu diperhatikan:
-
-- `routes/web.php`
-- `app/Http/Controllers/Admin/QuestionBankController.php`
-- `app/Services/QuestionBankService.php`
-- `app/Repositories/QuestionBankRepository.php`
-- `app/Models/QuestionBank.php`
-- `app/Models/Category.php`
-- `resources/views/admin/questions/index.blade.php`
-
-## Kondisi Kode Saat Ini
-
-### Controller
-
-Di `QuestionBankController@index`, data soal saat ini diambil dengan:
-
-```php
-$questions = $this->questionService->getPaginated(10);
-$categories = Category::all();
-```
-
-Kemudian dikirim ke view:
-
-```php
-return view('admin.questions.index', compact('questions', 'categories'));
-```
-
-Artinya:
-
-- Data kategori/mata pelajaran sudah tersedia di view sebagai `$categories`.
-- Namun query soal belum membaca parameter filter dari request.
-
-### Repository
-
-Di `QuestionBankRepository`, method `paginate()` saat ini mengambil semua soal:
-
-```php
-return $this->model->with(['category', 'subCategory'])->latest()->paginate($perPage);
-```
-
-Artinya:
-
-- Query sudah eager load relasi `category` dan `subCategory`.
-- Belum ada kondisi `where('category_id', ...)`.
-
-### View
-
-Di `resources/views/admin/questions/index.blade.php`, sudah ada area search dan tombol tambah soal. Filter mata pelajaran paling cocok ditambahkan di area header ini, dekat input pencarian.
-
-Kolom tabel sudah menampilkan mata pelajaran lewat:
-
-```php
-{{ $question->category->name }}
-```
-
-Artinya data relasi mata pelajaran sudah dipakai dan tidak perlu dibuat dari nol.
-
-## Definisi Fitur yang Diinginkan
-
-Tambahkan dropdown filter dengan pilihan:
-
-- `Semua Mata Pelajaran`
-- daftar mata pelajaran dari `$categories`
-
-Contoh parameter URL:
+### Halaman Laporan (Review)
 
 ```text
-/admin/questions?category_id=3
+Route:   GET /dashboard/review/{registrationId}
+Name:    participant.review
 ```
 
-Jika memilih `Semua Mata Pelajaran`, URL kembali ke:
+---
 
-```text
-/admin/questions
+## File yang Akan Diubah
+
+Hanya **3 file** yang perlu diubah:
+
+| No | File | Jenis Perubahan |
+|----|------|-----------------|
+| 1 | `app/Http/Controllers/Participant/DashboardController.php` | Tambah eager loading |
+| 2 | `resources/views/participant/result.blade.php` | Tambah section detail nilai |
+| 3 | `resources/views/participant/review.blade.php` | Tambah section detail nilai |
+
+File yang **TIDAK PERLU** diubah:
+
+- `routes/web.php` — route sudah ada
+- Database migration — tabel `exam_category_results` sudah ada
+- `app/Models/ExamResult.php` — relasi `categoryResults()` sudah ada
+- `app/Models/ExamCategoryResult.php` — model sudah ada
+- `app/Services/AssessmentService.php` — perhitungan sudah menyimpan data per category
+
+---
+
+## Pemahaman Struktur Data (Penting Dibaca Dulu!)
+
+### Tabel dan Model yang Sudah Ada
+
+Sebelum coding, pahami data flow berikut:
+
+```
+ExamSessionParticipant (peserta ujian)
+    └── result (hasOne → ExamResult)
+            └── categoryResults (hasMany → ExamCategoryResult)
+                    └── category (belongsTo → Category)
 ```
 
-Jika user sedang di halaman pagination, link pagination harus tetap membawa filter:
+### Tabel `exam_category_results`
 
-```text
-/admin/questions?category_id=3&page=2
+Tabel ini **sudah ada** dan sudah diisi otomatis oleh `AssessmentService::calculateIRT()`.
+
+Kolom yang tersedia:
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | bigint | Primary key |
+| `exam_result_id` | bigint (FK) | Merujuk ke `exam_results.id` |
+| `category_id` | bigint (FK) | Merujuk ke `categories.id` (mata pelajaran) |
+| `total_correct` | integer | Jumlah jawaban benar untuk mata pelajaran ini |
+| `total_incorrect` | integer | Jumlah jawaban salah untuk mata pelajaran ini |
+| `total_blank` | integer | Jumlah soal yang tidak dijawab |
+| `score` | float | Skor raw (sudah di-scale sesuai `max_score_raw`) |
+| `irt_score` | float | Skor IRT (sudah di-scale sesuai `max_score_irt`) |
+
+### Model `ExamResult` (file: `app/Models/ExamResult.php`)
+
+Sudah memiliki relasi:
+
+```php
+public function categoryResults() { return $this->hasMany(ExamCategoryResult::class); }
 ```
+
+### Model `ExamCategoryResult` (file: `app/Models/ExamCategoryResult.php`)
+
+Sudah memiliki relasi:
+
+```php
+public function category() { return $this->belongsTo(Category::class); }
+```
+
+### Tabel `exam_session_categories`
+
+Tabel ini menyimpan konfigurasi skor maksimal per mata pelajaran per sesi ujian.
+
+Kolom yang relevan:
+
+| Kolom | Keterangan |
+|-------|------------|
+| `category_id` | Mata pelajaran |
+| `max_score_raw` | Skor raw maksimal untuk mata pelajaran ini |
+| `max_score_irt` | Skor IRT maksimal untuk mata pelajaran ini |
+
+Data ini bisa diakses melalui `$registration->examSession->sessionCategories`.
+
+---
 
 ## Tahapan Implementasi
 
-### 1. Pahami Relasi Data
+### Tahap 1: Update Controller — Method `showResult()`
 
-Sebelum coding, pastikan struktur data berikut sudah benar:
+**File:** `app/Http/Controllers/Participant/DashboardController.php`
 
-- `QuestionBank` memiliki kolom `category_id`.
-- `QuestionBank` memiliki relasi `category()` ke model `Category`.
-- `Category` memiliki field nama, kemungkinan `name`.
-- View Bank Soal sudah menerima `$categories` dari controller.
+**Method yang diubah:** `showResult()`
 
-Checklist tahap ini:
+**Apa yang perlu dilakukan:**
+Tambahkan eager loading untuk `result.categoryResults.category` dan `examSession.sessionCategories.category` agar data detail nilai per mata pelajaran tersedia di view tanpa query N+1.
 
-- Buka `app/Models/QuestionBank.php`.
-- Pastikan ada relasi `category()`.
-- Buka `app/Models/Category.php`.
-- Pastikan nama mata pelajaran bisa ditampilkan dengan `$category->name`.
-- Jangan membuat tabel atau migration baru karena data mata pelajaran sudah ada.
-
-### 2. Tentukan Cara Filter
-
-Gunakan server-side filter, bukan hanya JavaScript client-side.
-
-Alasannya:
-
-- Data Bank Soal memakai pagination.
-- Jika filter hanya dilakukan di JavaScript, yang terfilter hanya data pada halaman pagination saat ini.
-- Server-side filter lebih benar karena query database langsung dibatasi berdasarkan `category_id`.
-
-Format request yang disarankan:
-
-```text
-GET /admin/questions?category_id=ID_KATEGORI
-```
-
-Contoh:
-
-```text
-GET /admin/questions?category_id=2
-```
-
-### 3. Update Repository agar Mendukung Filter
-
-File yang perlu diubah:
-
-```text
-app/Repositories/QuestionBankRepository.php
-```
-
-Saat ini method `paginate()` hanya menerima `$perPage`.
-
-Ubah agar bisa menerima parameter filter opsional. Contoh pendekatan:
+**Kode saat ini (baris 102-119):**
 
 ```php
-public function paginate(int $perPage = 10, array $filters = [])
+public function showResult($registrationId)
 {
-    $query = $this->model->with(['category', 'subCategory'])->latest();
+    $registration = ExamSessionParticipant::where('user_id', auth()->id())
+        ->with(['examSession.sessionCategories', 'result'])
+        ->findOrFail($registrationId);
 
-    if (!empty($filters['category_id'])) {
-        $query->where('category_id', $filters['category_id']);
+    if (!$registration->result) {
+        $assessmentService = new \App\Services\AssessmentService();
+        $assessmentService->calculateIRT($registration->exam_session_id);
+        $registration->load(['examSession.sessionCategories', 'result']);
     }
 
-    return $query->paginate($perPage);
-}
-```
-
-Catatan penting:
-
-- Jangan menghapus eager load `with(['category', 'subCategory'])`.
-- Jangan mengubah urutan `latest()` kecuali ada kebutuhan lain.
-- Gunakan filter hanya jika `category_id` tidak kosong.
-- Jangan langsung memasukkan semua request ke query tanpa validasi.
-
-### 4. Update Service bila Diperlukan
-
-File yang perlu dicek:
-
-```text
-app/Services/QuestionBankService.php
-```
-
-Saat ini `QuestionBankService` mewarisi behavior dari `BaseService`. Perlu dicek apakah `getPaginated(10)` bisa meneruskan filter atau tidak.
-
-Ada dua opsi implementasi.
-
-#### Opsi A: Tambahkan Method Khusus di Service
-
-Ini opsi yang disarankan karena jelas dan aman untuk junior programmer.
-
-Tambahkan method seperti:
-
-```php
-public function getPaginatedWithFilters(int $perPage = 10, array $filters = [])
-{
-    return $this->repository->paginate($perPage, $filters);
-}
-```
-
-Lalu controller memanggil method ini.
-
-Kelebihan:
-
-- Tidak mengganggu method `getPaginated()` yang mungkin dipakai fitur lain.
-- Perubahan lebih eksplisit.
-
-#### Opsi B: Ubah BaseService
-
-Jangan pilih opsi ini kecuali benar-benar paham dampaknya.
-
-Mengubah `BaseService` bisa memengaruhi fitur lain yang memakai service/repository lain.
-
-### 5. Update Controller untuk Membaca Filter
-
-File yang perlu diubah:
-
-```text
-app/Http/Controllers/Admin/QuestionBankController.php
-```
-
-Di method `index(Request $request)`, ambil parameter `category_id` dari query string.
-
-Contoh implementasi:
-
-```php
-public function index(Request $request)
-{
-    $filters = [
-        'category_id' => $request->query('category_id'),
-    ];
-
-    $questions = $this->questionService->getPaginatedWithFilters(10, $filters);
-    $categories = Category::all();
-
-    if ($request->ajax()) {
-        return $this->successResponse($questions);
+    if (!$registration->result) {
+        return redirect()->route('participant.dashboard')->with('error', 'Hasil belum tersedia.');
     }
 
-    return view('admin.questions.index', compact('questions', 'categories', 'filters'));
+    return view('participant.result', compact('registration'));
 }
 ```
 
-Hal yang perlu diperhatikan:
+**Yang perlu diubah:**
 
-- Kirim `$filters` ke view agar dropdown bisa menandai pilihan aktif.
-- Jika `category_id` kosong, tampilkan semua soal.
-- Sebaiknya validasi ringan dilakukan agar `category_id` hanya dipakai jika ada di tabel `categories`.
+Ganti bagian `->with(...)` dan `->load(...)` untuk menambahkan eager loading `result.categoryResults.category` dan `examSession.sessionCategories.category`.
 
-Rekomendasi validasi ringan:
+**Kode setelah diubah:**
 
 ```php
-$categoryId = $request->query('category_id');
+public function showResult($registrationId)
+{
+    $registration = ExamSessionParticipant::where('user_id', auth()->id())
+        ->with([
+            'examSession.sessionCategories.category',
+            'result.categoryResults.category'
+        ])
+        ->findOrFail($registrationId);
 
-if ($categoryId && !Category::whereKey($categoryId)->exists()) {
-    $categoryId = null;
+    if (!$registration->result) {
+        $assessmentService = new \App\Services\AssessmentService();
+        $assessmentService->calculateIRT($registration->exam_session_id);
+        $registration->load([
+            'examSession.sessionCategories.category',
+            'result.categoryResults.category'
+        ]);
+    }
+
+    if (!$registration->result) {
+        return redirect()->route('participant.dashboard')->with('error', 'Hasil belum tersedia.');
+    }
+
+    return view('participant.result', compact('registration'));
 }
 ```
 
-Dengan begitu, jika user membuka URL `/admin/questions?category_id=999999`, aplikasi tidak error dan bisa kembali menampilkan semua data.
+**Penjelasan perubahan:**
+- `examSession.sessionCategories` → berubah menjadi `examSession.sessionCategories.category` agar nama mata pelajaran bisa diakses dari session category.
+- Ditambahkan `result.categoryResults.category` agar data skor per mata pelajaran beserta nama category-nya langsung tersedia.
 
-### 6. Tambahkan Dropdown Filter di View
+**Checklist tahap ini:**
+- [ ] Buka file `app/Http/Controllers/Participant/DashboardController.php`
+- [ ] Cari method `showResult()` (sekitar baris 102)
+- [ ] Ubah eager loading sesuai contoh di atas
+- [ ] Pastikan ada 2 tempat yang diubah: satu di `->with(...)` dan satu di `->load(...)`
+- [ ] Jangan ubah logika lain di method ini
 
-File yang perlu diubah:
+---
 
-```text
-resources/views/admin/questions/index.blade.php
+### Tahap 2: Update Controller — Method `showReview()`
+
+**File:** `app/Http/Controllers/Participant/DashboardController.php`
+
+**Method yang diubah:** `showReview()`
+
+**Apa yang perlu dilakukan:**
+Sama seperti Tahap 1, tambahkan eager loading `result.categoryResults.category`.
+
+**Kode saat ini (baris 125-127):**
+
+```php
+$registration = ExamSessionParticipant::where('user_id', $user->id)
+    ->with(['examSession.sessionCategories', 'questions.category', 'questions.subCategory', 'userAnswers', 'result'])
+    ->findOrFail($registrationId);
 ```
 
-Tambahkan `<select>` di area header, dekat input search `Cari soal...`.
+**Yang perlu diubah:**
 
-Saat ini ada struktur kurang lebih seperti:
+Tambahkan `result.categoryResults.category` ke dalam array `with()`, dan ubah `examSession.sessionCategories` menjadi `examSession.sessionCategories.category`.
+
+**Kode setelah diubah:**
+
+```php
+$registration = ExamSessionParticipant::where('user_id', $user->id)
+    ->with([
+        'examSession.sessionCategories.category',
+        'questions.category',
+        'questions.subCategory',
+        'userAnswers',
+        'result.categoryResults.category'
+    ])
+    ->findOrFail($registrationId);
+```
+
+**Checklist tahap ini:**
+- [ ] Cari method `showReview()` (sekitar baris 121)
+- [ ] Ubah array `with()` sesuai contoh di atas
+- [ ] Pastikan semua eager loading yang sudah ada tetap ada (jangan menghapus `questions.category`, `questions.subCategory`, `userAnswers`)
+- [ ] Jangan ubah kode lain di method ini
+
+---
+
+### Tahap 3: Tambah Section Detail Nilai di `result.blade.php`
+
+**File:** `resources/views/participant/result.blade.php`
+
+**Apa yang perlu dilakukan:**
+Tambahkan section baru berupa tabel/card yang menampilkan skor per mata pelajaran. Section ini diletakkan **di bawah stats-grid** (setelah baris yang menampilkan BENAR/SALAH/KOSONG) dan **sebelum section tombol** (sebelum `margin-top: 48px`).
+
+**Lokasi yang tepat untuk menyisipkan kode baru:**
+
+Cari kode berikut di view (sekitar baris 56-58):
 
 ```html
-<div class="flex-stack-mobile" style="display: flex; gap: 16px;">
-    <div style="position: relative; width: 300px;">
-        <input type="text" id="searchInput" ...>
+        </div>  <!-- tutup stats-grid -->
+
+        <div style="margin-top: 48px; padding-top: 32px; ...">
+```
+
+Sisipkan section baru **di antara** closing div stats-grid dan opening div tombol.
+
+**Kode yang perlu ditambahkan:**
+
+```blade
+        {{-- DETAIL NILAI PER MATA PELAJARAN --}}
+        @if($registration->result && $registration->result->categoryResults && $registration->result->categoryResults->count() > 0)
+        <div style="margin-top: 32px; padding-top: 32px; border-top: 1px solid var(--glass-border);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <div style="width: 36px; height: 36px; background: rgba(var(--accent-rgb), 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-list-check" style="font-size: 1rem; color: var(--accent);"></i>
+                </div>
+                <h3 style="font-family: 'Outfit', sans-serif; margin: 0; font-size: 1.1rem; color: #0f172a;">Detail Nilai per Mata Pelajaran</h3>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                @foreach($registration->result->categoryResults as $catResult)
+                    @php
+                        $catName = $catResult->category->name ?? 'Tidak Diketahui';
+
+                        // Cari max score dari session categories
+                        $sessionCat = $registration->examSession->sessionCategories
+                            ->where('category_id', $catResult->category_id)
+                            ->first();
+                        $maxRawCat = $sessionCat->max_score_raw ?? 0;
+                        $maxIrtCat = $sessionCat->max_score_irt ?? 0;
+                    @endphp
+                    <div class="glass" style="padding: 20px; border-radius: 16px; background: #f8fafc;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span style="font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1rem; color: #0f172a;">{{ $catName }}</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">
+                            <div style="background: #ffffff; padding: 12px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 0.7rem; color: #475569; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor Raw</div>
+                                <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: #0f172a;">{{ number_format($catResult->score, 1) }}</div>
+                                <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxRawCat }}</div>
+                            </div>
+                            <div style="background: rgba(var(--accent-rgb), 0.05); padding: 12px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 0.7rem; color: var(--accent); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor IRT</div>
+                                <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--accent);">{{ round($catResult->irt_score) }}</div>
+                                <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxIrtCat }}</div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                            <div style="text-align: center; padding: 8px; background: rgba(16, 185, 129, 0.08); border-radius: 8px;">
+                                <div style="font-size: 0.65rem; color: #10b981; margin-bottom: 2px;">BENAR</div>
+                                <div style="font-size: 1rem; font-weight: 600; color: #10b981;">{{ $catResult->total_correct }}</div>
+                            </div>
+                            <div style="text-align: center; padding: 8px; background: rgba(239, 68, 68, 0.08); border-radius: 8px;">
+                                <div style="font-size: 0.65rem; color: #ef4444; margin-bottom: 2px;">SALAH</div>
+                                <div style="font-size: 1rem; font-weight: 600; color: #ef4444;">{{ $catResult->total_incorrect }}</div>
+                            </div>
+                            <div style="text-align: center; padding: 8px; background: rgba(71, 85, 105, 0.08); border-radius: 8px;">
+                                <div style="font-size: 0.65rem; color: #475569; margin-bottom: 2px;">KOSONG</div>
+                                <div style="font-size: 1rem; font-weight: 600; color: #0f172a;">{{ $catResult->total_blank }}</div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+```
+
+**Penjelasan kode:**
+- `$registration->result->categoryResults` — mengambil semua data skor per category dari tabel `exam_category_results`
+- `$catResult->category->name` — mengambil nama mata pelajaran dari tabel `categories`
+- `$sessionCat` — mencari konfigurasi skor maksimal dari `exam_session_categories` untuk menampilkan "/ max"
+- Style mengikuti design system yang sudah ada (glass, Outfit font, warna #10b981 untuk benar, #ef4444 untuk salah)
+
+**Checklist tahap ini:**
+- [ ] Buka file `resources/views/participant/result.blade.php`
+- [ ] Cari closing div dari `stats-grid` (sekitar baris 56)
+- [ ] Sisipkan kode baru SETELAH closing div `stats-grid` dan SEBELUM div `margin-top: 48px`
+- [ ] Jangan menghapus atau mengubah kode yang sudah ada
+- [ ] Pastikan semua tag HTML berpasangan (buka-tutup)
+
+---
+
+### Tahap 4: Tambah Section Detail Nilai di `review.blade.php`
+
+**File:** `resources/views/participant/review.blade.php`
+
+**Apa yang perlu dilakukan:**
+Sama seperti Tahap 3, tambahkan section detail nilai per mata pelajaran. Di halaman review, letakkan **di bawah section SCORE OVERVIEW** (setelah div `glass animate-fade-in` yang menampilkan Total Skor Mentah) dan **sebelum section AI ANALYSIS**.
+
+**Lokasi yang tepat untuk menyisipkan kode baru:**
+
+Cari kode berikut di view (sekitar baris 64-67):
+
+```html
+    </div>  <!-- tutup SCORE OVERVIEW -->
+
+    <!-- AI ANALYSIS -->
+```
+
+Sisipkan section baru **di antara** closing SCORE OVERVIEW dan opening AI ANALYSIS.
+
+**Kode yang perlu ditambahkan:**
+
+```blade
+    {{-- DETAIL NILAI PER MATA PELAJARAN --}}
+    @if($registration->result && $registration->result->categoryResults && $registration->result->categoryResults->count() > 0)
+    <div class="glass animate-fade-in" style="padding: 32px; border-radius: 24px; margin-bottom: 32px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+            <div style="width: 40px; height: 40px; background: rgba(var(--accent-rgb), 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-list-check" style="font-size: 1.1rem; color: var(--accent);"></i>
+            </div>
+            <h3 style="font-family: 'Outfit', sans-serif; margin: 0; color: #0f172a;">Detail Nilai per Mata Pelajaran</h3>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+            @foreach($registration->result->categoryResults as $catResult)
+                @php
+                    $catName = $catResult->category->name ?? 'Tidak Diketahui';
+
+                    // Cari max score dari session categories
+                    $sessionCat = $registration->examSession->sessionCategories
+                        ->where('category_id', $catResult->category_id)
+                        ->first();
+                    $maxRawCat = $sessionCat->max_score_raw ?? 0;
+                    $maxIrtCat = $sessionCat->max_score_irt ?? 0;
+                @endphp
+                <div style="padding: 20px; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1rem; color: #0f172a;">{{ $catName }}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">
+                        <div style="background: #ffffff; padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #475569; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor Raw</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: #0f172a;">{{ number_format($catResult->score, 1) }}</div>
+                            <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxRawCat }}</div>
+                        </div>
+                        <div style="background: rgba(var(--accent-rgb), 0.05); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--accent); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor IRT</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--accent);">{{ round($catResult->irt_score) }}</div>
+                            <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxIrtCat }}</div>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                        <div style="text-align: center; padding: 8px; background: rgba(16, 185, 129, 0.08); border-radius: 8px;">
+                            <div style="font-size: 0.65rem; color: #10b981; margin-bottom: 2px;">BENAR</div>
+                            <div style="font-size: 1rem; font-weight: 600; color: #10b981;">{{ $catResult->total_correct }}</div>
+                        </div>
+                        <div style="text-align: center; padding: 8px; background: rgba(239, 68, 68, 0.08); border-radius: 8px;">
+                            <div style="font-size: 0.65rem; color: #ef4444; margin-bottom: 2px;">SALAH</div>
+                            <div style="font-size: 1rem; font-weight: 600; color: #ef4444;">{{ $catResult->total_incorrect }}</div>
+                        </div>
+                        <div style="text-align: center; padding: 8px; background: rgba(71, 85, 105, 0.08); border-radius: 8px;">
+                            <div style="font-size: 0.65rem; color: #475569; margin-bottom: 2px;">KOSONG</div>
+                            <div style="font-size: 1rem; font-weight: 600; color: #0f172a;">{{ $catResult->total_blank }}</div>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
     </div>
-    <button class="btn-primary" onclick="openQuestionModal('create')">...</button>
-</div>
+    @endif
 ```
 
-Tambahkan dropdown sebelum search atau sesudah search. Contoh:
+**Checklist tahap ini:**
+- [ ] Buka file `resources/views/participant/review.blade.php`
+- [ ] Cari closing div dari SCORE OVERVIEW (sekitar baris 64)
+- [ ] Sisipkan kode baru SETELAH closing SCORE OVERVIEW dan SEBELUM comment `<!-- AI ANALYSIS -->`
+- [ ] Jangan menghapus atau mengubah kode yang sudah ada
+- [ ] Pastikan semua tag HTML berpasangan
 
-```blade
-<form method="GET" action="{{ route('admin.questions.index') }}" style="display: flex; gap: 12px; align-items: center; margin: 0;">
-    <select name="category_id" class="form-input" onchange="this.form.submit()" style="width: 220px; margin-bottom: 0;">
-        <option value="">Semua Mata Pelajaran</option>
-        @foreach($categories as $category)
-            <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
-                {{ $category->name }}
-            </option>
-        @endforeach
-    </select>
-</form>
-```
+---
 
-Catatan:
+## Validasi Manual
 
-- Gunakan method `GET` agar filter muncul di URL.
-- Gunakan `onchange="this.form.submit()"` agar user tidak perlu klik tombol filter.
-- Pastikan style tidak merusak layout mobile.
-- Jangan memberi `id="searchInput"` ke dropdown karena ID tersebut sudah dipakai untuk pencarian soal.
-
-### 7. Pastikan Search Existing Tetap Berjalan
-
-Di view saat ini ada input:
-
-```html
-<input type="text" id="searchInput" class="form-input" placeholder="Cari soal...">
-```
-
-Kemungkinan ada JavaScript yang melakukan search client-side berdasarkan isi tabel.
-
-Setelah menambah filter:
-
-- Jangan menghapus `id="searchInput"`.
-- Jangan mengubah struktur tabel secara besar-besaran.
-- Pastikan search tetap bisa menyaring baris yang sedang tampil.
-- Filter mata pelajaran bekerja dari server, search bekerja di halaman hasil saat ini.
-
-Catatan untuk implementer:
-
-- Search client-side dan filter server-side boleh berjalan berdampingan.
-- Jika search diketik setelah filter mata pelajaran dipilih, search hanya mencari di data soal yang sudah difilter pada halaman tersebut.
-
-### 8. Preserve Filter di Pagination
-
-Ini bagian penting.
-
-Jika pagination tidak diupdate, saat user klik halaman 2 filter bisa hilang.
-
-Di view saat ini kemungkinan pagination seperti:
-
-```blade
-{{ $questions->links() }}
-```
-
-Ubah menjadi:
-
-```blade
-{{ $questions->appends(request()->query())->links() }}
-```
-
-Tujuannya:
-
-- Semua query string aktif, termasuk `category_id`, tetap ikut di link pagination.
-- Contoh link menjadi `/admin/questions?category_id=3&page=2`.
-
-Checklist:
-
-- Pilih mata pelajaran.
-- Klik page 2.
-- Pastikan dropdown masih memilih mata pelajaran yang sama.
-- Pastikan data masih terfilter.
-
-### 9. Tambahkan Tombol Reset Opsional
-
-Tombol reset tidak wajib, tapi disarankan agar UX lebih jelas.
-
-Jika ingin ditambahkan, letakkan dekat dropdown filter.
-
-Contoh:
-
-```blade
-@if(request('category_id'))
-    <a href="{{ route('admin.questions.index') }}" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center;">
-        Reset
-    </a>
-@endif
-```
-
-Catatan:
-
-- Pastikan class `btn-secondary` memang ada. Jika tidak ada, gunakan style sederhana yang konsisten dengan UI existing.
-- Reset harus menghapus query `category_id`.
-
-### 10. Tampilkan State Kosong yang Jelas
-
-Saat filter dipilih tapi tidak ada soal, pesan kosong saat ini kemungkinan:
-
-```text
-Belum ada soal.
-```
-
-Boleh ditingkatkan agar lebih informatif:
-
-```blade
-@if(request('category_id'))
-    Tidak ada soal untuk mata pelajaran yang dipilih.
-@else
-    Belum ada soal.
-@endif
-```
-
-Tujuannya agar admin tahu bahwa data kosong karena filter, bukan karena Bank Soal benar-benar kosong.
-
-### 11. Validasi Manual
+### Skenario Testing
 
 Setelah implementasi, lakukan testing manual di browser.
 
-Skenario yang wajib diuji:
+#### 1. Halaman Hasil (`/dashboard/result/{id}`)
 
-1. Buka `/admin/questions` tanpa filter.
-   - Semua soal tampil.
-   - Dropdown menampilkan `Semua Mata Pelajaran`.
+- [ ] Buka halaman hasil untuk registrasi yang sudah selesai
+- [ ] Pastikan section total skor (Raw + IRT) masih tampil normal
+- [ ] Pastikan section BENAR/SALAH/KOSONG masih tampil normal
+- [ ] Pastikan section baru "Detail Nilai per Mata Pelajaran" muncul di bawah stats
+- [ ] Pastikan setiap mata pelajaran menampilkan: nama, skor raw, skor IRT, benar, salah, kosong
+- [ ] Pastikan skor raw per mata pelajaran menampilkan "/ maks" (misal: 95.5 / 150)
+- [ ] Pastikan skor IRT per mata pelajaran menampilkan "/ maks" (misal: 287 / 400)
+- [ ] Pastikan section AI Analysis masih tampil normal
+- [ ] Pastikan tombol "Kunci Jawaban" dan "Download Pembahasan" masih berfungsi
 
-2. Pilih salah satu mata pelajaran.
-   - URL berubah menjadi `/admin/questions?category_id=...`.
-   - Tabel hanya menampilkan soal dari mata pelajaran tersebut.
-   - Dropdown tetap memilih mata pelajaran yang dipilih.
+#### 2. Halaman Laporan (`/dashboard/review/{id}`)
 
-3. Klik pagination setelah filter aktif.
-   - Query `category_id` tetap ada di URL.
-   - Data tetap terfilter.
-   - Dropdown tetap sesuai.
+- [ ] Buka halaman laporan untuk registrasi yang sudah selesai
+- [ ] Pastikan section total skor mentah masih tampil normal
+- [ ] Pastikan section baru "Detail Nilai per Mata Pelajaran" muncul setelah total skor dan sebelum AI Analysis
+- [ ] Pastikan setiap mata pelajaran menampilkan data yang benar
+- [ ] Pastikan section AI Analysis masih tampil normal
+- [ ] Pastikan grafik statistik jawaban masih berfungsi
+- [ ] Pastikan section "Pilih Rincian Pembahasan per Mata Pelajaran" masih tampil dan bisa diklik
 
-4. Pilih `Semua Mata Pelajaran`.
-   - Filter hilang atau `category_id` kosong.
-   - Semua soal tampil kembali.
+#### 3. Edge Cases
 
-5. Gunakan search setelah filter aktif.
-   - Search tetap berjalan pada data yang sedang tampil.
-   - Tidak ada error JavaScript di console.
+- [ ] Buka halaman untuk registrasi yang belum memiliki `result` → harus redirect, bukan error
+- [ ] Buka halaman untuk registrasi yang memiliki `result` tapi belum ada `categoryResults` → section detail nilai tidak muncul (bukan error)
+- [ ] Pastikan responsive di mobile: card mata pelajaran harus stack vertical dengan baik
 
-6. Klik Tambah Soal.
-   - Modal tambah soal tetap terbuka.
-   - Dropdown dalam modal tambah soal tetap berjalan.
-   - Fitur sub kategori dan kode soal tidak rusak.
+#### 4. Validasi Data
 
-7. Klik Edit, Preview, dan Delete.
-   - Semua action tetap berjalan seperti sebelumnya.
+- [ ] Total skor raw keseluruhan ≈ jumlah skor raw per mata pelajaran
+- [ ] Total skor IRT keseluruhan ≈ jumlah skor IRT per mata pelajaran
+- [ ] Total benar/salah/kosong keseluruhan = jumlah benar/salah/kosong per mata pelajaran
 
-### 12. Testing dengan Data Tidak Valid
+---
 
-Uji URL manual:
+## Perintah Cek yang Disarankan
 
-```text
-/admin/questions?category_id=999999
-/admin/questions?category_id=abc
-```
-
-Expected result:
-
-- Aplikasi tidak error.
-- Halaman tetap bisa dibuka.
-- Filter invalid diabaikan atau kembali ke semua soal.
-
-Jika terjadi error SQL atau exception, perbaiki validasi controller.
-
-### 13. Perintah Cek yang Disarankan
-
-Gunakan perintah berikut untuk mencari lokasi kode terkait:
+### Verifikasi Syntax PHP
 
 ```bash
-rg "QuestionBankController|admin.questions|questions->links|searchInput|Category::all" app resources routes
+php -l app/Http/Controllers/Participant/DashboardController.php
 ```
 
-Jika project menggunakan Laravel Pint atau test suite, jalankan sesuai setup project. Minimal cek syntax PHP:
-
-```bash
-php -l app/Http/Controllers/Admin/QuestionBankController.php
-php -l app/Repositories/QuestionBankRepository.php
-php -l app/Services/QuestionBankService.php
-```
-
-Jika ingin menjalankan server lokal:
+### Jalankan Server Lokal
 
 ```bash
 php artisan serve
 ```
 
-Lalu buka:
+Lalu buka di browser:
 
 ```text
-http://127.0.0.1:8000/admin/questions
+http://127.0.0.1:8000/dashboard/result/{id}
+http://127.0.0.1:8000/dashboard/review/{id}
 ```
 
-## Rekomendasi Bentuk Perubahan Kode
+Ganti `{id}` dengan ID registrasi yang valid.
 
-### Repository
+### Clear View Cache
 
-Target perubahan:
+Jika tampilan tidak berubah setelah edit:
 
-```text
-app/Repositories/QuestionBankRepository.php
+```bash
+php artisan view:clear
 ```
 
-Ubah method `paginate()` agar menerima `$filters`.
+---
 
-Contoh final yang diharapkan:
+## Referensi Cepat: Model dan Relasi
+
+Ini adalah diagram relasi yang perlu dipahami:
+
+```
+ExamSessionParticipant
+├── examSession → ExamSession
+│   └── sessionCategories → ExamSessionCategory[] (punya max_score_raw, max_score_irt)
+│       └── category → Category (punya name)
+├── result → ExamResult (punya score, irt_score total)
+│   └── categoryResults → ExamCategoryResult[] (punya score, irt_score per category)
+│       └── category → Category (punya name)
+├── questions → QuestionBank[]
+└── userAnswers → UserAnswer[]
+```
+
+### Cara Akses Data di View
 
 ```php
-public function paginate(int $perPage = 10, array $filters = [])
-{
-    $query = $this->model->with(['category', 'subCategory'])->latest();
+// Total skor
+$registration->result->score           // skor raw total
+$registration->result->irt_score       // skor IRT total
 
-    if (!empty($filters['category_id'])) {
-        $query->where('category_id', $filters['category_id']);
-    }
+// Detail per mata pelajaran
+$registration->result->categoryResults // collection of ExamCategoryResult
 
-    return $query->paginate($perPage);
-}
+// Tiap item dalam categoryResults:
+$catResult->category->name             // nama mata pelajaran
+$catResult->score                      // skor raw mata pelajaran ini
+$catResult->irt_score                  // skor IRT mata pelajaran ini
+$catResult->total_correct              // jumlah benar
+$catResult->total_incorrect            // jumlah salah
+$catResult->total_blank                // jumlah kosong
+
+// Max skor per mata pelajaran (dari session config)
+$registration->examSession->sessionCategories  // collection
+// Cari yang category_id-nya cocok:
+$sessionCat = $registration->examSession->sessionCategories
+    ->where('category_id', $catResult->category_id)->first();
+$sessionCat->max_score_raw             // max skor raw
+$sessionCat->max_score_irt             // max skor IRT
 ```
 
-### Service
-
-Target perubahan:
-
-```text
-app/Services/QuestionBankService.php
-```
-
-Tambahkan method khusus:
-
-```php
-public function getPaginatedWithFilters(int $perPage = 10, array $filters = [])
-{
-    return $this->repository->paginate($perPage, $filters);
-}
-```
-
-### Controller
-
-Target perubahan:
-
-```text
-app/Http/Controllers/Admin/QuestionBankController.php
-```
-
-Update method `index()` agar membaca `category_id`.
-
-Contoh:
-
-```php
-public function index(Request $request)
-{
-    $categoryId = $request->query('category_id');
-
-    if ($categoryId && !Category::whereKey($categoryId)->exists()) {
-        $categoryId = null;
-    }
-
-    $filters = [
-        'category_id' => $categoryId,
-    ];
-
-    $questions = $this->questionService->getPaginatedWithFilters(10, $filters);
-    $categories = Category::all();
-
-    if ($request->ajax()) {
-        return $this->successResponse($questions);
-    }
-
-    return view('admin.questions.index', compact('questions', 'categories', 'filters'));
-}
-```
-
-### View
-
-Target perubahan:
-
-```text
-resources/views/admin/questions/index.blade.php
-```
-
-Tambahkan dropdown filter di area header.
-
-Contoh:
-
-```blade
-<form method="GET" action="{{ route('admin.questions.index') }}" style="display: flex; gap: 12px; align-items: center; margin: 0;">
-    <select name="category_id" class="form-input" onchange="this.form.submit()" style="width: 220px; margin-bottom: 0;">
-        <option value="">Semua Mata Pelajaran</option>
-        @foreach($categories as $category)
-            <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
-                {{ $category->name }}
-            </option>
-        @endforeach
-    </select>
-</form>
-```
-
-Update pagination:
-
-```blade
-{{ $questions->appends(request()->query())->links() }}
-```
+---
 
 ## Acceptance Criteria
 
 Fitur dianggap selesai jika semua poin berikut terpenuhi:
 
-- Di halaman `/admin/questions` ada dropdown filter mata pelajaran.
-- Dropdown berisi opsi `Semua Mata Pelajaran` dan daftar mata pelajaran dari database.
-- Saat memilih mata pelajaran, URL membawa query `category_id`.
-- Tabel hanya menampilkan soal dari mata pelajaran yang dipilih.
-- Saat memilih `Semua Mata Pelajaran`, semua soal tampil kembali.
-- Pagination tetap mempertahankan filter aktif.
-- Dropdown tetap menampilkan pilihan aktif setelah reload dan pagination.
-- Search existing tetap berfungsi.
-- Fitur tambah soal tetap berfungsi.
-- Fitur edit soal tetap berfungsi.
-- Fitur preview soal tetap berfungsi.
-- Fitur hapus soal tetap berfungsi.
-- URL dengan `category_id` invalid tidak menyebabkan error.
-- Tidak ada perubahan database atau migration baru.
-- Tidak ada perubahan route baru yang tidak diperlukan.
+- [ ] Di halaman Hasil (`/dashboard/result/{id}`) ada section "Detail Nilai per Mata Pelajaran"
+- [ ] Di halaman Laporan (`/dashboard/review/{id}`) ada section "Detail Nilai per Mata Pelajaran"
+- [ ] Setiap mata pelajaran menampilkan: nama, skor raw (/ max), skor IRT (/ max), benar, salah, kosong
+- [ ] Section muncul di bawah total skor dan di atas section lain (AI Analysis / tombol)
+- [ ] Jika data `categoryResults` kosong, section tidak muncul (bukan error)
+- [ ] Semua fitur yang sudah ada tetap berfungsi normal
+- [ ] Layout responsive di mobile
+- [ ] Tidak ada migration baru
+- [ ] Tidak ada perubahan route
+- [ ] Tidak ada error di production log
+
+---
 
 ## Catatan untuk Junior Programmer atau AI Model
 
-- Fokus pekerjaan hanya pada filter mata pelajaran di Bank Soal.
-- Jangan mengubah fitur lain di halaman Bank Soal.
-- Jangan menghapus JavaScript existing karena halaman ini punya banyak logic modal, TinyMCE, Math editor, sub kategori, kode soal, preview, edit, dan delete.
-- Jangan mengubah nama route `admin.questions.index`.
-- Jangan membuat migration baru karena data mata pelajaran sudah berasal dari model `Category`.
-- Jangan melakukan filter hanya dengan JavaScript karena data tabel memakai pagination.
-- Pastikan perubahan query dilakukan di repository/service agar struktur project tetap konsisten.
-- Jika ragu, buat perubahan kecil dulu: repository, service, controller, view, lalu test manual.
+- Fokus pekerjaan hanya pada menambahkan section detail nilai. Jangan mengubah fitur lain.
+- Data sudah tersedia di database. Tidak perlu membuat query baru atau logika perhitungan baru.
+- Hanya perlu menambah eager loading di controller dan HTML di view.
+- Jangan menghapus atau memodifikasi kode existing kecuali bagian eager loading.
+- Gunakan style inline yang konsisten dengan style yang sudah ada di halaman tersebut.
+- Gunakan icon FontAwesome (`fa-list-check`) yang sudah dipakai di project ini.
+- Gunakan font `Outfit` untuk heading/angka sesuai design system yang ada.
+- Pastikan class `glass`, `animate-fade-in`, dan CSS variable `--accent`, `--accent-rgb`, `--glass-border` sudah ada di project (sudah ada, jangan buat ulang).
+- Jika ragu, lihat cara section AI Analysis atau section SCORE OVERVIEW menggunakan style — ikuti pola yang sama.
 
-## Estimasi File yang Akan Berubah
-
-Kemungkinan hanya 4 file berikut yang perlu diubah:
-
-- `app/Repositories/QuestionBankRepository.php`
-- `app/Services/QuestionBankService.php`
-- `app/Http/Controllers/Admin/QuestionBankController.php`
-- `resources/views/admin/questions/index.blade.php`
-
-Tidak perlu mengubah:
-
-- `routes/web.php`
-- database migration
-- model `QuestionBank`
-- model `Category`
-
-## Risiko yang Perlu Dihindari
-
-- Filter hilang saat klik pagination.
-- Dropdown filter merusak layout header di mobile.
-- Search client-side berhenti bekerja karena struktur HTML diubah terlalu banyak.
-- Modal tambah/edit soal rusak karena ID elemen existing berubah.
-- Query error saat `category_id` invalid.
-- Mengubah `BaseService` atau `BaseRepository` sehingga fitur lain ikut terdampak.
+---
 
 ## Urutan Kerja Singkat
 
-1. Baca `QuestionBankController@index`.
-2. Baca `QuestionBankRepository::paginate()`.
-3. Tambahkan filter `category_id` di repository.
-4. Tambahkan method service khusus untuk filter.
-5. Update controller agar membaca query `category_id`.
-6. Kirim `$filters` ke view jika diperlukan.
-7. Tambahkan dropdown filter di view.
-8. Update pagination dengan `appends(request()->query())`.
-9. Test manual semua skenario.
-10. Pastikan fitur CRUD soal tetap normal.
+1. Baca dan pahami section "Pemahaman Struktur Data" di atas.
+2. Update `showResult()` di controller — tambah eager loading.
+3. Update `showReview()` di controller — tambah eager loading.
+4. Tambahkan section HTML di `result.blade.php` — di bawah stats-grid.
+5. Tambahkan section HTML di `review.blade.php` — di bawah SCORE OVERVIEW.
+6. Clear view cache: `php artisan view:clear`.
+7. Jalankan `php artisan serve`.
+8. Buka kedua halaman di browser dan validasi semua skenario testing.
+9. Pastikan tidak ada error di console browser atau laravel log.
+
+---
+
+## Estimasi Waktu
+
+- Junior Programmer: 30–60 menit
+- AI Model: 5–10 menit
+
+Estimasi ini sudah termasuk waktu testing manual.

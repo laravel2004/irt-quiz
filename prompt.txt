@@ -3,9 +3,11 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. perhatikan pada menu bank soal http://127.0.0.1:8000/admin/questions
-2. disitu tambahkan filter by mata pelajaran.
-
+1. perhatikan menu hasil https://exam.jagobelajar.com/dashboard/result/16 
+2. perhatikan menu laporan https://exam.jagobelajar.com/dashboard/review/16
+3. itu di production tapi asumsikan ini dilocal jadi link nya ganti ya.
+4. untuk di 2 menu itu buatkan detail nilai di bawah section total skor.
+5. detail nilai ini adalah menampilkan nilai per mata pelajaran dengan skor per mata pelajaran
 
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail
 dengan target  junior programmer atau model yang lebih murah bisa mengerjakan

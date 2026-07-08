@@ -63,6 +63,60 @@
         </div>
     </div>
 
+    {{-- DETAIL NILAI PER MATA PELAJARAN --}}
+    @if($registration->result && $registration->result->categoryResults && $registration->result->categoryResults->count() > 0)
+    <div class="glass animate-fade-in" style="padding: 32px; border-radius: 24px; margin-bottom: 32px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+            <div style="width: 40px; height: 40px; background: rgba(var(--accent-rgb), 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-list-check" style="font-size: 1.1rem; color: var(--accent);"></i>
+            </div>
+            <h3 style="font-family: 'Outfit', sans-serif; margin: 0; color: #0f172a;">Detail Nilai per Mata Pelajaran</h3>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+            @foreach($registration->result->categoryResults as $catResult)
+                @php
+                    $catName = $catResult->category->name ?? 'Tidak Diketahui';
+                    $sessionCat = $registration->examSession->sessionCategories
+                        ->where('category_id', $catResult->category_id)->first();
+                    $maxRawCat = $sessionCat->max_score_raw ?? 0;
+                    $maxIrtCat = $sessionCat->max_score_irt ?? 0;
+                @endphp
+                <div style="padding: 20px; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 12px;">
+                        <span style="font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1rem; color: #0f172a;">{{ $catName }}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">
+                        <div style="background: #ffffff; padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #475569; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor Raw</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: #0f172a;">{{ number_format($catResult->score, 1) }}</div>
+                            <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxRawCat }}</div>
+                        </div>
+                        <div style="background: rgba(var(--accent-rgb), 0.05); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--accent); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor IRT</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--accent);">{{ round($catResult->irt_score) }}</div>
+                            <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxIrtCat }}</div>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                        <div style="text-align: center; padding: 8px; background: rgba(16, 185, 129, 0.08); border-radius: 8px;">
+                            <div style="font-size: 0.65rem; color: #10b981; margin-bottom: 2px;">BENAR</div>
+                            <div style="font-size: 1rem; font-weight: 600; color: #10b981;">{{ $catResult->total_correct }}</div>
+                        </div>
+                        <div style="text-align: center; padding: 8px; background: rgba(239, 68, 68, 0.08); border-radius: 8px;">
+                            <div style="font-size: 0.65rem; color: #ef4444; margin-bottom: 2px;">SALAH</div>
+                            <div style="font-size: 1rem; font-weight: 600; color: #ef4444;">{{ $catResult->total_incorrect }}</div>
+                        </div>
+                        <div style="text-align: center; padding: 8px; background: rgba(71, 85, 105, 0.08); border-radius: 8px;">
+                            <div style="font-size: 0.65rem; color: #475569; margin-bottom: 2px;">KOSONG</div>
+                            <div style="font-size: 1rem; font-weight: 600; color: #0f172a;">{{ $catResult->total_blank }}</div>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     <!-- AI ANALYSIS -->
     <div class="glass animate-fade-in" style="padding: 32px; border-radius: 24px; margin-bottom: 32px; text-align: left;">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">

@@ -102,13 +102,19 @@ class DashboardController extends Controller
     public function showResult($registrationId)
     {
         $registration = ExamSessionParticipant::where('user_id', auth()->id())
-            ->with(['examSession.sessionCategories', 'result'])
+            ->with([
+                'examSession.sessionCategories.category',
+                'result.categoryResults.category'
+            ])
             ->findOrFail($registrationId);
 
         if (!$registration->result) {
             $assessmentService = new \App\Services\AssessmentService();
             $assessmentService->calculateIRT($registration->exam_session_id);
-            $registration->load(['examSession.sessionCategories', 'result']);
+            $registration->load([
+                'examSession.sessionCategories.category',
+                'result.categoryResults.category'
+            ]);
         }
 
         if (!$registration->result) {
@@ -123,7 +129,13 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         $registration = ExamSessionParticipant::where('user_id', $user->id)
-            ->with(['examSession.sessionCategories', 'questions.category', 'questions.subCategory', 'userAnswers', 'result'])
+            ->with([
+                'examSession.sessionCategories.category',
+                'questions.category',
+                'questions.subCategory',
+                'userAnswers',
+                'result.categoryResults.category'
+            ])
             ->findOrFail($registrationId);
 
         if (!$registration->finished_at) {
