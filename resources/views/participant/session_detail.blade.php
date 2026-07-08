@@ -100,61 +100,8 @@
         @endphp
 
         @if($showAttemptScoreChart)
-                <div style="margin-bottom: 28px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
-                <div>
-                    <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 6px; color: #0f172a;">Materi yang Diujikan</h3>
-                    <p style="color: #64748b; margin: 0; font-size: 0.92rem;">Ringkasan mata pelajaran, durasi, jumlah soal, dan rincian sub materi.</p>
-                </div>
-                <span style="background: #fef9c3; color: #854d0e; border: 1px solid #fde047; border-radius: 999px; padding: 6px 12px; font-size: 0.8rem; font-weight: 700;">
-                    {{ $sessionCategories->count() }} Materi
-                </span>
-            </div>
+        <div style="background: #f8fafc; border-radius: 16px; padding: 20px;">
 
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-                @forelse($sessionCategories as $sessionCategory)
-                    <div style="background: #ffffff; border: 1px solid #dbeafe; border-left: 5px solid #2563eb; border-radius: 18px; padding: 20px; box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);">
-                        <div style="display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px;">
-                            <div style="display: flex; align-items: flex-start; gap: 12px;">
-                                <div style="width: 40px; height: 40px; border-radius: 12px; background: #dbeafe; color: #1d4ed8; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <i class="fas fa-book-open"></i>
-                                </div>
-                                <div>
-                                    <h4 style="font-family: 'Outfit', sans-serif; margin: 0 0 4px; color: #0f172a;">{{ $sessionCategory->category->name ?? 'Materi tidak diketahui' }}</h4>
-                                    <p style="color: #64748b; margin: 0; font-size: 0.85rem;">Detail materi untuk sesi ujian ini.</p>
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 8px; color: #475569; font-size: 0.85rem; flex-wrap: wrap; align-items: flex-start;">
-                                <span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 999px; padding: 6px 10px; font-weight: 600;"><i class="fas fa-clock"></i> {{ $sessionCategory->duration }} menit</span>
-                                <span style="background: #fef9c3; color: #854d0e; border: 1px solid #fde047; border-radius: 999px; padding: 6px 10px; font-weight: 600;"><i class="fas fa-question-circle"></i> {{ $sessionCategory->total_questions }} soal</span>
-                            </div>
-                        </div>
-
-                        @if($sessionCategory->subCategories->isNotEmpty())
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
-                                <div style="color: #475569; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;">Sub Materi</div>
-                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                    @foreach($sessionCategory->subCategories as $subCategory)
-                                        <span style="background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; border-radius: 999px; padding: 7px 11px; font-size: 0.8rem; font-weight: 600;">
-                                            {{ $subCategory->subCategory->name ?? 'Sub materi' }} <strong style="color: #854d0e;">{{ $subCategory->percentage }}%</strong>
-                                        </span>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @else
-                            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px; padding: 14px; color: #64748b; font-size: 0.9rem;">
-                                Tidak ada rincian sub materi.
-                            </div>
-                        @endif
-                    </div>
-                @empty
-                    <div style="color: #64748b; padding: 28px; text-align: center; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 16px;">
-                        <i class="fas fa-book" style="display: block; font-size: 2rem; color: #93c5fd; margin-bottom: 10px;"></i>
-                        Materi ujian belum tersedia.
-                    </div>
-                @endforelse
-            </div>
-        </div><div style="background: #f8fafc; border-radius: 16px; padding: 20px;">
                 <p style="color: #475569; margin: 0 0 16px 0; line-height: 1.6;">Section ini hanya untuk user sesi premium dan menampilkan perkembangan nilai dari setiap percobaan yang sudah selesai.</p>
                 <div style="position: relative; height: 320px;">
                     <canvas id="attemptScoreChart"></canvas>
@@ -200,61 +147,7 @@
             </div>
         </div>
         @endif
-        <div style="margin-bottom: 28px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
-                <div>
-                    <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 6px; color: #0f172a;">Materi yang Diujikan</h3>
-                    <p style="color: #64748b; margin: 0; font-size: 0.92rem;">Ringkasan mata pelajaran, durasi, jumlah soal, dan rincian sub materi.</p>
-                </div>
-                <span style="background: #fef9c3; color: #854d0e; border: 1px solid #fde047; border-radius: 999px; padding: 6px 12px; font-size: 0.8rem; font-weight: 700;">
-                    {{ $sessionCategories->count() }} Materi
-                </span>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-                @forelse($sessionCategories as $sessionCategory)
-                    <div style="background: #ffffff; border: 1px solid #dbeafe; border-left: 5px solid #2563eb; border-radius: 18px; padding: 20px; box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);">
-                        <div style="display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px;">
-                            <div style="display: flex; align-items: flex-start; gap: 12px;">
-                                <div style="width: 40px; height: 40px; border-radius: 12px; background: #dbeafe; color: #1d4ed8; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <i class="fas fa-book-open"></i>
-                                </div>
-                                <div>
-                                    <h4 style="font-family: 'Outfit', sans-serif; margin: 0 0 4px; color: #0f172a;">{{ $sessionCategory->category->name ?? 'Materi tidak diketahui' }}</h4>
-                                    <p style="color: #64748b; margin: 0; font-size: 0.85rem;">Detail materi untuk sesi ujian ini.</p>
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 8px; color: #475569; font-size: 0.85rem; flex-wrap: wrap; align-items: flex-start;">
-                                <span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 999px; padding: 6px 10px; font-weight: 600;"><i class="fas fa-clock"></i> {{ $sessionCategory->duration }} menit</span>
-                                <span style="background: #fef9c3; color: #854d0e; border: 1px solid #fde047; border-radius: 999px; padding: 6px 10px; font-weight: 600;"><i class="fas fa-question-circle"></i> {{ $sessionCategory->total_questions }} soal</span>
-                            </div>
-                        </div>
-
-                        @if($sessionCategory->subCategories->isNotEmpty())
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
-                                <div style="color: #475569; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;">Sub Materi</div>
-                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                    @foreach($sessionCategory->subCategories as $subCategory)
-                                        <span style="background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; border-radius: 999px; padding: 7px 11px; font-size: 0.8rem; font-weight: 600;">
-                                            {{ $subCategory->subCategory->name ?? 'Sub materi' }} <strong style="color: #854d0e;">{{ $subCategory->percentage }}%</strong>
-                                        </span>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @else
-                            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px; padding: 14px; color: #64748b; font-size: 0.9rem;">
-                                Tidak ada rincian sub materi.
-                            </div>
-                        @endif
-                    </div>
-                @empty
-                    <div style="color: #64748b; padding: 28px; text-align: center; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 16px;">
-                        <i class="fas fa-book" style="display: block; font-size: 2rem; color: #93c5fd; margin-bottom: 10px;"></i>
-                        Materi ujian belum tersedia.
-                    </div>
-                @endforelse
-            </div>
-        </div>
+        {{-- SECTION MATERI YANG DIUJIKAN — disembunyikan per permintaan --}}
 
         <div style="background: #f8fafc; border-radius: 16px; padding: 20px;">
             <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 12px; color: #0f172a;">Instruksi Khusus</h3>
