@@ -29,7 +29,7 @@
                     <th>EMAIL</th>
                     <th>WHATSAPP</th>
                     <th>ROLE</th>
-                    <th>ALAMAT</th>
+                    <th>SEKOLAH</th>
                     <th style="width: 150px; text-align: center;">AKSI</th>
                 </tr>
             </thead>
@@ -114,8 +114,8 @@
             </div>
 
             <div class="form-group" style="margin-top: 16px;">
-                <label>Alamat</label>
-                <textarea name="address" id="pAddress" class="form-input" style="height: 80px;" placeholder="Masukkan alamat lengkap (opsional)"></textarea>
+                <label>Sekolah</label>
+                <textarea name="address" id="pAddress" class="form-input" style="height: 80px;" placeholder="Masukkan asal sekolah (opsional)"></textarea>
             </div>
 
             <div class="flex-stack-mobile" style="display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end;">

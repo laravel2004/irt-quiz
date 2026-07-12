@@ -156,7 +156,7 @@
                     <th>NAMA PESERTA</th>
                     <th style="width: 150px;">WHATSAPP</th>
                     <th style="width: 150px;">PRIVILEGE</th>
-                    <th>ALAMAT</th>
+                    <th>SEKOLAH</th>
                     <th style="width: 80px; text-align: center;">AKSI</th>
                 </tr>
             </thead>
@@ -321,8 +321,8 @@
             </div>
             
             <div class="form-group">
-                <label>Alamat Lengkap</label>
-                <textarea name="address" class="form-input" rows="2" placeholder="Alamat rumah atau asal sekolah"></textarea>
+                <label>Sekolah</label>
+                <textarea name="address" class="form-input" rows="2" placeholder="Masukkan asal sekolah (opsional)"></textarea>
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
