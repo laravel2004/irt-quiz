@@ -130,9 +130,9 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                             @if($reg->finished_at)
-                                <a href="{{ route('participant.result', $reg->id) }}" class="btn-primary" style="background: #eff6ff; color: #0f172a; border: 1px solid rgba(255,255,255,0.08); height: 40px; display: inline-flex; align-items: center; text-decoration: none;">
+                                {{-- <a href="{{ route('participant.result', $reg->id) }}" class="btn-primary" style="background: #eff6ff; color: #0f172a; border: 1px solid rgba(255,255,255,0.08); height: 40px; display: inline-flex; align-items: center; text-decoration: none;">
                                     <i class="fas fa-chart-bar" style="margin-right: 8px;"></i> Hasil
-                                </a>
+                                </a> --}}
                                 <a href="{{ route('participant.review', $reg->id) }}" class="btn-primary" style="background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; height: 40px; display: inline-flex; align-items: center; text-decoration: none;">
                                     <i class="fas fa-book-open" style="margin-right: 8px;"></i> Laporan
                                 </a>

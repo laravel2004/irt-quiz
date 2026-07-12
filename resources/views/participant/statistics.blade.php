@@ -5,7 +5,7 @@
 @section('content')
 <div class="container" style="padding: 40px 20px;">
     <div style="margin-bottom: 30px;">
-        <a href="{{ route('participant.dashboard') }}" style="color: #475569; text-decoration: none; font-size: 0.9rem;">
+        <a href="{{ route('participant.dashboard') }}" style="color: #cbd5e1; text-decoration: none; font-size: 0.9rem; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#cbd5e1'">
             <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
         </a>
     </div>
@@ -17,11 +17,11 @@
                     <i class="{{ $isClosed ? 'fas fa-trophy' : 'fas fa-list-ol' }}" style="color: {{ $isClosed ? '#eab308' : '#3b82f6' }}; margin-right: 12px;"></i>
                     {{ $isClosed ? 'Statistik Final' : 'Statistik Sementara' }}
                 </h1>
-                <p style="color: #475569; font-size: 1rem; margin: 0;">Sesi: <span style="color: #0f172a; font-weight: 600;">{{ $session->name }}</span></p>
+                <p style="color: #cbd5e1; font-size: 1rem; margin: 0;">Sesi: <span style="color: white; font-weight: 600;">{{ $session->name }}</span></p>
             </div>
             <div>
-                <span class="badge" style="background: #eff6ff; padding: 8px 16px; font-size: 0.9rem;">
-                    Total Peserta Selesai: <strong>{{ $rankings->count() }}</strong>
+                <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); padding: 8px 16px; font-size: 0.9rem;">
+                    Total Peserta Selesai: <strong style="color: white;">{{ $rankings->count() }}</strong>
                 </span>
             </div>
         </div>
@@ -41,11 +41,11 @@
             <table style="width: 100%; border-collapse: separate; border-spacing: 0; min-width: 600px;">
                 <thead>
                     <tr>
-                        <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: #475569; border-top-left-radius: 12px; border-bottom-left-radius: 12px;">Peringkat</th>
-                        <th style="text-align: left; padding: 16px; background: rgba(0,0,0,0.3); color: #475569;">Nama Peserta</th>
-                        <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: #475569;">Skor Raw</th>
+                        <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: #cbd5e1; border-top-left-radius: 12px; border-bottom-left-radius: 12px;">Peringkat</th>
+                        <th style="text-align: left; padding: 16px; background: rgba(0,0,0,0.3); color: #cbd5e1;">Nama Peserta</th>
+                        <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: #cbd5e1;">Skor Raw</th>
                         @if($isClosed)
-                            <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: #475569; border-top-right-radius: 12px; border-bottom-right-radius: 12px;">Skor IRT</th>
+                            <th style="text-align: center; padding: 16px; background: rgba(0,0,0,0.3); color: #cbd5e1; border-top-right-radius: 12px; border-bottom-right-radius: 12px;">Skor IRT</th>
                         @else
                             <th style="background: rgba(0,0,0,0.3); border-top-right-radius: 12px; border-bottom-right-radius: 12px;"></th>
                         @endif
@@ -60,7 +60,7 @@
                             $borderColor = $isCurrentUser ? '#3b82f6' : 'rgba(255,255,255,0.05)';
                         @endphp
                         <tr style="background: {{ $rowBg }}; transition: all 0.2s;">
-                            <td style="padding: 16px; text-align: center; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.1rem; color: {{ $index < 3 ? '#eab308' : 'white' }}; border-bottom: 1px solid {{ $borderColor }};">
+                            <td style="padding: 16px; text-align: center; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.1rem; color: {{ $index < 3 ? '#eab308' : '#0f172a' }}; border-bottom: 1px solid {{ $borderColor }};">
                                 @if($index == 0)
                                     <i class="fas fa-medal" style="color: #fbbf24; margin-right: 4px;"></i> 1
                                 @elseif($index == 1)
@@ -73,11 +73,11 @@
                             </td>
                             <td style="padding: 16px; border-bottom: 1px solid {{ $borderColor }};">
                                 <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #475569;">
+                                    <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.3); display: flex; align-items: center; justify-content: center; font-weight: bold; color: #60a5fa;">
                                         {{ strtoupper(substr($res->participant->name, 0, 1)) }}
                                     </div>
                                     <div>
-                                        <div style="font-weight: 600; color: {{ $isCurrentUser ? '#60a5fa' : 'white' }};">
+                                        <div style="font-weight: 600; color: {{ $isCurrentUser ? '#2563eb' : '#0f172a' }};">
                                             {{ $res->participant->name }}
                                             @if($isCurrentUser)
                                                 <span class="badge" style="background: #3b82f6; color: #0f172a; padding: 2px 6px; font-size: 0.7rem; margin-left: 8px;">Anda</span>
@@ -86,7 +86,7 @@
                                     </div>
                                 </div>
                             </td>
-                            <td style="padding: 16px; text-align: center; font-family: monospace; font-size: 1.1rem; border-bottom: 1px solid {{ $borderColor }};">
+                            <td style="padding: 16px; text-align: center; font-family: monospace; font-size: 1.1rem; color: #0f172a; border-bottom: 1px solid {{ $borderColor }};">
                                 {{ number_format($res->score, 2) }}
                             </td>
                             @if($isClosed)
