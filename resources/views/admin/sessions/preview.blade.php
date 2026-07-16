@@ -175,6 +175,20 @@
                 @endforeach
             </div>
         @endif
+        
+        <!-- Tambahan: Blok Pembahasan Soal -->
+        @if($question->explanation)
+        <div style="margin-top: 24px; padding: 16px; border-radius: 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2);">
+            <div style="font-weight: 600; color: #3b82f6; margin-bottom: 8px; font-size: 0.9rem;">
+                <i class="fas fa-lightbulb"></i> Pembahasan:
+            </div>
+            <div class="session-preview-content" style="font-size: 0.95rem; color: #0f172a;">
+                {!! $question->explanation !!}
+            </div>
+        </div>
+        @endif
+        <!-- Akhir Blok Pembahasan -->
+
     </div>
     @endforeach
 </div>

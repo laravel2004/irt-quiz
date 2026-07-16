@@ -1,52 +1,74 @@
-# Implementasi Tampilan Section Hasil Penilaian IRT
+# Implementasi Fitur Pembahasan Soal di Halaman Preview
 
-**Tujuan**: Menampilkan section "Hasil Penilaian IRT" secara permanen pada halaman detail Sesi Ujian (contoh URL: `http://localhost:8000/admin/sessions/3`), tanpa mempedulikan status sesi apakah sedang dibuka (aktif) atau ditutup (non-aktif).
+**Tujuan**: Menambahkan tampilan "Pembahasan Soal" di setiap soal pada halaman Preview Soal Sesi (contoh URL: `http://localhost:8000/admin/sessions/3/preview-questions`), sehingga admin dapat melihat kunci dan pembahasannya sekaligus.
 
 **Target File yang akan dimodifikasi**:
-`resources/views/admin/sessions/show.blade.php`
+`resources/views/admin/sessions/preview.blade.php`
 
 ---
 
 ## Langkah-Langkah Implementasi
 
 ### 1. Buka File Target
-Buka file `resources/views/admin/sessions/show.blade.php`.
+Buka file `resources/views/admin/sessions/preview.blade.php`.
 
-### 2. Temukan Section Hasil Penilaian IRT
-Cari blok kode HTML yang menampilkan "Hasil Penilaian IRT". Biasanya ditandai dengan komentar HTML `<!-- IRT Results Section -->`.
-
-Saat ini, section tersebut dibungkus oleh sebuah kondisi Blade (if statement) yang mengecek apakah sesi sedang tidak aktif, sehingga section ini akan hilang (tersembunyi) jika sesi sedang dibuka/aktif. Kode kondisional tersebut terlihat seperti ini:
+### 2. Temukan Bagian Akhir dari Render Opsi Jawaban
+Di dalam file tersebut, terdapat *looping* untuk merender daftar soal menggunakan `@foreach($session->questions as $index => $question)`.
+Scroll ke bawah di dalam *looping* tersebut, dan cari bagian blok di mana *opsi jawaban* selesai dirender (tepat sebelum penutup `</div>` dari sebuah *card* soal). 
+Kode penutupnya terlihat seperti ini (sekitar baris 177):
 
 ```html
-@if(!$session->is_active)
-<!-- IRT Results Section -->
-<div class="glass animate-fade-in" style="padding: 32px; margin-top: 32px; border-top: 4px solid var(--accent);">
-...
-...
-</div>
-@endif
+        @endif
+    </div>
+    @endforeach
 ```
 
-### 3. Hapus Kondisi Pengecekan Status Sesi
-Tugas Anda adalah menghapus pembungkus kondisi tersebut agar tabel IRT selalu dirender di halaman.
+### 3. Tambahkan Blok Pembahasan Soal
+Sisipkan kode untuk menampilkan pembahasan soal tepat di atas penutup div dari masing-masing soal. Kita akan menggunakan kondisi `@if($question->explanation)` agar blok pembahasan hanya muncul apabila soal tersebut memang memiliki pembahasan.
 
-- Hapus baris kode `@if(!$session->is_active)` yang berada tepat di atas komentar `<!-- IRT Results Section -->` (sekitar baris 336).
-- Hapus juga tag penutupnya, yaitu baris `@endif` yang berada di bagian paling bawah section IRT tersebut, tepat sebelum deklarasi `@endsection` (sekitar baris 457).
-
-### 4. Hasil Akhir yang Diharapkan
-Setelah tag pembungkus kondisi dihapus, kode tersebut harus langsung merender elemen div IRT secara *default* tanpa *conditional statement*. 
+Tambahkan kode HTML berikut ini:
 
 ```html
-<!-- IRT Results Section -->
-<div class="glass animate-fade-in" style="padding: 32px; margin-top: 32px; border-top: 4px solid var(--accent);">
-    <div class="flex-stack-mobile" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; gap: 20px;">
-        <div>
-            <h3 style="font-family: 'Outfit', sans-serif;">Hasil Penilaian IRT</h3>
-...
+        <!-- Tambahan: Blok Pembahasan Soal -->
+        @if($question->explanation)
+        <div style="margin-top: 24px; padding: 16px; border-radius: 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2);">
+            <div style="font-weight: 600; color: #3b82f6; margin-bottom: 8px; font-size: 0.9rem;">
+                <i class="fas fa-lightbulb"></i> Pembahasan:
+            </div>
+            <div class="session-preview-content" style="font-size: 0.95rem; color: #0f172a;">
+                {!! $question->explanation !!}
+            </div>
+        </div>
+        @endif
+        <!-- Akhir Blok Pembahasan -->
+```
+
+### 4. Hasil Akhir Penempatan Kode
+Pastikan kodenya tersusun rapi seperti ini:
+
+```html
+            </div>
+        @endif
+        
+        <!-- Tambahan: Blok Pembahasan Soal -->
+        @if($question->explanation)
+        <div style="margin-top: 24px; padding: 16px; border-radius: 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2);">
+            <div style="font-weight: 600; color: #3b82f6; margin-bottom: 8px; font-size: 0.9rem;">
+                <i class="fas fa-lightbulb"></i> Pembahasan:
+            </div>
+            <div class="session-preview-content" style="font-size: 0.95rem; color: #0f172a;">
+                {!! $question->explanation !!}
+            </div>
+        </div>
+        @endif
+        <!-- Akhir Blok Pembahasan -->
+        
+    </div>
+    @endforeach
 ```
 
 ### 5. Pengujian (Testing)
-- Buka browser dan arahkan ke halaman detail sesi, misalnya `http://localhost:8000/admin/sessions/3`.
-- Pastikan section "Hasil Penilaian IRT" tampil di bagian paling bawah halaman.
-- Ubah status sesi dengan menekan tombol **Buka Sesi / Tutup Sesi** yang ada di bagian kanan atas halaman.
-- Pastikan tabel IRT beserta kelengkapannya tetap tampil di layar secara konsisten pada kedua status (saat *badge* menunjukkan "Aktif" maupun "Non-Aktif").
+- Buka browser dan arahkan ke halaman preview soal dari salah satu sesi, misalnya `http://localhost:8000/admin/sessions/3/preview-questions`.
+- Gulir/scroll ke daftar soal yang tampil.
+- Pastikan bahwa untuk soal-soal yang sebelumnya telah Anda isikan teks pembahasannya, terdapat sebuah kotak berwarna biru muda dengan ikon lampu di bawah daftar opsi jawaban, yang berisi teks pembahasan lengkap dari soal tersebut.
+- Pastikan juga soal yang tidak memiliki pembahasan (kosong) tidak menampilkan kotak biru tersebut secara berantakan.
