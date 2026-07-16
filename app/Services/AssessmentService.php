@@ -21,6 +21,26 @@ class AssessmentService
         return strtolower(trim(preg_replace('/\s+/', ' ', strip_tags((string) $value))));
     }
 
+        private function resolveCorrectIndices(array $correctAnswers, array $options): array
+    {
+        $indices = [];
+        foreach ($correctAnswers as $correctAnswer) {
+            $key = (string) $correctAnswer;
+            $upperKey = strtoupper(trim($key));
+            if (preg_match('/^[A-Z]$/', $upperKey)) {
+                $index = ord($upperKey) - 65;
+                if (array_key_exists($index, $options)) {
+                    $indices[] = (string) $index;
+                    continue;
+                }
+            }
+            if (array_key_exists($key, $options)) {
+                $indices[] = (string) $key;
+            }
+        }
+        return array_values(array_unique($indices));
+    }
+
     private function resolveCorrectValues(array $correctAnswers, $options): array
     {
         $options = (array) $options;
@@ -84,33 +104,35 @@ class AssessmentService
 
                 $answer = is_array($ans->answer) ? $ans->answer : (json_decode($ans->answer, true) ?? $ans->answer);
                 
-                if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
-                    $correctValue = $this->resolveCorrectValues($correctArr, $options)[0] ?? null;
-                    
-                    // Frontend might send index or legacy text. If numeric index, map to text.
-                    $mappedAnswer = $answer;
+                                if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
+                    $correctIndex = $this->resolveCorrectIndices($correctArr, $options)[0] ?? null;
+                    $isCorrect = false;
+
                     if (is_numeric($answer) && array_key_exists((int)$answer, $options)) {
-                        $mappedAnswer = $options[(int)$answer];
+                        $isCorrect = ($correctIndex !== null && (string)$answer === $correctIndex);
+                    } else {
+                        $correctValue = $this->resolveCorrectValues($correctArr, $options)[0] ?? null;
+                        $isCorrect = ($correctValue !== null && $this->answersMatch($correctValue, $answer));
                     }
-                    
-                    $isCorrect = ($correctValue !== null && $this->answersMatch($correctValue, $mappedAnswer));
                     $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
                 } elseif ($question->type === 'multiple_choice') {
-                    $correctValues = $this->resolveCorrectValues($correctArr, $options);
+                    $correctIndices = $this->resolveCorrectIndices($correctArr, $options);
                     $isCorrect = false;
                     
                     if (is_array($answer)) {
-                        $mappedAnswers = array_map(function($val) use ($options) {
-                            return (is_numeric($val) && array_key_exists((int)$val, $options)) ? $options[(int)$val] : $val;
-                        }, $answer);
+                        $userIndices = [];
+                        foreach ($answer as $val) {
+                            if (is_numeric($val) && array_key_exists((int)$val, $options)) {
+                                $userIndices[] = (string) $val;
+                            }
+                        }
 
-                        $normalizedAnswers = array_map(fn($value) => $this->normalizeAnswerValue($value), $mappedAnswers);
-                        $normalizedCorrect = array_map(fn($value) => $this->normalizeAnswerValue($value), $correctValues);
+                        $totalCorrectAvailable = count($correctIndices);
+                        $correctSelected = count(array_intersect($userIndices, $correctIndices));
                         
-                        $totalCorrectAvailable = count($normalizedCorrect);
-                        $correctSelected = count(array_intersect($normalizedAnswers, $normalizedCorrect));
                         $netCorrect = $correctSelected;
                         $percentage = $totalCorrectAvailable > 0 ? ($netCorrect / $totalCorrectAvailable) : 0;
+                        
                         $score = round($percentage * ($question->score_correct ?? 1), 2);
                         
                         if ($netCorrect === $totalCorrectAvailable) {

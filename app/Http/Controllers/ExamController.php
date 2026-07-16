@@ -26,7 +26,34 @@ class ExamController extends Controller
             $value = json_encode($value);
         }
 
-        return strtolower(trim(preg_replace('/\s+/', ' ', strip_tags((string) $value))));
+        $strValue = (string) $value;
+        $stripped = trim(preg_replace('/\s+/', ' ', strip_tags($strValue)));
+        
+        if ($stripped === '' && trim($strValue) !== '') {
+            $stripped = trim(preg_replace('/\s+/', ' ', $strValue));
+        }
+
+        return strtolower($stripped);
+    }
+
+    private function resolveCorrectIndices(array $correctAnswers, array $options): array
+    {
+        $indices = [];
+        foreach ($correctAnswers as $correctAnswer) {
+            $key = (string) $correctAnswer;
+            $upperKey = strtoupper(trim($key));
+            if (preg_match("/^[A-Z]$/", $upperKey)) {
+                $index = ord($upperKey) - 65;
+                if (array_key_exists($index, $options)) {
+                    $indices[] = (string) $index;
+                    continue;
+                }
+            }
+            if (array_key_exists($key, $options)) {
+                $indices[] = (string) $key;
+            }
+        }
+        return array_values(array_unique($indices));
     }
 
     private function resolveCorrectValues(array $correctAnswers, array $options): array
@@ -252,33 +279,36 @@ class ExamController extends Controller
                 $options = (array) $question->options;
                 
                 if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
-                    $correctValue = $this->resolveCorrectValues($correctArr, $options)[0] ?? null;
-                    
-                    // Frontend might send index or legacy text. If numeric index, map to text.
-                    $mappedAnswer = $answer;
+                    $correctIndex = $this->resolveCorrectIndices($correctArr, $options)[0] ?? null;
+                    $isCorrect = false;
+
                     if (is_numeric($answer) && array_key_exists((int)$answer, $options)) {
-                        $mappedAnswer = $options[(int)$answer];
+                        // Compare by index if frontend sends an index
+                        $isCorrect = ($correctIndex !== null && (string)$answer === $correctIndex);
+                    } else {
+                        // Fallback: compare by value (legacy)
+                        $correctValue = $this->resolveCorrectValues($correctArr, $options)[0] ?? null;
+                        $isCorrect = ($correctValue !== null && $this->answersMatch($correctValue, $answer));
                     }
-                    
-                    $isCorrect = ($correctValue !== null && $this->answersMatch($correctValue, $mappedAnswer));
+
                     $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
                 } elseif ($question->type === 'multiple_choice') {
-                    $correctValues = $this->resolveCorrectValues($correctArr, $options);
+                    $correctIndices = $this->resolveCorrectIndices($correctArr, $options);
                     $isCorrect = false;
                     
                     if (is_array($answer)) {
-                        $mappedAnswers = array_map(function($val) use ($options) {
-                            return (is_numeric($val) && array_key_exists((int)$val, $options)) ? $options[(int)$val] : $val;
-                        }, $answer);
+                        $userIndices = [];
+                        foreach ($answer as $val) {
+                            if (is_numeric($val) && array_key_exists((int)$val, $options)) {
+                                $userIndices[] = (string) $val;
+                            }
+                        }
 
-                        $normalizedAnswers = array_map(fn($value) => $this->normalizeAnswerValue($value), $mappedAnswers);
-                        $normalizedCorrect = array_map(fn($value) => $this->normalizeAnswerValue($value), $correctValues);
-                        
                         // 1. Hitung total jawaban yang seharusnya benar
-                        $totalCorrectAvailable = count($normalizedCorrect);
+                        $totalCorrectAvailable = count($correctIndices);
                         
                         // 2. Hitung berapa jawaban benar yang berhasil ditebak user
-                        $correctSelected = count(array_intersect($normalizedAnswers, $normalizedCorrect));
+                        $correctSelected = count(array_intersect($userIndices, $correctIndices));
                         
                         // 4. Hitung jawaban benar bersih (tanpa penalti)
                         $netCorrect = $correctSelected;
