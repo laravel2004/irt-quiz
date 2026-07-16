@@ -333,7 +333,6 @@
     </div>
 </div>
 
-@if(!$session->is_active)
 <!-- IRT Results Section -->
 <div class="glass animate-fade-in" style="padding: 32px; margin-top: 32px; border-top: 4px solid var(--accent);">
     <div class="flex-stack-mobile" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; gap: 20px;">
@@ -454,7 +453,6 @@
         </div>
     </div>
 </div>
-@endif
 
 @endsection
 
