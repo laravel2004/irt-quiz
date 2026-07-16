@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -436,7 +436,7 @@
 
             if (q.type === 'pilihan_ganda' || q.type === 'benar_salah') {
                 optionsHtml = options.map((opt, i) => {
-                    const isSelected = selectedVal == opt;
+                    const isSelected = selectedVal === i.toString() || selectedVal === opt;
                     return `
                     <div class="option-row" data-question-id="${q.id}" data-option-index="${i}" data-option-type="single" role="button" tabindex="0">
                         <div class="radio-btn ${isSelected ? 'selected' : ''}"></div>
@@ -446,7 +446,7 @@
             } else if (q.type === 'multiple_choice') {
                 const currentAnswers = Array.isArray(selectedVal) ? selectedVal : [];
                 optionsHtml = options.map((opt, i) => {
-                    const isSelected = currentAnswers.includes(opt);
+                    const isSelected = currentAnswers.includes(i.toString()) || currentAnswers.includes(opt);
                     return `
                     <div class="option-row" data-question-id="${q.id}" data-option-index="${i}" data-option-type="multi" role="button" tabindex="0">
                         <div class="check-btn ${isSelected ? 'selected' : ''}">
@@ -524,11 +524,11 @@
         }
 
         function selectOptionByIndex(qId, index) {
-            selectOption(qId, getCurrentOptionByIndex(index));
+            selectOption(qId, index.toString());
         }
 
         function toggleOptionByIndex(qId, index) {
-            toggleOption(qId, getCurrentOptionByIndex(index));
+            toggleOption(qId, index.toString());
         }
 
         function selectOption(qId, val) {

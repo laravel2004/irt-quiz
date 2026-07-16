@@ -82,49 +82,86 @@ class AssessmentService
                 $options = (array) $question->options;
                 $isCorrect = false;
 
+                $answer = is_array($ans->answer) ? $ans->answer : (json_decode($ans->answer, true) ?? $ans->answer);
+                
                 if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
                     $correctValue = $this->resolveCorrectValues($correctArr, $options)[0] ?? null;
-                    $isCorrect = ($correctValue !== null && $this->answersMatch($correctValue, $ans->answer));
+                    
+                    // Frontend might send index or legacy text. If numeric index, map to text.
+                    $mappedAnswer = $answer;
+                    if (is_numeric($answer) && array_key_exists((int)$answer, $options)) {
+                        $mappedAnswer = $options[(int)$answer];
+                    }
+                    
+                    $isCorrect = ($correctValue !== null && $this->answersMatch($correctValue, $mappedAnswer));
+                    $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
                 } elseif ($question->type === 'multiple_choice') {
                     $correctValues = $this->resolveCorrectValues($correctArr, $options);
+                    $isCorrect = false;
                     
-                    $ansArray = (array) $ans->answer;
-                    $normalizedAnswers = array_map(fn($value) => $this->normalizeAnswerValue($value), $ansArray);
-                    $normalizedCorrect = array_map(fn($value) => $this->normalizeAnswerValue($value), $correctValues);
-                    sort($normalizedAnswers);
-                    sort($normalizedCorrect);
-                    $isCorrect = ($normalizedAnswers === $normalizedCorrect);
+                    if (is_array($answer)) {
+                        $mappedAnswers = array_map(function($val) use ($options) {
+                            return (is_numeric($val) && array_key_exists((int)$val, $options)) ? $options[(int)$val] : $val;
+                        }, $answer);
+
+                        $normalizedAnswers = array_map(fn($value) => $this->normalizeAnswerValue($value), $mappedAnswers);
+                        $normalizedCorrect = array_map(fn($value) => $this->normalizeAnswerValue($value), $correctValues);
+                        
+                        $totalCorrectAvailable = count($normalizedCorrect);
+                        $correctSelected = count(array_intersect($normalizedAnswers, $normalizedCorrect));
+                        $netCorrect = $correctSelected;
+                        $percentage = $totalCorrectAvailable > 0 ? ($netCorrect / $totalCorrectAvailable) : 0;
+                        $score = round($percentage * ($question->score_correct ?? 1), 2);
+                        
+                        if ($netCorrect === $totalCorrectAvailable) {
+                            $isCorrect = true;
+                        } else if ($percentage == 0) {
+                            $score = $question->score_incorrect ?? 0;
+                        }
+                    } else {
+                        $score = $question->score_incorrect ?? 0;
+                    }
                 } elseif ($question->type === 'multiple_benar_salah') {
-                    $totalStatements = count($options);
-                    $correctCount = 0;
-                    $ansArray = is_array($ans->answer) ? $ans->answer : json_decode($ans->answer, true);
-                    if (is_array($ansArray)) {
+                    $isCorrect = false;
+                    if (is_array($answer)) {
+                        $totalStatements = count($options);
+                        $correctCount = 0;
+                        
                         foreach ($options as $idx => $optText) {
-                            $userAns = $ansArray[strval($idx)] ?? null;
-                            $shouldBeBenar = in_array(strval($idx), array_map('strval', $correctArr));
-                            if (($shouldBeBenar && $userAns === 'benar') || (!$shouldBeBenar && $userAns === 'salah')) {
+                            $userAnswer = $answer[strval($idx)] ?? null;
+                            $shouldBeBenar = in_array(strval($idx), $correctArr);
+                            
+                            if (($shouldBeBenar && $userAnswer === 'benar') || (!$shouldBeBenar && $userAnswer === 'salah')) {
                                 $correctCount++;
                             }
                         }
+                        
+                        $percentage = $totalStatements > 0 ? ($correctCount / $totalStatements) : 0;
+                        $score = round($percentage * ($question->score_correct ?? 1), 2);
+                        
+                        if ($correctCount === $totalStatements) {
+                            $isCorrect = true;
+                        } else if ($percentage == 0) {
+                            $score = $question->score_incorrect ?? 0;
+                        }
+                    } else {
+                        $score = $question->score_incorrect ?? 0;
                     }
-                    // For multiple benar salah, full marks if all statements correct, else false
-                    // Or you could make it partial. For now, boolean isCorrect:
-                    $isCorrect = ($correctCount === $totalStatements);
                 }
 
-                $ans->update(['is_correct' => $isCorrect]);
+                $ans->update(['is_correct' => $isCorrect, 'score' => $score]);
             }
 
             // Step 2: Calculate Item Difficulty (Item Response)
             $itemWeights = [];
             foreach ($questions as $question) {
-                $correctCount = UserAnswer::where('exam_session_id', $sessionId)
+                $avgScore = UserAnswer::where('exam_session_id', $sessionId)
                     ->where('question_bank_id', $question->id)
-                    ->where('is_correct', true)
-                    ->count();
+                    ->avg('score') ?? 0;
                 
-                $difficulty = 1 - ($correctCount / $participants->count());
-                $difficulty = max(0.1, $difficulty);
+                $maxScore = max(0.001, $question->score_correct ?? 1);
+                $difficulty = 1 - ($avgScore / $maxScore);
+                $difficulty = max(0.1, min(1, $difficulty)); // Ensure difficulty is between 0.1 and 1
                 $itemWeights[$question->id] = $difficulty;
                 
                 // Update the question difficulty in the session pivot table
@@ -177,12 +214,15 @@ class AssessmentService
                         
                         if ($ans->is_correct) {
                             $catCorrect++;
-                            $catRawIRT += $itemWeights[$ans->question_bank_id] ?? 0;
-                            $catRawPoints += $question->score_correct;
                         } else {
                             $catIncorrect++;
-                            $catRawPoints += $question->score_incorrect;
                         }
+                        
+                        $maxScore = max(0.001, $question->score_correct ?? 1);
+                        $percentageScore = min(1, max(0, $ans->score / $maxScore));
+                        
+                        $catRawIRT += ($itemWeights[$ans->question_bank_id] ?? 0) * $percentageScore;
+                        $catRawPoints += $ans->score;
                     }
 
                     // Ratio scaling for Raw Score

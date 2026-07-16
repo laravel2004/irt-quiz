@@ -13,7 +13,7 @@ class AIService
 
     public function __construct()
     {
-        $this->apiKey = env('OPENAI_API_KEY');
+        $this->apiKey = env('OPENAI_API_KEY', '');
         $this->model = env('OPENAI_MODEL', 'gpt-3.5-turbo');
         $this->baseUrl = env('OPENAI_BASE_URL', 'https://api.openai.com/v1');
     }

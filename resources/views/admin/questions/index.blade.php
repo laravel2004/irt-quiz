@@ -196,14 +196,14 @@
         transition: all 0.2s ease;
     }
     .mbs-toggle-btn.active-benar {
-        background: rgba(16, 185, 129, 0.2);
-        border-color: #10b981;
-        color: #10b981;
+        background: rgba(16, 185, 129, 0.2) !important;
+        border-color: #10b981 !important;
+        color: #10b981 !important;
     }
     .mbs-toggle-btn.active-salah {
-        background: rgba(239, 68, 68, 0.2);
-        border-color: #ef4444;
-        color: #ef4444;
+        background: rgba(239, 68, 68, 0.2) !important;
+        border-color: #ef4444 !important;
+        color: #ef4444 !important;
     }
 
     /* Option Editor Styles */
