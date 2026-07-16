@@ -1334,6 +1334,11 @@
         .then(res => res.json())
         .then(data => {
             const q = data.data;
+            
+            // Set textarea values BEFORE initializing TinyMCE
+            document.getElementById('qText').value = q.question_text || '';
+            document.getElementById('explanationText').value = q.explanation || '';
+            
             openQuestionModal('edit');
             document.getElementById('questionId').value = q.id;
             document.getElementById('catSelect').value = q.category_id;
@@ -1372,7 +1377,7 @@
                 });
             }
 
-            // Set TinyMCE content after editors are initialized
+            // Fallback: set TinyMCE content after editors are presumably initialized
             setTimeout(() => {
                 if (questionEditor) {
                     questionEditor.setContent(q.question_text || '');
@@ -1380,7 +1385,7 @@
                 if (explanationEditor) {
                     explanationEditor.setContent(q.explanation || '');
                 }
-            }, 500);
+            }, 800);
         });
     }
 
@@ -1617,6 +1622,11 @@
                 } else {
                     loadSubCategoriesForForm(catId);
                 }
+            }
+        } else if (urlParams.get('action') === 'edit') {
+            const qId = urlParams.get('question_id');
+            if (qId) {
+                editQuestion(qId);
             }
         }
     });

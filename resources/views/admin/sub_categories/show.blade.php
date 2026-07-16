@@ -56,9 +56,21 @@
                         </div>
                     </td>
                     <td style="text-align: center;">
-                        <button class="btn-icon" onclick="previewQuestion({{ $question->id }})" title="Preview Soal">
-                            <i class="fas fa-eye"></i>
-                        </button>
+                        <div style="display: flex; justify-content: center; gap: 8px;">
+                            <button class="btn-icon" onclick="previewQuestion({{ $question->id }})" title="Preview Soal">
+                                <i class="fas fa-eye"></i>
+                            </button>
+
+                            <!-- Tombol Edit -->
+                            <a href="{{ route('admin.questions.index', ['action' => 'edit', 'question_id' => $question->id]) }}" class="btn-icon" title="Edit Soal" style="color: #3b82f6;">
+                                <i class="fas fa-edit"></i>
+                            </a>
+
+                            <!-- Tombol Hapus -->
+                            <button class="btn-icon" onclick="deleteQuestion({{ $question->id }})" title="Hapus Soal" style="color: #ef4444;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 @empty
@@ -239,6 +251,30 @@
                     renderMathInElement(document.getElementById('previewOptions'), renderOpts);
                 }
             }, 100);
+        });
+    }
+
+    function deleteQuestion(id) {
+        customConfirm('Apakah Anda yakin ingin menghapus soal ini?', function() {
+            fetch(`/admin/questions/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('Soal berhasil dihapus');
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    showToast(data.message || 'Gagal menghapus soal', 'error');
+                }
+            })
+            .catch(err => {
+                showToast('Terjadi kesalahan sistem', 'error');
+            });
         });
     }
 </script>
