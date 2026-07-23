@@ -72,7 +72,6 @@ class ExamSessionService extends BaseService
                     }
                 }
             }
-            $this->generateSessionQuestions($id);
             
             return $session;
         });
