@@ -1,79 +1,66 @@
-# Implementasi Perhitungan Skor Proporsional untuk Soal Benar/Salah Majemuk (Multiple Benar/Salah)
+# Issue: Penyesuaian Penilaian Parsial (Partial Scoring) untuk Tipe Soal Multiple Choice dan Multiple Benar-Salah
 
-**Tujuan**: Memperbaiki dan menyelaraskan logika penilaian untuk tipe soal `multiple_benar_salah` agar sejalan dengan `multiple_choice`. Walaupun saat ini sudah menggunakan persentase, kita perlu memastikan bahwa jika peserta menjawab salah semua (persentase 0), sistem akan memberikan nilai penalti (berdasarkan `score_incorrect`) alih-alih 0 biasa, dan strukturnya lebih konsisten.
+## Deskripsi
+Sistem saat ini perlu diperbaiki dalam memberikan penilaian (scoring) untuk tipe soal **Multiple Choice** (pilihan ganda kompleks / lebih dari satu jawaban benar) dan **Multiple Benar-Salah**. 
 
-**Target File yang akan dimodifikasi**:
-`app/Http/Controllers/ExamController.php`
+Sesuai dengan *requirement*:
+> "Untuk jawaban multiple choice dan multiple benar salah itu kalau ada salah satu jawaban yang dijawab salah, tetap salahkan soal tersebut (`is_correct = false`) tapi masih dikasih nilai persentase sesuai dengan jawaban benar-nya. Jadi kalau ada 3 jawaban benar dari 5 jawaban, maka kehitungnya adalah persentasenya."
+
+## Target File
+- `app/Http/Controllers/ExamController.php` (di dalam method `submitCategory`)
+
+## Masalah Saat Ini pada Sistem
+1. **Multiple Choice (Pilihan Ganda Kompleks)**: Saat ini, jika *user* memilih semua opsi (termasuk opsi yang salah), sistem hanya menghitung opsi benar yang dipilih dan bisa memberikan status `is_correct = true` serta nilai 100%. Tidak ada deteksi jika *user* memilih jawaban yang salah.
+2. **Multiple Benar-Salah**: Perlu dipastikan bahwa jika ada 1 saja pernyataan yang dijawab tidak tepat, status soal secara keseluruhan adalah salah (`is_correct = false`), namun *user* tetap mendapatkan proporsi nilai sesuai jumlah pernyataan yang dijawab benar.
 
 ---
 
-## Langkah-Langkah Implementasi
+## Tahapan Implementasi (Step-by-Step)
 
-### 1. Buka File Target
-Buka file `app/Http/Controllers/ExamController.php`.
+Untuk programmer junior atau AI Model, silakan ikuti tahapan berikut secara berurutan:
 
-### 2. Temukan Blok Logika `multiple_benar_salah`
-Cari bagian kode yang menangani `elseif ($question->type === 'multiple_benar_salah')`. Letaknya tepat di bawah blok `multiple_choice` (sekitar baris 294).
+### Langkah 1: Modifikasi Logika `multiple_choice`
+1. Buka file `app/Http/Controllers/ExamController.php` dan cari blok kode `elseif ($question->type === 'multiple_choice')`.
+2. Ubah cara menghitung jawaban benar dan deteksi jawaban salah dengan logika berikut:
+   - Hitung jumlah jawaban benar yang dipilih *user*: `$correctSelected = count(array_intersect($userIndices, $correctIndices));`
+   - Hitung jumlah jawaban **SALAH** yang dipilih *user*: `$wrongSelected = count(array_diff($userIndices, $correctIndices));`
+   - Hitung total jawaban benar yang tersedia pada kunci jawaban: `$totalCorrectAvailable = count($correctIndices);`
+3. Tentukan status `is_correct`:
+   - Soal HANYA dianggap benar sempurna (`$isCorrect = true`) **JIKA** *user* memilih SEMUA jawaban benar (`$correctSelected === $totalCorrectAvailable`) **DAN** TIDAK memilih jawaban salah sama sekali (`$wrongSelected === 0`).
+   - Jika kondisi di atas tidak terpenuhi, maka pastikan `$isCorrect = false`.
+4. Tentukan `score` (Persentase Nilai):
+   - **Pencegahan Kecurangan**: Untuk mencegah *user* mencentang semua pilihan agar mendapat persentase benar, berikan penalti dari jawaban yang salah.
+     Rumus: `$netCorrect = max(0, $correctSelected - $wrongSelected);`
+   - Hitung persentasenya: `$percentage = $totalCorrectAvailable > 0 ? ($netCorrect / $totalCorrectAvailable) : 0;`
+   - Jika `$percentage == 0`, skor diambil dari nilai salah: `$score = $question->score_incorrect ?? 0;`
+   - Jika `$percentage > 0`, skor dihitung proporsional: `$score = round($percentage * ($question->score_correct ?? 1), 2);`
 
-Kode lama saat ini:
-```php
-} elseif ($question->type === 'multiple_benar_salah') {
-    if (is_array($answer)) {
-        $totalStatements = count($options);
-        $correctCount = 0;
-        
-        foreach ($options as $idx => $optText) {
-            $userAnswer = $answer[strval($idx)] ?? null;
-            $shouldBeBenar = in_array(strval($idx), $correctArr);
-            
-            if (($shouldBeBenar && $userAnswer === 'benar') || (!$shouldBeBenar && $userAnswer === 'salah')) {
-                $correctCount++;
-            }
-        }
-        
-        $percentage = $totalStatements > 0 ? ($correctCount / $totalStatements) : 0;
-        $score = round($percentage * ($question->score_correct ?? 1), 2);
-        $isCorrect = ($correctCount === $totalStatements);
-    }
-}
-```
+### Langkah 2: Modifikasi Logika `multiple_benar_salah`
+1. Cari blok kode `elseif ($question->type === 'multiple_benar_salah')` pada file yang sama.
+2. Hitung `$totalStatements = count($options);`.
+3. Hitung berapa jumlah pernyataan yang dijawab dengan benar (`$correctCount`). (Logika *loop* saat ini sudah benar, tinggal disesuaikan penilaiannya).
+4. Tentukan status `is_correct`:
+   - Jika *user* menjawab semua pernyataan dengan benar (`$correctCount === $totalStatements`), maka `$isCorrect = true`.
+   - Jika ada minimal 1 pernyataan yang dijawab salah (`$correctCount < $totalStatements`), maka paksa `$isCorrect = false`.
+5. Tentukan `score` (Persentase Nilai) saat `$isCorrect = false`:
+   - Hitung persentase jawaban benar: `$percentage = $totalStatements > 0 ? ($correctCount / $totalStatements) : 0;`
+   - Jika `$percentage == 0` (salah semua), maka `$score = $question->score_incorrect ?? 0;`.
+   - Jika `$percentage > 0` (misal benar 3 dari 5 pernyataan), maka `$score = round($percentage * ($question->score_correct ?? 1), 2);`.
 
-### 3. Sesuaikan Logika Perhitungan (Tambahkan Handler Nilai Salah)
-Ubah blok kode tersebut untuk menangani kasus saat persentase 0 (salah semua) agar mengambil `score_incorrect`, serta menambahkan sedikit penyempurnaan kode.
+### Langkah 3: Testing & Verifikasi
+Pastikan implementasi lolos kasus pengujian berikut:
 
-Ganti dengan kode berikut:
-```php
-} elseif ($question->type === 'multiple_benar_salah') {
-    $isCorrect = false;
-    if (is_array($answer)) {
-        $totalStatements = count($options);
-        $correctCount = 0;
-        
-        foreach ($options as $idx => $optText) {
-            $userAnswer = $answer[strval($idx)] ?? null;
-            $shouldBeBenar = in_array(strval($idx), $correctArr);
-            
-            if (($shouldBeBenar && $userAnswer === 'benar') || (!$shouldBeBenar && $userAnswer === 'salah')) {
-                $correctCount++;
-            }
-        }
-        
-        $percentage = $totalStatements > 0 ? ($correctCount / $totalStatements) : 0;
-        $score = round($percentage * ($question->score_correct ?? 1), 2);
-        
-        if ($correctCount === $totalStatements) {
-            $isCorrect = true;
-        } else if ($percentage == 0) {
-            // Jika salah semua, ambil nilai penalti (score_incorrect)
-            $score = $question->score_incorrect ?? 0;
-        }
-    } else {
-        $score = $question->score_incorrect ?? 0;
-    }
-}
-```
+- **Kasus Uji A (Multiple Benar-Salah)**
+  - Kondisi: Soal memiliki 5 pernyataan. Nilai benar = 10, nilai salah = 0.
+  - Aksi: User menjawab 3 benar dan 2 salah.
+  - Hasil yang diharapkan: `is_correct = false` (karena ada jawaban salah), dan `score = 6` (karena persentase 3/5 * 10).
 
-### 4. Pengujian (Testing)
-- Jawab soal berjenis "Benar/Salah Majemuk".
-- Coba jawab salah pada seluruh pernyataan dan pastikan skor yang didapat bukan 0 biasa melainkan nilai dari `score_incorrect` (misalnya jika diset -1, maka harusnya dapat -1).
-- Coba jawab separuh benar dan pastikan skornya adalah persentase (proporsional).
+- **Kasus Uji B (Multiple Choice)**
+  - Kondisi: Terdapat opsi A, B, C, D. Kunci jawaban adalah A dan B (total 2 kunci benar). Nilai benar = 10, nilai salah = 0.
+  - Aksi 1: *User* menjawab A dan B -> Hasil: `is_correct = true`, `score = 10`.
+  - Aksi 2: *User* menjawab A saja -> Hasil: `is_correct = false`, `score = 5` (1 benar, 0 salah).
+  - Aksi 3: *User* menjawab A, B, dan C -> Hasil: `is_correct = false`, `score = 5` (2 benar dikurangi 1 salah = 1 net, maka 1/2 * 10).
+  - Aksi 4: *User* menjawab semua opsi (A, B, C, D) -> Hasil: `is_correct = false`, `score = 0` (2 benar dikurangi 2 salah = 0, dapat skor salah).
+
+---
+Selesai. Blueprint ini dibuat sangat eksplisit agar mudah diimplementasikan baik oleh *junior programmer* maupun model AI yang lebih efisien.

@@ -304,27 +304,23 @@ class ExamController extends Controller
                             }
                         }
 
-                        // 1. Hitung total jawaban yang seharusnya benar
                         $totalCorrectAvailable = count($correctIndices);
-                        
-                        // 2. Hitung berapa jawaban benar yang berhasil ditebak user
                         $correctSelected = count(array_intersect($userIndices, $correctIndices));
+                        $wrongSelected = count(array_diff($userIndices, $correctIndices));
                         
-                        // 4. Hitung jawaban benar bersih (tanpa penalti)
-                        $netCorrect = $correctSelected;
+                        if ($correctSelected === $totalCorrectAvailable && $wrongSelected === 0) {
+                            $isCorrect = true;
+                        } else {
+                            $isCorrect = false;
+                        }
                         
-                        // 5. Hitung persentase
+                        $netCorrect = max(0, $correctSelected - $wrongSelected);
                         $percentage = $totalCorrectAvailable > 0 ? ($netCorrect / $totalCorrectAvailable) : 0;
                         
-                        // 6. Tentukan skor dan status
-                        $score = round($percentage * ($question->score_correct ?? 1), 2);
-                        
-                        // Jika netCorrect sama dengan total kunci jawaban, anggap benar sempurna
-                        if ($netCorrect === $totalCorrectAvailable) {
-                            $isCorrect = true;
-                        } else if ($percentage == 0) {
-                            // Jika persentase 0 (salah semua / netral), berikan skor salah
+                        if ($percentage == 0) {
                             $score = $question->score_incorrect ?? 0;
+                        } else {
+                            $score = round($percentage * ($question->score_correct ?? 1), 2);
                         }
                     } else {
                         $score = $question->score_incorrect ?? 0;
@@ -345,12 +341,17 @@ class ExamController extends Controller
                         }
                         
                         $percentage = $totalStatements > 0 ? ($correctCount / $totalStatements) : 0;
-                        $score = round($percentage * ($question->score_correct ?? 1), 2);
                         
                         if ($correctCount === $totalStatements) {
                             $isCorrect = true;
-                        } else if ($percentage == 0) {
+                        } else {
+                            $isCorrect = false;
+                        }
+                        
+                        if ($percentage == 0) {
                             $score = $question->score_incorrect ?? 0;
+                        } else {
+                            $score = round($percentage * ($question->score_correct ?? 1), 2);
                         }
                     } else {
                         $score = $question->score_incorrect ?? 0;

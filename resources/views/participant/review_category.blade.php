@@ -177,9 +177,9 @@
                 $isThisParticipantAnswer = false;
                 if ($question->type === 'multiple_choice') {
                     $participantNormalized = array_map($normalizeAnswer, is_array($participantAnswer) ? $participantAnswer : []);
-                    $isThisParticipantAnswer = in_array($optionNormalized, $participantNormalized, true);
+                    $isThisParticipantAnswer = in_array($optionNormalized, $participantNormalized, true) || in_array((string)$optIndex, $participantNormalized, true);
                 } else {
-                    $isThisParticipantAnswer = $normalizeAnswer($participantAnswer) === $normalizeAnswer($option);
+                    $isThisParticipantAnswer = $normalizeAnswer($participantAnswer) === $optionNormalized || $normalizeAnswer($participantAnswer) === (string)$optIndex;
                 }
                 
                 $bgColor = 'rgba(255, 255, 255, 0.03)';

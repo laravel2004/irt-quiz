@@ -3,7 +3,17 @@
 @section('title', 'Dashboard Peserta')
 
 @section('content')
-<div class="container" style="padding: 40px 20px;">
+<div class="container" style="padding: 40px 20px; max-width: 1200px; margin: 0 auto;">
+    <!-- Logo Header -->
+    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 32px;">
+        <div style="background: #dbeafe; padding: 12px; border-radius: 12px;">
+            <img src="{{ asset('img/logo.png') }}" alt="Logo JagoBelajar" style="height: 40px; filter: none;">
+        </div>
+        <div>
+            <div style="color: #0f172a; font-weight: 800; font-size: 24px; font-family: 'Outfit', sans-serif; letter-spacing: 0.5px;">JagoBelajar</div>
+            <div style="color: var(--accent); font-weight: 600; font-size: 14px;">Bimbel & Try Out Online</div>
+        </div>
+    </div>
     <div class="flex-stack-mobile" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; gap: 20px;">
         <div>
             <h1 style="font-family: 'Outfit', sans-serif; font-size: 2.2rem; margin-bottom: 8px;">Selamat Datang, {{ auth()->user()->name }}</h1>

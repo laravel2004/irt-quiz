@@ -29,7 +29,7 @@
             $maxPossiblePoints = $catQuestions->sum('score_correct');
             
             $participantPoints = $registration->userAnswers->filter(function($ans) use ($catQuestions) {
-                return $catQuestions->pluck('id')->contains($ans->question_bank_id) && $ans->is_correct;
+                return $catQuestions->pluck('id')->contains($ans->question_bank_id);
             })->sum('score');
             
             if ($maxPossiblePoints > 0) {

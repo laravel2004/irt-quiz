@@ -252,7 +252,7 @@ class DashboardController extends Controller
             $participantPoints = 0;
             foreach ($catQuestions as $q) {
                 $ans = $registration->userAnswers->where('question_bank_id', $q->id)->first();
-                if ($ans && $ans->is_correct) {
+                if ($ans) {
                     $participantPoints += $ans->score;
                 }
             }
