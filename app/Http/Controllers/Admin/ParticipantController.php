@@ -15,10 +15,10 @@ class ParticipantController extends Controller
 
     public function index(Request $request)
     {
-        $participants = User::whereIn('role', ['basic', 'admin_sesi', 'superadmin'])->latest()->get();
+        $participants = User::whereIn('role', ['basic', 'admin_sesi', 'superadmin'])->latest()->paginate(10);
         
         if ($request->ajax()) {
-            return $this->successResponse($participants);
+            return $this->successResponse($participants->items());
         }
 
         return view('admin.participants.index', compact('participants'));
