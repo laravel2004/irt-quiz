@@ -28,6 +28,61 @@
         background: #f8fafc !important;
         border: 1px solid var(--glass-border);
     }
+    
+    /* Premium Pagination Styling */
+    .pagination {
+        display: flex !important;
+        gap: 8px !important;
+        list-style: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .page-item {
+        margin: 0 !important;
+    }
+    .page-item .page-link {
+        width: 40px !important;
+        height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #f8fafc !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 12px !important;
+        color: var(--text-secondary) !important;
+        text-decoration: none !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        padding: 0 !important;
+        font-size: 0.9rem !important;
+    }
+    .page-item.active .page-link {
+        background: var(--accent) !important;
+        border-color: var(--accent) !important;
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    }
+    .page-item.disabled .page-link {
+        opacity: 0.3 !important;
+        cursor: not-allowed !important;
+        background: transparent !important;
+    }
+    .page-item .page-link:hover:not(.disabled):not(.active) {
+        background: #eff6ff !important;
+        transform: translateY(-2px) !important;
+        color: white !important;
+    }
+    /* Hide the 'Showing X to Y' part if it's messy */
+    nav div:first-child {
+        display: none !important;
+    }
+    nav div:last-child {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
 </style>
 
 <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
@@ -115,7 +170,7 @@
             </tbody>
         </table>
     </div>
-    <div style="margin-top: 16px;">
+    <div style="margin-top: 24px; display: flex; justify-content: center;">
         {{ $sessions->links() }}
     </div>
     @else
@@ -155,7 +210,7 @@
         </div>
         @endforelse
     </div>
-    <div style="margin-top: 24px;">
+    <div style="margin-top: 24px; display: flex; justify-content: center;">
         {{ $sessions->links() }}
     </div>
     @endif
