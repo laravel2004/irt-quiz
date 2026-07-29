@@ -115,6 +115,9 @@
             </tbody>
         </table>
     </div>
+    <div style="margin-top: 16px;">
+        {{ $sessions->links() }}
+    </div>
     @else
     <div class="responsive-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
         @forelse($sessions as $session)
@@ -151,6 +154,9 @@
             <p>Belum ada sesi ujian yang ditugaskan kepada Anda.</p>
         </div>
         @endforelse
+    </div>
+    <div style="margin-top: 24px;">
+        {{ $sessions->links() }}
     </div>
     @endif
 </div>

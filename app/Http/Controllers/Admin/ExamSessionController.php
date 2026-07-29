@@ -35,11 +35,11 @@ class ExamSessionController extends Controller
             });
         }
         
-        $sessions = $query->get();
+        $sessions = $query->paginate(10);
         $categories = Category::with('subCategories')->get();
         
         if ($request->ajax()) {
-            return $this->successResponse($sessions);
+            return $this->successResponse($sessions->items());
         }
 
         return view('admin.sessions.index', compact('sessions', 'categories'));
