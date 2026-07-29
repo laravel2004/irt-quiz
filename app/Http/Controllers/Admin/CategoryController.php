@@ -22,10 +22,10 @@ class CategoryController extends Controller
 
     public function index(Request $request)
     {
-        $categories = $this->categoryService->getAll();
+        $categories = $this->categoryService->getPaginated(10);
         
         if ($request->ajax()) {
-            return $this->successResponse($categories, 'Categories retrieved successfully');
+            return $this->successResponse($categories->items(), 'Categories retrieved successfully');
         }
 
         return view('admin.categories.index', compact('categories'));
