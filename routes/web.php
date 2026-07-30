@@ -24,7 +24,7 @@ Route::middleware(['auth'])->group(function() {
     Route::post('/dashboard/retake/{sessionId}', [\App\Http\Controllers\Participant\DashboardController::class, 'retakeSession'])->name('participant.retake');
     Route::get('/dashboard/aggregate-analysis/{sessionId}', [\App\Http\Controllers\Participant\DashboardController::class, 'generateAggregateAnalysis'])->name('participant.aggregate-analysis');
     Route::get('/dashboard/statistics/{sessionId}', [\App\Http\Controllers\Participant\DashboardController::class, 'showStatistics'])->name('participant.statistics');
-    // Exam Execution
+    Route::get('/exam/check-capacity', [\App\Http\Controllers\ExamController::class, 'checkCapacity'])->name('exam.check-capacity');
     // Exam Execution
     Route::get('/exam/{code}/terms', [\App\Http\Controllers\ExamController::class, 'terms'])->name('exam.terms');
     Route::post('/exam/{code}/agree', [\App\Http\Controllers\ExamController::class, 'agreeTerms'])->name('exam.agree');

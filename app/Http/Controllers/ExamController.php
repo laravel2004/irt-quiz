@@ -102,6 +102,23 @@ class ExamController extends Controller
         return $participant;
     }
 
+    private function countActiveParticipants(): int
+    {
+        return \App\Models\ExamSessionParticipant::activeInExam()->count();
+    }
+
+    public function checkCapacity()
+    {
+        $limit = config('exam.concurrent_limit', 30);
+        $activeCount = $this->countActiveParticipants();
+        
+        return response()->json([
+            'is_full' => $activeCount >= $limit,
+            'active_count' => $activeCount,
+            'limit' => $limit
+        ]);
+    }
+
     public function terms($code)
     {
         $participant = $this->getParticipant($code);
@@ -151,6 +168,17 @@ class ExamController extends Controller
         if (!$participant) return redirect()->route('participant.dashboard');
 
         $session = $participant->examSession;
+
+        // Cek limit hanya untuk peserta yang BELUM pernah started
+        // (Peserta yang lanjut dari sesi sebelumnya tidak kena limit)
+        if (!$participant->started_at) {
+            $limit = config('exam.concurrent_limit', 30);
+            $activeCount = $this->countActiveParticipants();
+
+            if ($activeCount >= $limit) {
+                return back()->with('exam_full', true);
+            }
+        }
 
         // Generate questions if not exist
         if ($session->questions()->count() == 0) {

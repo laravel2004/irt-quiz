@@ -3,10 +3,14 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. lihat dibagian quiz ya.
-2. untuk jawaban multiple choice dan multiple benar salah itu kalau ada salah satu jawaban yang dijawab salah
-    tetap salahkan soal tersebut tapi masih dikasih nilai persentase sesuai dengan jawaban benar nya 
-    jadi kalau ada 3 jawaban benar dari 5 jawaban maka kehitungnya adalah persentasi nya.
+1. perhatikan pada saat ujian dimulai.
+2. aku ingin membuat fitur pembatasan yang bisa masuk ke ujian. jumlah nya taruh di env ya berapa user nya.
+3. flow nya itu kayak gini ketika ada user 30 yang sedang mengerjakan ujian dan pembatasan user itu ada 30 user didalam ujian tersebut maka user 31 tidak bisa masuk ke ujian hingga ada user yang menyelesaikan
+atau keluar dari ujian. dan waktunya yang sudah habis ya.
+4. user ke 31 ketika click mulai ujian ada modal atau notifikasi untuk menunggu karena sesi ujian masih penuh mohon tunggu hingga ada yang menyelesaikan ujian.
+5. pembatasan ini bersifat general ya di semua sesi yang memulai ujian bukan persesi nya ya
+6. analisis dengan baik dulu sebelum mengambil keputusan flow yang tetap
+
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail
 dengan target  junior programmer atau model yang lebih murah bisa mengerjakan

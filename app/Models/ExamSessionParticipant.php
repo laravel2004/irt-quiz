@@ -52,4 +52,21 @@ class ExamSessionParticipant extends Model
     {
         return $this->hasMany(ParticipantCategoryStatus::class, 'exam_session_participant_id');
     }
+
+    /**
+     * Scope a query to only include participants currently active in an exam.
+     */
+    public function scopeActiveInExam($query)
+    {
+        return $query->whereNotNull('started_at')
+            ->whereNull('finished_at')
+            ->whereHas('examSession', function ($q) {
+                // Ensure session is globally active and not expired
+                $q->where('is_active', true)
+                  ->whereRaw("CONCAT(end_date, ' ', end_time) > ?", [now()]);
+            })
+            // Ensure participant has not exceeded the total possible duration of the session
+            // total possible duration = sum of durations of all categories in the session
+            ->whereRaw("DATE_ADD(started_at, INTERVAL (SELECT COALESCE(SUM(duration), 0) FROM exam_session_categories WHERE exam_session_categories.exam_session_id = exam_session_participants.exam_session_id) MINUTE) > ?", [now()]);
+    }
 }

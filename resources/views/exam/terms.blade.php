@@ -96,7 +96,7 @@
             </ul>
         </div>
 
-        <form action="{{ route('exam.agree', $session->code) }}" method="POST">
+        <form id="agreeForm" action="{{ route('exam.agree', $session->code) }}" method="POST">
             @csrf
             <label style="display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--glass-border);">
                 <input type="checkbox" name="agree_terms" required style="margin-top: 4px; width: 18px; height: 18px; accent-color: #3b82f6;">
@@ -112,6 +112,58 @@
             </div>
         </form>
     </div>
+
+    {{-- Modal Ujian Penuh --}}
+    @if(session('exam_full'))
+    <div id="examFullModal" style="
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 9999;
+    ">
+        <div style="
+            background: white; border-radius: 16px;
+            padding: 40px; max-width: 440px; width: 90%;
+            text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        ">
+            <div style="font-size: 3rem; margin-bottom: 16px;">⏳</div>
+            <h3 style="margin-bottom: 12px; font-size: 1.4rem; color: #1e293b;">Sesi Ujian Penuh</h3>
+            <p style="color: #64748b; line-height: 1.6; margin-bottom: 28px;">
+                Saat ini terlalu banyak peserta yang sedang mengerjakan ujian secara bersamaan.
+                Mohon tunggu hingga ada peserta yang menyelesaikan ujian, lalu coba lagi.
+            </p>
+            <button
+                id="btnRetry"
+                onclick="document.getElementById('agreeForm').submit()"
+                style="
+                    background: #3b82f6; color: white;
+                    border: none; border-radius: 10px;
+                    padding: 12px 32px; font-size: 1rem;
+                    cursor: pointer; font-weight: 600; margin-right: 8px;
+                "
+            >
+                Coba Lagi
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Polling setiap 15 detik untuk cek apakah slot sudah tersedia
+        let pollingInterval = setInterval(function() {
+            fetch('{{ route("exam.check-capacity") }}')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.is_full) {
+                        clearInterval(pollingInterval);
+                        // Update teks modal jika slot tersedia
+                        document.querySelector('#examFullModal p').textContent =
+                            'Slot sudah tersedia! Silakan klik Coba Lagi untuk mulai ujian.';
+                    }
+                })
+                .catch(() => {}); // abaikan error network
+        }, 15000);
+    </script>
+    @endif
 
 </body>
 </html>

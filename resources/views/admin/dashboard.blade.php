@@ -33,6 +33,24 @@
         <div class="value">{{ number_format($avgScore, 0) }}</div>
         <div class="label">Avg. IRT Score</div>
     </div>
+    
+    @php
+        $isFull = $activeExamCount >= $examLimit;
+        $statusColor = $isFull ? '#ef4444' : '#10b981';
+        $statusBg = $isFull ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+    @endphp
+    <div class="stat-card glass animate-fade-in" style="animation-delay: 0.5s; {{ $isFull ? 'border: 1px solid #ef4444;' : '' }}">
+        <div class="icon" style="color: {{ $statusColor }}; background: {{ $statusBg }};">
+            <i class="fas fa-users-cog"></i>
+        </div>
+        <div class="value" style="color: {{ $statusColor }};">{{ $activeExamCount }} / {{ $examLimit }}</div>
+        <div class="label">Peserta Ujian Aktif</div>
+        @if($isFull)
+        <div style="margin-top: 8px; font-size: 0.75rem; color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 4px 8px; border-radius: 4px; display: inline-block;">
+            <i class="fas fa-exclamation-triangle"></i> Slot Penuh
+        </div>
+        @endif
+    </div>
 </div>
 
 <div class="responsive-grid">

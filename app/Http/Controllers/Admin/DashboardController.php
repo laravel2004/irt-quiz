@@ -26,13 +26,18 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
+        $examLimit = config('exam.concurrent_limit', 30);
+        $activeExamCount = \App\Models\ExamSessionParticipant::activeInExam()->count();
+
         return view('admin.dashboard', compact(
             'totalParticipants',
             'totalQuestions',
             'totalCategories',
             'activeSessionsCount',
             'avgScore',
-            'recentSessions'
+            'recentSessions',
+            'examLimit',
+            'activeExamCount'
         ));
     }
 }
