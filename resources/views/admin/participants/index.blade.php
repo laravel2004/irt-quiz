@@ -10,12 +10,19 @@
             <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">Daftar Peserta</h3>
             <p style="color: var(--text-secondary); font-size: 0.9rem;">Kelola data peserta ujian (Basic & Premium).</p>
         </div>
-        <div class="flex-stack-mobile" style="display: flex; gap: 16px;">
-            <div style="position: relative; width: 300px;">
-                <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
-                <input type="text" id="searchInput" class="form-input" placeholder="Cari peserta..." style="padding-left: 44px; margin-bottom: 0;">
-            </div>
-            <button class="btn-primary" onclick="openParticipantModal('create')">
+        <div class="flex-stack-mobile" style="display: flex; gap: 16px; align-items: center;">
+            <form method="GET" action="{{ route('admin.participants.index') }}" style="position: relative; width: 300px; margin: 0; display: flex; gap: 8px;">
+                <div style="position: relative; width: 100%;">
+                    <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                    <input type="text" name="search" id="searchInput" class="form-input" placeholder="Cari peserta (tekan enter)..." value="{{ request('search') }}" style="padding-left: 44px; margin-bottom: 0; width: 100%;">
+                </div>
+                @if(request('search'))
+                    <a href="{{ route('admin.participants.index') }}" class="btn-primary" style="background: #f1f5f9; color: var(--text-primary); border: 1px solid var(--glass-border); padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border-radius: 8px;">
+                        Reset
+                    </a>
+                @endif
+            </form>
+            <button class="btn-primary" onclick="openParticipantModal('create')" style="flex-shrink: 0;">
                 <i class="fas fa-plus"></i> Tambah Peserta
             </button>
         </div>
@@ -271,22 +278,6 @@
         });
     }
 
-    // Search Filter
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        const term = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('.data-table tbody tr');
-
-        rows.forEach(row => {
-            if (row.cells.length < 5) return;
-            const name = row.cells[0].textContent.toLowerCase();
-            const email = row.cells[1].textContent.toLowerCase();
-            
-            if (name.includes(term) || email.includes(term)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    });
+    // Removed client-side search, handled via backend now
 </script>
 @endpush

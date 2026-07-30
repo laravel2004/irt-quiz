@@ -15,7 +15,17 @@ class ParticipantController extends Controller
 
     public function index(Request $request)
     {
-        $participants = User::whereIn('role', ['basic', 'admin_sesi', 'superadmin'])->latest()->paginate(10);
+        $query = User::whereIn('role', ['basic', 'admin_sesi', 'superadmin'])->latest();
+        
+        if ($request->has('search') && !empty($request->search)) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(name) LIKE ?', ['%' . $search . '%'])
+                  ->orWhereRaw('LOWER(email) LIKE ?', ['%' . $search . '%']);
+            });
+        }
+        
+        $participants = $query->paginate(10)->withQueryString();
         
         if ($request->ajax()) {
             return $this->successResponse($participants->items());

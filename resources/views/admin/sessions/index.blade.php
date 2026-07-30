@@ -91,13 +91,20 @@
             <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">Sesi Ujian</h3>
             <p style="color: var(--text-secondary); font-size: 0.9rem;">Kelola jadwal dan pembagian soal untuk ujian.</p>
         </div>
-        <div class="flex-stack-mobile search-container" style="display: flex; gap: 16px; width: 100%; max-width: 300px;">
-            <div style="position: relative; width: 100%;">
-                <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
-                <input type="text" id="searchInput" class="form-input" placeholder="Cari sesi..." style="padding-left: 44px; margin-bottom: 0; width: 100%;">
-            </div>
+        <div class="flex-stack-mobile search-container" style="display: flex; gap: 16px; width: 100%; max-width: 400px; align-items: center;">
+            <form method="GET" action="{{ route('admin.sessions.index') }}" style="position: relative; width: 100%; margin: 0; display: flex; gap: 8px;">
+                <div style="position: relative; width: 100%;">
+                    <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                    <input type="text" name="search" id="searchInput" class="form-input" placeholder="Cari sesi (tekan enter)..." value="{{ request('search') }}" style="padding-left: 44px; margin-bottom: 0; width: 100%;">
+                </div>
+                @if(request('search'))
+                    <a href="{{ route('admin.sessions.index') }}" class="btn-primary" style="background: #f1f5f9; color: var(--text-primary); border: 1px solid var(--glass-border); padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border-radius: 8px;">
+                        Reset
+                    </a>
+                @endif
+            </form>
             @if(auth()->user()->role === 'superadmin')
-            <button class="btn-primary" onclick="openSessionModal('create')">
+            <button class="btn-primary" onclick="openSessionModal('create')" style="flex-shrink: 0;">
                 <i class="fas fa-plus"></i> Tambah Sesi
             </button>
             @endif
@@ -656,21 +663,6 @@
         });
     }
 
-    // Client-side Search Filter
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        const term = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('.data-table tbody tr');
-
-        rows.forEach(row => {
-            if (row.cells.length < 7) return; // Skip empty row
-            const name = row.cells[0].textContent.toLowerCase();
-            
-            if (name.includes(term)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    });
+    // Removed client-side search, handled via backend now
 </script>
 @endpush

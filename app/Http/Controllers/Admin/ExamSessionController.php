@@ -35,7 +35,15 @@ class ExamSessionController extends Controller
             });
         }
         
-        $sessions = $query->paginate(10);
+        if ($request->has('search') && !empty($request->search)) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(name) LIKE ?', ['%' . $search . '%'])
+                  ->orWhereRaw('LOWER(code) LIKE ?', ['%' . $search . '%']);
+            });
+        }
+        
+        $sessions = $query->paginate(10)->withQueryString();
         $categories = Category::with('subCategories')->get();
         
         if ($request->ajax()) {

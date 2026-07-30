@@ -21,17 +21,18 @@
                     @endforeach
                 </select>
 
-                @if($filters['category_id'] ?? null)
+                <div style="position: relative; width: 300px;">
+                    <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                    <input type="text" name="search" id="searchInput" class="form-input" placeholder="Cari soal (tekan enter)..." value="{{ $filters['search'] ?? '' }}" style="padding-left: 44px; margin-bottom: 0;">
+                </div>
+
+                @if(($filters['category_id'] ?? null) || ($filters['search'] ?? null))
                     <a href="{{ route('admin.questions.index') }}" class="form-input" style="width: auto; margin-bottom: 0; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; padding: 0 16px; white-space: nowrap;">
                         Reset
                     </a>
                 @endif
             </form>
 
-            <div style="position: relative; width: 300px;">
-                <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
-                <input type="text" id="searchInput" class="form-input" placeholder="Cari soal..." style="padding-left: 44px; margin-bottom: 0;">
-            </div>
             <button class="btn-primary" onclick="openQuestionModal('create')">
                 <i class="fas fa-plus"></i> Tambah Soal
             </button>
@@ -1487,25 +1488,7 @@
         document.getElementById('previewModal').classList.remove('active');
     }
 
-    // Client-side Search Filter
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        const term = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('.data-table tbody tr');
-
-        rows.forEach(row => {
-            if (row.cells.length < 6) return; // Skip empty row
-            const category = row.cells[1].textContent.toLowerCase();
-            const type = row.cells[2].textContent.toLowerCase();
-            const kodeSoal = row.cells[3].textContent.toLowerCase();
-            const text = row.cells[4].textContent.toLowerCase();
-            
-            if (category.includes(term) || type.includes(term) || kodeSoal.includes(term) || text.includes(term)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    });
+    // Removed client-side search, handled via backend now
 
     // ===== Math Editor Functions =====
     const mathModal = document.getElementById('mathEditorModal');

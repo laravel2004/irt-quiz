@@ -18,6 +18,17 @@ class QuestionBankRepository extends BaseRepository
             $query->where('category_id', $filters['category_id']);
         }
 
+        if (!empty($filters['search'])) {
+            $search = strtolower($filters['search']);
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(question_text) like ?', ['%' . $search . '%'])
+                  ->orWhereRaw('LOWER(kode_soal) like ?', ['%' . $search . '%'])
+                  ->orWhereHas('category', function($qCat) use ($search) {
+                      $qCat->whereRaw('LOWER(name) like ?', ['%' . $search . '%']);
+                  });
+            });
+        }
+
         // Apply deferred join pattern to avoid MySQL Out of Sort Memory errors 
         // when rows contain very large base64 images in text/JSON columns
         $paginator = $query->clone()->select('id')->latest()->paginate($perPage);

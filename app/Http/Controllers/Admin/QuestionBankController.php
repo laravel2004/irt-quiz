@@ -25,6 +25,7 @@ class QuestionBankController extends Controller
     public function index(Request $request)
     {
         $categoryId = $request->query('category_id');
+        $search = $request->query('search');
 
         if ($categoryId && !ctype_digit((string) $categoryId)) {
             $categoryId = null;
@@ -36,6 +37,7 @@ class QuestionBankController extends Controller
 
         $filters = [
             'category_id' => $categoryId,
+            'search' => $search,
         ];
 
         $questions = $this->questionService->getPaginatedWithFilters(10, $filters);
