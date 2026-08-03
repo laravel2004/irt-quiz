@@ -18,9 +18,9 @@
                 <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">Total Soal: {{ $subCategory->questions->count() }}</span>
             </div>
         </div>
-        <a href="{{ route('admin.questions.index', ['action' => 'create', 'category_id' => $subCategory->category_id, 'sub_category_id' => $subCategory->id]) }}" class="btn-primary" style="text-decoration: none;">
+        <button type="button" class="btn-primary" onclick="openQuestionModal('create', {{ $subCategory->category_id }}, {{ $subCategory->id }})">
             <i class="fas fa-plus"></i> Buat Bank Soal
-        </a>
+        </button>
     </div>
 
     <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 24px 0;">
@@ -62,9 +62,9 @@
                             </button>
 
                             <!-- Tombol Edit -->
-                            <a href="{{ route('admin.questions.index', ['action' => 'edit', 'question_id' => $question->id]) }}" class="btn-icon" title="Edit Soal" style="color: #3b82f6;">
+                            <button type="button" class="btn-icon" title="Edit Soal" style="color: #3b82f6;" onclick="editQuestion({{ $question->id }})">
                                 <i class="fas fa-edit"></i>
-                            </a>
+                            </button>
 
                             <!-- Tombol Hapus -->
                             <button class="btn-icon" onclick="deleteQuestion({{ $question->id }})" title="Hapus Soal" style="color: #ef4444;">
@@ -138,9 +138,13 @@
     }
 </style>
 
+@include('admin.questions._modal_styles')
+@include('admin.questions._modal_form')
+
 @endsection
 
 @push('scripts')
+@include('admin.questions._modal_scripts')
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         if (window.renderMathInElement) {

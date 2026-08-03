@@ -60,7 +60,9 @@ class SubCategoryController extends Controller
             return redirect()->route('admin.sub-categories.index')->with('error', 'Sub Pelajaran tidak ditemukan');
         }
         
-        return view('admin.sub_categories.show', compact('subCategory'));
+        $categories = \App\Models\Category::all();
+        
+        return view('admin.sub_categories.show', compact('subCategory', 'categories'));
     }
 
     public function update(Request $request, $id)
