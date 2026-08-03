@@ -163,7 +163,10 @@
     }
 
 </style>
-</style>
+
+@push('head')
+@include('admin.questions._modal_styles')
+@endpush
 
 <!-- Question Modal -->
 @include('admin.questions._modal_form')

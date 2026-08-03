@@ -2,7 +2,7 @@
     /* Multiple Benar/Salah styling */
     .mbs-statement-item {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 12px;
         margin-bottom: 12px;
         background: #f8fafc;

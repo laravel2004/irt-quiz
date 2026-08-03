@@ -138,7 +138,10 @@
     }
 </style>
 
+@push('head')
 @include('admin.questions._modal_styles')
+@endpush
+
 @include('admin.questions._modal_form')
 
 @endsection

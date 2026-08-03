@@ -164,27 +164,38 @@
     }
 
     // Multiple Benar/Salah item
-    function addMBSItem(text = '', correctValue = 'benar') {
+    function addMBSItem(value = '', correctValue = 'benar') {
+        const optionId = `option_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const index = optionsList.children.length;
         const div = document.createElement('div');
         div.className = 'mbs-statement-item';
+        div.dataset.optionId = optionId;
         
         div.innerHTML = `
-            <span style="color: var(--text-secondary); font-weight: 600; font-size: 0.85rem; min-width: 28px;">${index + 1}.</span>
-            <input type="text" name="options[]" value="${text}" placeholder="Pernyataan ${index + 1}" required>
-            <div class="mbs-toggle-group">
-                <button type="button" class="mbs-toggle-btn ${correctValue === 'benar' ? 'active-benar' : ''}" onclick="setMBSAnswer(this, 'benar')">B</button>
-                <button type="button" class="mbs-toggle-btn ${correctValue === 'salah' ? 'active-salah' : ''}" onclick="setMBSAnswer(this, 'salah')">S</button>
+            <span class="mbs-number" style="color: var(--text-secondary); font-weight: 600; font-size: 0.85rem; min-width: 28px; margin-top: 8px;">${index + 1}.</span>
+            <div style="display:flex; flex-direction: column; flex: 1; min-width: 0; gap: 8px;">
+                <div class="editor-mount"></div>
+                <div class="mbs-toggle-group" style="align-self: flex-start; margin-bottom: 8px;">
+                    <button type="button" class="mbs-toggle-btn ${correctValue === 'benar' ? 'active-benar' : ''}" onclick="setMBSAnswer(this, 'benar')">B</button>
+                    <button type="button" class="mbs-toggle-btn ${correctValue === 'salah' ? 'active-salah' : ''}" onclick="setMBSAnswer(this, 'salah')">S</button>
+                </div>
+                <input type="hidden" class="mbs-hidden-val" value="${correctValue}">
             </div>
-            <input type="hidden" name="correct_answer[]" value="${correctValue}">
-            <button type="button" class="btn-icon delete" onclick="this.parentElement.remove(); reindexMBS()" style="border:none; background:none;"><i class="fas fa-times"></i></button>
+            <button type="button" class="btn-icon delete" onclick="const item = this.closest('.mbs-statement-item'); optionEditors.delete(item.dataset.optionId); item.remove(); reindexMBS();" style="border:none; background:none; align-self: flex-start; margin-top: 8px;" title="Hapus Pernyataan"><i class="fas fa-times"></i></button>
         `;
+        
+        const editorMount = div.querySelector('.editor-mount');
+        const editor = createOptionEditor(value);
+        editorMount.appendChild(editor.wrapper);
         optionsList.appendChild(div);
+        
+        optionEditors.set(optionId, editor.content);
+        optionImageInputs.set(optionId, editor.fileInput);
     }
 
     function setMBSAnswer(btn, value) {
         const parent = btn.closest('.mbs-statement-item');
-        const hiddenInput = parent.querySelector('input[name="correct_answer[]"]');
+        const hiddenInput = parent.querySelector('.mbs-hidden-val');
         const buttons = parent.querySelectorAll('.mbs-toggle-btn');
         
         buttons.forEach(b => {
@@ -202,8 +213,8 @@
     function reindexMBS() {
         const items = optionsList.querySelectorAll('.mbs-statement-item');
         items.forEach((item, i) => {
-            item.querySelector('span').textContent = `${i + 1}.`;
-            item.querySelector('input[type="text"]').placeholder = `Pernyataan ${i + 1}`;
+            const span = item.querySelector('.mbs-number');
+            if(span) span.textContent = `${i + 1}.`;
         });
     }
 
@@ -350,16 +361,20 @@
 
     function getOptionPayload() {
         const payload = [];
-        document.querySelectorAll('.option-item').forEach((item, index) => {
+        document.querySelectorAll('.option-item, .mbs-statement-item').forEach((item, index) => {
             const optionId = item.dataset.optionId;
+            if (!optionId) return;
             const content = optionEditors.get(optionId);
             const checker = item.querySelector('input[type="radio"], input[type="checkbox"]');
+            const hiddenVal = item.querySelector('.mbs-hidden-val');
+            
             payload.push({
                 id: optionId,
                 index,
                 label: String.fromCharCode(65 + index),
                 html: content ? content.innerHTML : '',
-                isChecked: !!checker?.checked
+                isChecked: !!checker?.checked,
+                hiddenValue: hiddenVal ? hiddenVal.value : null
             });
         });
         return payload;
@@ -382,34 +397,26 @@
         
         if (mode === 'edit') formData.append('_method', 'PUT');
 
-        if (typeSelect.value === 'pilihan_ganda' || typeSelect.value === 'multiple_choice') {
+        if (typeSelect.value === 'pilihan_ganda' || typeSelect.value === 'multiple_choice' || typeSelect.value === 'multiple_benar_salah') {
             formData.delete('options[]');
             formData.delete('correct_answer[]');
             formData.delete('correct_answer');
 
             const optionPayload = getOptionPayload();
-            optionPayload.forEach((item) => {
+            optionPayload.forEach((item, idx) => {
                 formData.append('options[]', item.html);
-                if (item.isChecked) {
-                    formData.append('correct_answer[]', item.label);
+                if (typeSelect.value === 'multiple_benar_salah') {
+                    if (item.hiddenValue === 'benar') {
+                        formData.append('correct_answer[]', idx.toString());
+                    }
+                } else {
+                    if (item.isChecked) {
+                        formData.append('correct_answer[]', item.label);
+                    }
                 }
             });
-        }
 
-        // For multiple_benar_salah, we need to convert correct_answer to indices of "benar" answers
-        const type = formData.get('type');
-        if (type === 'multiple_benar_salah') {
-            const correctAnswers = formData.getAll('correct_answer[]');
-            // Remove existing correct_answer entries
-            formData.delete('correct_answer[]');
-            // Add back indices where answer is 'benar'
-            correctAnswers.forEach((val, idx) => {
-                if (val === 'benar') {
-                    formData.append('correct_answer[]', idx.toString());
-                }
-            });
-            // If no "benar" answers, add a placeholder to avoid empty
-            if (!formData.has('correct_answer[]')) {
+            if (typeSelect.value === 'multiple_benar_salah' && !formData.has('correct_answer[]')) {
                 formData.append('correct_answer[]', '-1');
             }
         }
