@@ -287,7 +287,13 @@
             .exam-header-bar > div:last-child > div:first-child > button,
             .exam-header-bar > div:last-child > div:first-child > div { width: 100%; justify-content: center; }
             .btn-pill { font-size: 13px; padding: 10px 16px; }
-            .exam-left-pane { display: none !important; }
+            .exam-left-pane { 
+                max-width: 100% !important; 
+                border-right: none !important; 
+                border-bottom: 2px dashed #cbd5e1; 
+                padding: 16px !important; 
+                /* Removed display: none !important to allow inline JS style */
+            }
             .exam-body { flex-direction: column; overflow: visible; }
             .exam-right-pane { padding: 16px; overflow-y: visible; }
             .exam-footer { flex-direction: column; gap: 12px; padding: 16px; align-items: stretch; }
