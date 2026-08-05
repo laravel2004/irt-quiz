@@ -433,7 +433,19 @@
         .then(data => {
             if (data.status === 'success') {
                 showToast(data.message);
-                setTimeout(() => location.reload(), 1000);
+                setTimeout(() => {
+                    if (mode === 'create') {
+                        const currentUrl = new URL(window.location.href);
+                        currentUrl.searchParams.set('action', 'create');
+                        const catId = document.getElementById('catSelect').value;
+                        const subCatId = document.getElementById('subCatSelect').value;
+                        if (catId) currentUrl.searchParams.set('category_id', catId);
+                        if (subCatId) currentUrl.searchParams.set('sub_category_id', subCatId);
+                        window.location.href = currentUrl.toString();
+                    } else {
+                        location.reload();
+                    }
+                }, 1000);
             } else {
                 showToast(data.message || 'Validation failed', 'error');
             }

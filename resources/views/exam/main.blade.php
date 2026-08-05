@@ -290,9 +290,16 @@
             .exam-left-pane { 
                 max-width: 100% !important; 
                 border-right: none !important; 
-                border-bottom: 2px dashed #cbd5e1; 
+                border-bottom: 2px dashed #cbd5e1;
                 padding: 16px !important; 
+                text-align: center;
                 /* Removed display: none !important to allow inline JS style */
+            }
+            .exam-left-pane img {
+                width: 100% !important;
+                max-height: 40vh !important;
+                object-fit: contain !important;
+                margin: 0 auto;
             }
             .exam-body { flex-direction: column; overflow: visible; }
             .exam-right-pane { padding: 16px; overflow-y: visible; }
