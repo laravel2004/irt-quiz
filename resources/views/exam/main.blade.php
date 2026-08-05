@@ -288,6 +288,7 @@
             .exam-header-bar > div:last-child > div:first-child > div { width: 100%; justify-content: center; }
             .btn-pill { font-size: 13px; padding: 10px 16px; }
             .exam-left-pane { 
+                flex: none !important;
                 max-width: 100% !important; 
                 border-right: none !important; 
                 border-bottom: 2px dashed #cbd5e1;
