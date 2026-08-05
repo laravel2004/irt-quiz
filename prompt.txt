@@ -3,9 +3,10 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. perhatikan http://localhost:8000/admin/sub-categories/5.
-2. disitu kan ada action buat bank soal.
-3. aku mau modal nya itu tetap di halaman itu engga keredirect ya.
+1. perhatikan tampilan yang ada disini http://localhost:8000/admin/sessions/6.
+2. disitu kan ada actionn preview soal ya ganti namanya jadi preview pembahasan.
+3. terus buatkan action preview soal tampilan nya kayak gini http://localhost:8000/admin/sessions/6/preview-questions.
+4. tapi hanya soal tidak ada jawaban benar dan pembahasan ya
 
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail

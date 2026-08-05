@@ -221,6 +221,18 @@ class ExamSessionController extends Controller
         return view('admin.sessions.preview', compact('session'));
     }
 
+    public function previewQuestionsOnly(Request $request, $id)
+    {
+        $session = ExamSession::with(['sessionCategories.category', 'questions.category'])->findOrFail($id);
+        
+        if ($request->boolean('regenerate') || $session->questions()->count() == 0) {
+            $this->sessionService->generateSessionQuestions($id);
+            $session->load('questions.category');
+        }
+
+        return view('admin.sessions.preview-only', compact('session'));
+    }
+
     public function uploadDiscussionPdf(Request $request, $id)
     {
         $request->validate([

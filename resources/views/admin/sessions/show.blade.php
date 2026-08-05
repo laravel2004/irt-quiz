@@ -54,6 +54,9 @@
                         {{ $session->is_active ? 'Tutup Sesi' : 'Buka Sesi' }}
                     </button>
                     <a href="{{ route('admin.sessions.preview-questions', $session->id) }}" class="btn-primary" style="height: 32px; font-size: 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; background: rgba(var(--accent-rgb), 0.1); color: var(--accent); border: 1px solid var(--accent);">
+                        <i class="fas fa-book-open"></i> Preview Pembahasan
+                    </a>
+                    <a href="{{ route('admin.sessions.preview-questions-only', $session->id) }}" class="btn-primary" style="height: 32px; font-size: 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; background: rgba(var(--accent-rgb), 0.1); color: var(--accent); border: 1px solid var(--accent);">
                         <i class="fas fa-eye"></i> Preview Soal
                     </a>
                 </div>

@@ -48,6 +48,7 @@ Route::middleware(AdminMiddleware::class)->group(function () {
     // Routes available to both Superadmin and Admin Sesi
     Route::resource('/admin/sessions', \App\Http\Controllers\Admin\ExamSessionController::class)->names('admin.sessions');
     Route::get('/admin/sessions/{id}/preview-questions', [\App\Http\Controllers\Admin\ExamSessionController::class, 'previewQuestions'])->name('admin.sessions.preview-questions');
+    Route::get('/admin/sessions/{id}/preview-questions-only', [\App\Http\Controllers\Admin\ExamSessionController::class, 'previewQuestionsOnly'])->name('admin.sessions.preview-questions-only');
     Route::patch('/admin/sessions/{id}/toggle-status', [\App\Http\Controllers\Admin\ExamSessionController::class, 'toggleStatus'])->name('admin.sessions.toggle-status');
     Route::post('/admin/sessions/{id}/generate-irt', [\App\Http\Controllers\Admin\ExamSessionController::class, 'generateIRTResults'])->name('admin.sessions.generate-irt');
     Route::post('/admin/sessions/{id}/upload-discussion', [\App\Http\Controllers\Admin\ExamSessionController::class, 'uploadDiscussionPdf'])->name('admin.sessions.upload-discussion');
