@@ -17,23 +17,14 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         
-        // Get sessions where this user is registered, grouped by exam session
-        $cacheKey = "dashboard_registrations_v6_user_{$user->id}";
-        
-        $registrationsSerialized = Cache::remember($cacheKey, now()->addMinutes(60), function () use ($user) {
-            $data = ExamSessionParticipant::where('user_id', $user->id)
-                ->with([
-                    'examSession.sessionCategories.category',
-                    'examSession.sessionCategories.subCategories.subCategory',
-                    'result'
-                ])
-                ->orderBy('created_at', 'asc')
-                ->get();
-            return base64_encode(serialize($data));
-        });
-        
-        class_exists(\Illuminate\Database\Eloquent\Collection::class);
-        $registrations = unserialize(base64_decode($registrationsSerialized));
+        $registrations = ExamSessionParticipant::where('user_id', $user->id)
+            ->with([
+                'examSession.sessionCategories.category',
+                'examSession.sessionCategories.subCategories.subCategory',
+                'result'
+            ])
+            ->orderBy('created_at', 'asc')
+            ->get();
             
         $groupedRegistrations = $registrations->groupBy('exam_session_id');
 
