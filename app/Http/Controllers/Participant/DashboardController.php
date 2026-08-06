@@ -110,25 +110,24 @@ class DashboardController extends Controller
 
     public function showResult($registrationId)
     {
-        $registration = ExamSessionParticipant::where('user_id', auth()->id())
-            ->with([
-                'examSession.sessionCategories.category',
-                'result.categoryResults.category'
-            ])
-            ->findOrFail($registrationId);
-
-        if (!$registration->result) {
-            $assessmentService = new \App\Services\AssessmentService();
-            $assessmentService->calculateIRT($registration->exam_session_id);
-            $registration->load([
-                'examSession.sessionCategories.category',
-                'result.categoryResults.category'
-            ]);
+        $userId = auth()->id();
+        
+        $basicRegistration = ExamSessionParticipant::with('examSession')->where('user_id', $userId)->findOrFail($registrationId);
+        
+        $resultData = \App\Models\ExamResult::where('participant_id', $registrationId)->first();
+        
+        if (!$resultData || $resultData->irt_score === null) {
+            // Jika hasil belum ada atau IRT belum selesai dihitung, kembalikan ke success page (polling)
+            return redirect()->route('exam.success', $basicRegistration->examSession->code)
+                ->with('info', 'Sedang menghitung hasil Anda...');
         }
 
-        if (!$registration->result) {
-            return redirect()->route('participant.dashboard')->with('error', 'Hasil belum tersedia.');
-        }
+        $registration = \Illuminate\Support\Facades\Cache::remember("result_data_{$registrationId}", now()->addHours(1), function () use ($registrationId) {
+            return ExamSessionParticipant::with([
+                'examSession.sessionCategories.category',
+                'result.categoryResults.category'
+            ])->find($registrationId);
+        });
 
         return view('participant.result', compact('registration'));
     }
@@ -137,88 +136,109 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        $registration = ExamSessionParticipant::where('user_id', $user->id)
-            ->with([
+        $basicRegistration = ExamSessionParticipant::where('user_id', $user->id)->findOrFail($registrationId);
+
+        if (!$basicRegistration->finished_at) {
+            return redirect()->route('participant.dashboard')->with('error', 'Ujian belum selesai.');
+        }
+
+        // Cache the heavy data since it's immutable after finishing
+        $cacheData = \Illuminate\Support\Facades\Cache::remember("review_data_{$registrationId}", now()->addHours(24), function () use ($registrationId) {
+            $registration = ExamSessionParticipant::with([
                 'examSession.sessionCategories.category',
                 'questions.category',
                 'questions.subCategory',
                 'userAnswers',
                 'result.categoryResults.category'
-            ])
-            ->findOrFail($registrationId);
+            ])->find($registrationId);
 
-        if (!$registration->finished_at) {
-            return redirect()->route('participant.dashboard')->with('error', 'Ujian belum selesai.');
-        }
+            // Map answers for easy access in view
+            $answers = $registration->userAnswers->pluck('answer', 'question_bank_id')->toArray();
+            $userAnswersMapped = $registration->userAnswers->keyBy('question_bank_id');
 
-        // Map answers for easy access in view
-        $answers = $registration->userAnswers->pluck('answer', 'question_bank_id')->toArray();
-        $userAnswersMapped = $registration->userAnswers->keyBy('question_bank_id');
+            $mapelStats = [];
 
-        $mapelStats = [];
+            foreach ($registration->questions as $question) {
+                $catName = $question->category->name ?? 'Lainnya';
+                $subCatName = $question->subCategory->name ?? 'Lainnya';
 
-        foreach ($registration->questions as $question) {
-            $catName = $question->category->name ?? 'Lainnya';
-            $subCatName = $question->subCategory->name ?? 'Lainnya';
+                if (!isset($mapelStats[$catName])) {
+                    $mapelStats[$catName] = [
+                        'benar' => 0, 
+                        'salah' => 0,
+                        'subMapel' => []
+                    ];
+                }
+                if (!isset($mapelStats[$catName]['subMapel'][$subCatName])) {
+                    $mapelStats[$catName]['subMapel'][$subCatName] = ['benar' => 0, 'salah' => 0];
+                }
 
-            if (!isset($mapelStats[$catName])) {
-                $mapelStats[$catName] = [
-                    'benar' => 0, 
-                    'salah' => 0,
-                    'subMapel' => []
-                ];
+                $userAnswer = $userAnswersMapped->get($question->id);
+                if ($userAnswer && $userAnswer->is_correct) {
+                    $mapelStats[$catName]['benar']++;
+                    $mapelStats[$catName]['subMapel'][$subCatName]['benar']++;
+                } else {
+                    $mapelStats[$catName]['salah']++;
+                    $mapelStats[$catName]['subMapel'][$subCatName]['salah']++;
+                }
             }
-            if (!isset($mapelStats[$catName]['subMapel'][$subCatName])) {
-                $mapelStats[$catName]['subMapel'][$subCatName] = ['benar' => 0, 'salah' => 0];
-            }
 
-            $userAnswer = $userAnswersMapped->get($question->id);
-            if ($userAnswer && $userAnswer->is_correct) {
-                $mapelStats[$catName]['benar']++;
-                $mapelStats[$catName]['subMapel'][$subCatName]['benar']++;
-            } else {
-                $mapelStats[$catName]['salah']++;
-                $mapelStats[$catName]['subMapel'][$subCatName]['salah']++;
-            }
-        }
+            $chartDataMapel = [
+                'labels' => array_keys($mapelStats),
+                'benar' => array_column($mapelStats, 'benar'),
+                'salah' => array_column($mapelStats, 'salah'),
+                'details' => $mapelStats
+            ];
 
-        $chartDataMapel = [
-            'labels' => array_keys($mapelStats),
-            'benar' => array_column($mapelStats, 'benar'),
-            'salah' => array_column($mapelStats, 'salah'),
-            'details' => $mapelStats
-        ];
+            return [
+                'registration' => $registration,
+                'answers' => $answers,
+                'chartDataMapel' => $chartDataMapel
+            ];
+        });
 
-        return view('participant.review', compact('registration', 'answers', 'chartDataMapel'));
+        return view('participant.review', $cacheData);
     }
 
     public function showReviewCategory($registrationId, $categoryId)
     {
         $user = auth()->user();
 
-        $registration = ExamSessionParticipant::where('user_id', $user->id)
-            ->with(['examSession', 'questions' => function($q) use ($categoryId) {
+        $basicRegistration = ExamSessionParticipant::where('user_id', $user->id)->findOrFail($registrationId);
+
+        if (!$basicRegistration->finished_at) {
+            return redirect()->route('participant.dashboard')->with('error', 'Ujian belum selesai.');
+        }
+
+        $cacheData = \Illuminate\Support\Facades\Cache::remember("review_category_{$registrationId}_{$categoryId}", now()->addHours(24), function () use ($registrationId, $categoryId) {
+            $registration = ExamSessionParticipant::with(['examSession', 'questions' => function($q) use ($categoryId) {
                 $q->where('category_id', $categoryId)->with('category');
             }, 'userAnswers' => function($q) use ($categoryId) {
                 $q->whereHas('question', function($sq) use ($categoryId) {
                     $sq->where('category_id', $categoryId);
                 });
-            }])
-            ->findOrFail($registrationId);
+            }])->find($registrationId);
 
-        if (!$registration->finished_at) {
-            return redirect()->route('participant.dashboard')->with('error', 'Ujian belum selesai.');
-        }
+            if ($registration->questions->isEmpty()) {
+                return null;
+            }
 
-        if ($registration->questions->isEmpty()) {
+            // Map answers for easy access in view
+            $answers = $registration->userAnswers->pluck('answer', 'question_bank_id')->toArray();
+            $category = $registration->questions->first()->category;
+
+            return [
+                'registration' => $registration,
+                'answers' => $answers,
+                'category' => $category
+            ];
+        });
+
+        if (!$cacheData) {
             return redirect()->route('participant.review', $registrationId)->with('error', 'Mata pelajaran tidak ditemukan.');
         }
 
-        // Map answers for easy access in view
-        $answers = $registration->userAnswers->pluck('answer', 'question_bank_id')->toArray();
-        $category = $registration->questions->first()->category;
-
-        return view('participant.review_category', compact('registration', 'answers', 'category'));
+        return view('participant.review_category', $cacheData);
     }
 
     public function generateAIAnalysis(Request $request, $registrationId)
@@ -477,37 +497,41 @@ class DashboardController extends Controller
         $end = \Carbon\Carbon::parse($session->end_date . ' ' . $session->end_time);
         $isClosed = !$session->is_active || $now->gt($end);
 
-        // Get all results for this session
-        $allResults = \App\Models\ExamResult::where('exam_session_id', $sessionId)
-            ->with(['participant.user'])
-            ->get();
+        $cacheKey = "statistics_session_{$sessionId}";
+        
+        $rankings = \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addMinutes(5), function () use ($sessionId, $isClosed) {
+            // Get all results for this session
+            $allResults = \App\Models\ExamResult::where('exam_session_id', $sessionId)
+                ->with(['participant.user'])
+                ->get();
 
-        // Group by user_id to get the best attempt per user
-        $bestResults = collect();
-        $groupedByUser = $allResults->groupBy(function($result) {
-            return $result->participant->user_id ?? $result->participant->name;
-        });
+            // Group by user_id to get the best attempt per user
+            $bestResults = collect();
+            $groupedByUser = $allResults->groupBy(function($result) {
+                return $result->participant->user_id ?? $result->participant->name;
+            });
 
-        foreach ($groupedByUser as $userId => $userResults) {
-            if ($isClosed) {
-                $bestResult = $userResults->sortByDesc(function($res) {
-                    return $res->irt_score > 0 ? $res->irt_score : $res->score;
-                })->first();
-            } else {
-                $bestResult = $userResults->sortByDesc('score')->first();
+            foreach ($groupedByUser as $userId => $userResults) {
+                if ($isClosed) {
+                    $bestResult = $userResults->sortByDesc(function($res) {
+                        return $res->irt_score > 0 ? $res->irt_score : $res->score;
+                    })->first();
+                } else {
+                    $bestResult = $userResults->sortByDesc('score')->first();
+                }
+                $bestResults->push($bestResult);
             }
-            $bestResults->push($bestResult);
-        }
 
-        // Sort the best results to create the leaderboard
-        if ($isClosed) {
-            $rankings = $bestResults->sortByDesc(function($res) {
-                // Return a combined sort key so we sort by IRT then Score
-                return sprintf('%010.4f-%010.4f', $res->irt_score, $res->score);
-            })->values();
-        } else {
-            $rankings = $bestResults->sortByDesc('score')->values();
-        }
+            // Sort the best results to create the leaderboard
+            if ($isClosed) {
+                return $bestResults->sortByDesc(function($res) {
+                    // Return a combined sort key so we sort by IRT then Score
+                    return sprintf('%010.4f-%010.4f', $res->irt_score, $res->score);
+                })->values();
+            } else {
+                return $bestResults->sortByDesc('score')->values();
+            }
+        });
 
         return view('participant.statistics', compact('session', 'isClosed', 'rankings', 'user'));
     }

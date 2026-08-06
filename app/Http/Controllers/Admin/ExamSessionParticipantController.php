@@ -45,6 +45,10 @@ class ExamSessionParticipantController extends Controller
             }
         }
 
+        if ($createdCount > 0) {
+            \Illuminate\Support\Facades\Cache::forget("admin_session_detail_{$request->exam_session_id}");
+        }
+
         return $this->successResponse(null, "$createdCount peserta berhasil ditambahkan", 201);
     }
 
@@ -81,6 +85,8 @@ class ExamSessionParticipantController extends Controller
             'access_code' => $this->generateUniqueCode()
         ]);
 
+        \Illuminate\Support\Facades\Cache::forget("admin_session_detail_{$request->exam_session_id}");
+
         return $this->successResponse($participant->load('user'), 'Akun peserta baru berhasil dibuat dan ditambahkan ke sesi', 201);
     }
 
@@ -89,7 +95,9 @@ class ExamSessionParticipantController extends Controller
         $participant = ExamSessionParticipant::find($id);
         if (!$participant) return $this->errorResponse('Peserta tidak ditemukan', 404);
         
+        $sessionId = $participant->exam_session_id;
         $participant->delete();
+        \Illuminate\Support\Facades\Cache::forget("admin_session_detail_{$sessionId}");
         return $this->successResponse(null, 'Peserta berhasil dihapus');
     }
 

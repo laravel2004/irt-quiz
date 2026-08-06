@@ -14,30 +14,22 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $totalParticipants = \App\Models\User::whereIn('role', ['basic', 'premium'])->count();
-        $totalQuestions = QuestionBank::count();
-        $totalCategories = Category::count();
-        $activeSessionsCount = ExamSession::where('is_active', true)->count();
-        
-        $avgScore = ExamResult::avg('irt_score') ?? 0;
-        
-        $recentSessions = ExamSession::withCount(['participants', 'questions'])
-            ->latest()
-            ->take(5)
-            ->get();
+        $stats = \Illuminate\Support\Facades\Cache::remember('admin_dashboard_stats', now()->addMinutes(3), function () {
+            return [
+                'totalParticipants' => \App\Models\User::whereIn('role', ['basic', 'premium'])->count(),
+                'totalQuestions' => QuestionBank::count(),
+                'totalCategories' => Category::count(),
+                'activeSessionsCount' => ExamSession::where('is_active', true)->count(),
+                'avgScore' => ExamResult::avg('irt_score') ?? 0,
+                'recentSessions' => ExamSession::withCount(['participants', 'questions'])
+                    ->latest()
+                    ->take(5)
+                    ->get(),
+                'examLimit' => config('exam.concurrent_limit', 30),
+                'activeExamCount' => \App\Models\ExamSessionParticipant::activeInExam()->count()
+            ];
+        });
 
-        $examLimit = config('exam.concurrent_limit', 30);
-        $activeExamCount = \App\Models\ExamSessionParticipant::activeInExam()->count();
-
-        return view('admin.dashboard', compact(
-            'totalParticipants',
-            'totalQuestions',
-            'totalCategories',
-            'activeSessionsCount',
-            'avgScore',
-            'recentSessions',
-            'examLimit',
-            'activeExamCount'
-        ));
+        return view('admin.dashboard', $stats);
     }
 }

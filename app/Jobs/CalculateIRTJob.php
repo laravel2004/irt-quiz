@@ -26,5 +26,8 @@ class CalculateIRTJob implements ShouldQueue
     {
         $assessmentService = new \App\Services\AssessmentService();
         $assessmentService->calculateIRT($this->sessionId);
+
+        // Invalidate leaderboard cache since scores have changed
+        \Illuminate\Support\Facades\Cache::forget("statistics_session_{$this->sessionId}");
     }
 }

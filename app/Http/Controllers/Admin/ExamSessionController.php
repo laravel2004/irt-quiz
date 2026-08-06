@@ -93,7 +93,9 @@ class ExamSessionController extends Controller
 
     public function show(Request $request, $id)
     {
-        $session = ExamSession::with(['sessionCategories.category', 'sessionCategories.subCategories.subCategory', 'questions.category', 'participants.user', 'results.participant'])->find($id);
+        $session = \Illuminate\Support\Facades\Cache::remember("admin_session_detail_{$id}", now()->addMinutes(5), function () use ($id) {
+            return ExamSession::with(['sessionCategories.category', 'sessionCategories.subCategories.subCategory', 'questions.category', 'participants.user', 'results.participant'])->find($id);
+        });
         
         if (!$session) {
             if ($request->ajax()) return $this->errorResponse('Sesi tidak ditemukan', 404);
@@ -101,7 +103,9 @@ class ExamSessionController extends Controller
         }
 
         // Fetch all potential participants (Users)
-        $availableParticipants = \App\Models\User::whereIn('role', ['basic', 'premium', 'user', 'admin_sesi'])->orderBy('name')->get();
+        $availableParticipants = \Illuminate\Support\Facades\Cache::remember('available_participants_list', now()->addMinutes(10), function () {
+            return \App\Models\User::whereIn('role', ['basic', 'premium', 'user', 'admin_sesi'])->orderBy('name')->get();
+        });
 
         if ($request->ajax() || $request->wantsJson()) {
             return $this->successResponse([
