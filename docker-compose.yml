@@ -27,6 +27,9 @@ services:
         condition: service_healthy
       mysql:
         condition: service_healthy
+    volumes:
+      - .:/app
+      - ./storage/app/public:/app/storage/app/public
     deploy:
       resources:
         limits:

@@ -27,6 +27,9 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 RUN chown -R root:root /app/storage /app/bootstrap/cache && \
     chmod -R 775 /app/storage /app/bootstrap/cache
 
+# Create storage link
+RUN php artisan storage:link
+
 # PHP Memory & OPcache configuration for 2GB RAM Server to prevent OOM
 RUN echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/memory-limit.ini \
     && echo "opcache.enable=1" > /usr/local/etc/php/conf.d/opcache-recommended.ini \
