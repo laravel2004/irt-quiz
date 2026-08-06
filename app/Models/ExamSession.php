@@ -49,4 +49,9 @@ class ExamSession extends Model
     {
         return $this->belongsToMany(QuestionBank::class, 'session_questions', 'exam_session_id', 'question_bank_id')->withPivot('difficulty');
     }
+
+    public function getDiscussionPdfAttribute($value)
+    {
+        return $value ? str_replace('\\', '/', $value) : $value;
+    }
 }

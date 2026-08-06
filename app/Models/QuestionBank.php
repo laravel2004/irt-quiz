@@ -35,4 +35,9 @@ class QuestionBank extends Model
     {
         return $this->belongsTo(SubCategory::class);
     }
+
+    public function getQuestionImageAttribute($value)
+    {
+        return $value ? str_replace('\\', '/', $value) : $value;
+    }
 }
