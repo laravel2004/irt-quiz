@@ -497,6 +497,21 @@ class ExamController extends Controller
         return response()->json(['status' => 'success', 'message' => 'Ujian berhasil diselesaikan secara keseluruhan.']);
     }
 
+    public function checkStatus($code)
+    {
+        $participant = $this->getParticipant($code);
+        if (!$participant) {
+            return response()->json(['status' => 'error'], 404);
+        }
+
+        $result = \App\Models\ExamResult::where('participant_id', $participant->id)->first();
+        if ($result && $result->irt_score !== null) {
+            return response()->json(['status' => 'done']);
+        }
+
+        return response()->json(['status' => 'processing']);
+    }
+
     public function success($code)
     {
         $participant = $this->getParticipant($code);
@@ -505,51 +520,53 @@ class ExamController extends Controller
         }
 
         $session = $participant->examSession;
-        $rawScore = 0;
-        $userAnswers = \App\Models\UserAnswer::where('participant_id', $participant->id)->get();
-        $participantQuestions = $participant->questions()->get();
-        
-        foreach ($session->sessionCategories as $sessionCategory) {
-            $catId = $sessionCategory->category_id;
-            $catQuestions = $participantQuestions->where('category_id', $catId);
-            $maxPossiblePoints = $catQuestions->sum('score_correct');
-            
-            $participantPoints = 0;
-            foreach ($catQuestions as $q) {
-                $ans = $userAnswers->where('question_bank_id', $q->id)->first();
-                if ($ans) {
-                    $participantPoints += $ans->score;
-                }
-            }
-            
-            if ($maxPossiblePoints > 0) {
-                $scaledScore = ($participantPoints / $maxPossiblePoints) * $sessionCategory->max_score_raw;
-                $rawScore += max(0, min($scaledScore, $sessionCategory->max_score_raw));
-            }
+        $result = \App\Models\ExamResult::with('categoryResults.category')->where('participant_id', $participant->id)->first();
+
+        // If background job hasn't finished calculating
+        if (!$result || $result->irt_score === null) {
+            return view('exam.success', [
+                'isCalculating' => true,
+                'session' => $session,
+                'code' => $code
+            ]);
         }
-        $rawScore = number_format($rawScore, 2);
+
+        $rawScore = number_format($result->score, 2);
+        $irtScore = number_format($result->irt_score, 2);
         
         $answeredQuestions = \App\Models\UserAnswer::where('participant_id', $participant->id)->count();
         $totalQuestions = $session->questions()->count();
 
         $categoryScores = [];
-        foreach ($session->sessionCategories as $sc) {
-            $catId = $sc->category_id;
+        foreach ($result->categoryResults as $cr) {
+            $catId = $cr->category_id;
+            $sc = $session->sessionCategories->where('category_id', $catId)->first();
             
-            $catAnswers = \App\Models\UserAnswer::where('participant_id', $participant->id)
+            $catAnswersCount = \App\Models\UserAnswer::where('participant_id', $participant->id)
                 ->whereHas('question', function($q) use ($catId) {
                     $q->where('category_id', $catId);
-                })->get();
-                
+                })->count();
+
             $categoryScores[] = [
-                'name' => $sc->category->name,
-                'score' => $catAnswers->sum('score'),
-                'answered' => $catAnswers->count(),
-                'total' => $sc->total_questions
+                'name' => $cr->category->name,
+                'score' => number_format($cr->score, 2),
+                'irt_score' => number_format($cr->irt_score, 2),
+                'answered' => $catAnswersCount,
+                'total' => $sc ? $sc->total_questions : 0
             ];
         }
 
-        return view('exam.success', compact('session', 'participant', 'rawScore', 'answeredQuestions', 'totalQuestions', 'categoryScores'));
+        return view('exam.success', [
+            'isCalculating' => false,
+            'session' => $session,
+            'participant' => $participant,
+            'rawScore' => $rawScore,
+            'irtScore' => $irtScore,
+            'answeredQuestions' => $answeredQuestions,
+            'totalQuestions' => $totalQuestions,
+            'categoryScores' => $categoryScores,
+            'code' => $code
+        ]);
     }
 }
 

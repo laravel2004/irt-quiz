@@ -125,6 +125,35 @@
 </head>
 <body>
 
+    @if($isCalculating)
+    <div class="success-card">
+        <div class="icon-circle" style="background: #eff6ff; border-color: #bfdbfe; color: #2563eb;">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        
+        <h1>Sedang Menghitung...</h1>
+        <p class="subtitle">Sistem sedang memproses hasil ujian Anda dan melakukan kalibrasi skor (IRT). Harap tunggu sebentar, halaman ini akan dimuat ulang otomatis.</p>
+        
+        <div class="info-box" style="justify-content: center; margin-top: 20px;">
+            <i class="fas fa-info-circle"></i>
+            <div>Jangan tutup halaman ini.</div>
+        </div>
+    </div>
+
+    <script>
+        setInterval(function() {
+            fetch("{{ route('exam.check_status', ['code' => $code]) }}")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'done') {
+                        window.location.reload();
+                    }
+                })
+                .catch(error => console.error('Error checking status:', error));
+        }, 2000); // Check every 2 seconds
+    </script>
+    
+    @else
     <div class="success-card">
         <div class="icon-circle">
             <i class="fas fa-check"></i>
@@ -135,12 +164,19 @@
         
         <div class="score-board">
             <div class="score-item">
-                <div class="score-value">{{ $rawScore }}</div>
-                <div class="score-label">Total Skor Raw</div>
+                <div class="score-value">{{ $irtScore }}</div>
+                <div class="score-label" style="color: #059669;">Total Skor IRT</div>
             </div>
             <div class="score-item">
-                <div class="score-value">{{ $answeredQuestions }} / {{ $totalQuestions }}</div>
-                <div class="score-label">Soal Terjawab</div>
+                <div class="score-value">{{ $rawScore }}</div>
+                <div class="score-label">Total Skor Mentah</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="display: inline-block; background: #f8fafc; border: 1px solid #dbeafe; border-radius: 12px; padding: 12px 24px;">
+                <div style="font-size: 1.2rem; font-weight: 700; color: #0f172a;">{{ $answeredQuestions }} / {{ $totalQuestions }}</div>
+                <div class="score-label" style="font-size: 0.8rem;">Total Soal Terjawab</div>
             </div>
         </div>
 
@@ -153,18 +189,16 @@
                             <div style="font-weight: 600; color: #0f172a; margin-bottom: 4px;">{{ $cs['name'] }}</div>
                             <div style="font-size: 0.85rem; color: #475569;">Terjawab: {{ $cs['answered'] }} / {{ $cs['total'] }} Soal</div>
                         </div>
-                        <div style="font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; color: #2563eb;">
-                            {{ $cs['score'] }}
+                        <div style="text-align: right;">
+                            <div style="font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 700; color: #059669;">
+                                IRT: {{ $cs['irt_score'] }}
+                            </div>
+                            <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">
+                                Mentah: {{ $cs['score'] }}
+                            </div>
                         </div>
                     </div>
                 @endforeach
-            </div>
-        </div>
-
-        <div class="info-box">
-            <i class="fas fa-info-circle"></i>
-            <div>
-                <strong>Perhatian:</strong> Skor yang ditampilkan di atas adalah <strong>Skor Mentah (Raw Score)</strong> berdasarkan jawaban benar dan salah biasa. Skor IRT (Item Response Theory) yang sebenarnya baru akan muncul di Dashboard Anda setelah ujian ini ditutup dan di-generate oleh Admin.
             </div>
         </div>
 
@@ -172,6 +206,7 @@
             <i class="fas fa-home" style="margin-right: 8px;"></i> Kembali ke Dashboard
         </a>
     </div>
+    @endif
 
 </body>
 </html>

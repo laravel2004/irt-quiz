@@ -34,6 +34,7 @@ Route::middleware(['auth'])->group(function() {
     Route::post('/exam/{code}/category/{id}/submit', [\App\Http\Controllers\ExamController::class, 'submitCategory'])->name('exam.submit_category');
     Route::post('/exam/{code}/finish', [\App\Http\Controllers\ExamController::class, 'finishSession'])->name('exam.finish');
     Route::get('/exam/{code}/success', [\App\Http\Controllers\ExamController::class, 'success'])->name('exam.success');
+    Route::get('/exam/{code}/check-status', [\App\Http\Controllers\ExamController::class, 'checkStatus'])->name('exam.check_status');
 });
 // Alias for admin_sesi dashboard
 Route::get('/admin-sesi', function () {
