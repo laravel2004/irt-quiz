@@ -66,7 +66,7 @@ services:
       MYSQL_USER: ${DB_USERNAME:-root}
       MYSQL_PASSWORD: ${DB_PASSWORD:-@Agungdwin2004}
     ports:
-      - "3306:3306"
+      - "33061:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     # Optimize MySQL for low memory (2GB RAM total system)
