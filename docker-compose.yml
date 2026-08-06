@@ -86,29 +86,29 @@ services:
           cpus: '1.0'
           memory: 600M # Limit container to 600MB
 
-  # (Optional) queue worker for Laravel if you are using background jobs
-  # queue:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: irt_quiz_queue
-  #   restart: unless-stopped
-  #   command: php artisan queue:work --sleep=3 --tries=3
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     DB_HOST: mysql
-  #     REDIS_HOST: redis
-  #     QUEUE_CONNECTION: redis
-  #   depends_on:
-  #     - app
-  #     - redis
-  #     - mysql
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '0.5'
-  #         memory: 256M
+  # Queue worker for Laravel background jobs
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: irt_quiz_queue
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      - app
+      - redis
+      - mysql
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
 volumes:
   redis_data:

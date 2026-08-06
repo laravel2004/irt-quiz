@@ -483,48 +483,12 @@ class ExamController extends Controller
         $participant->update(['finished_at' => now()]);
         session()->forget('participant_id');
 
-        // Generate result for all participants so result page is always available
-        $assessmentService = new \App\Services\AssessmentService();
-        $assessmentService->calculateIRT($participant->exam_session_id);
+        // Dispatch IRT calculation to Queue
+        \App\Jobs\CalculateIRTJob::dispatch($participant->exam_session_id);
 
-        // Generate Aggregate AI Analysis only for Premium participants
+        // Dispatch AI Analysis to Queue
         if ($participant->privilege === 'premium') {
-            $registrations = ExamSessionParticipant::where('user_id', $participant->user_id)
-                ->where('exam_session_id', $participant->exam_session_id)
-                ->with('result')
-                ->orderBy('id', 'asc')
-                ->get();
-
-            $attemptsData = [];
-            foreach ($registrations as $index => $reg) {
-                if ($reg->result) {
-                    $attemptsData[] = [
-                        'attempt_number' => $index + 1,
-                        'total_correct' => $reg->result->total_correct,
-                        'total_incorrect' => $reg->result->total_incorrect,
-                        'total_blank' => $reg->result->total_blank,
-                        'raw_score' => $reg->result->score,
-                        'irt_score' => $reg->result->irt_score,
-                    ];
-                }
-            }
-
-            if (count($attemptsData) >= 2) {
-                $aiService = new \App\Services\AIService();
-                $analysis = $aiService->generateAggregateAnalysis([
-                    'participant_name' => $participant->name,
-                    'session_name' => $registrations->first()->examSession->name,
-                    'attempts' => $attemptsData,
-                ]);
-
-                if ($analysis) {
-                    $jsonAnalysis = is_array($analysis) ? $analysis : json_decode($analysis, true);
-                    \App\Models\AggregateAiAnalysis::updateOrCreate(
-                        ['user_id' => $participant->user_id, 'exam_session_id' => $participant->exam_session_id],
-                        ['analysis_data' => $jsonAnalysis]
-                    );
-                }
-            }
+            \App\Jobs\GenerateAiAnalysisJob::dispatch($participant->id);
         }
 
         // Invalidate dashboard cache
