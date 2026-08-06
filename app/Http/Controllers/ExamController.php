@@ -300,8 +300,20 @@ class ExamController extends Controller
         $answers = $request->input('answers', []);
         
         DB::transaction(function () use ($participant, $answers, $categoryId, $request) {
+            $questionIds = array_keys($answers);
+            if (empty($questionIds)) return;
+            
+            $questions = \App\Models\QuestionBank::whereIn('id', $questionIds)->get()->keyBy('id');
+            $existingAnswers = \App\Models\UserAnswer::where('participant_id', $participant->id)
+                ->whereIn('question_bank_id', $questionIds)
+                ->get()
+                ->keyBy('question_bank_id');
+                
+            $insertData = [];
+            $now = now();
+
             foreach ($answers as $questionId => $answerData) {
-                $question = QuestionBank::find($questionId);
+                $question = $questions->get($questionId);
                 if (!$question) continue;
 
                 $answer = is_array($answerData) && isset($answerData['answer']) ? $answerData['answer'] : $answerData;
@@ -394,19 +406,31 @@ class ExamController extends Controller
                     }
                 }
 
-                UserAnswer::updateOrCreate(
-                    [
-                        'participant_id' => $participant->id,
-                        'question_bank_id' => $questionId
-                    ],
-                    [
-                        'exam_session_id' => $participant->exam_session_id,
+                $existing = $existingAnswers->get($questionId);
+                if ($existing) {
+                    $existing->update([
                         'answer' => $answer,
                         'is_correct' => $isCorrect,
+                        'score' => $score
+                    ]);
+                } else {
+                    $insertData[] = [
+                        'participant_id' => $participant->id,
+                        'exam_session_id' => $participant->exam_session_id,
+                        'question_bank_id' => $questionId,
+                        'answer' => is_array($answer) || is_object($answer) ? json_encode($answer) : $answer,
+                        'is_correct' => $isCorrect,
                         'score' => $score,
-                        'is_doubtful' => $isDoubtful
-                    ]
-                );
+                        'created_at' => $now,
+                        'updated_at' => $now
+                    ];
+                }
+            }
+            
+            if (!empty($insertData)) {
+                foreach (array_chunk($insertData, 500) as $chunk) {
+                    \App\Models\UserAnswer::insert($chunk);
+                }
             }
 
             if ($request->has('finish_category') && $request->finish_category) {
