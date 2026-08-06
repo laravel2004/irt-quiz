@@ -27,12 +27,12 @@
     }
 
     .lb-subtitle {
-        color: #94a3b8;
+        color: #334155;
         font-size: 1.1rem;
     }
 
     .lb-subtitle span {
-        color: #f8fafc;
+        color: #000000;
         font-weight: 600;
     }
 
