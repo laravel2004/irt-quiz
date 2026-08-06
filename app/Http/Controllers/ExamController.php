@@ -265,17 +265,18 @@ class ExamController extends Controller
             return redirect()->route('exam.categories', $code)->with('error', 'Anda sudah menyelesaikan mata pelajaran ini.');
         }
 
-        $cacheKey = "exam_questions_v5_participant_{$participant->id}_category_{$sessionCategory->category_id}";
+        $cacheKey = "exam_questions_v6_participant_{$participant->id}_category_{$sessionCategory->category_id}";
         
-        $questionsArray = Cache::remember($cacheKey, now()->addMinutes((int) $sessionCategory->duration), function () use ($participant, $sessionCategory) {
-            return $participant->questions()
+        $questionsSerialized = Cache::remember($cacheKey, now()->addMinutes((int) $sessionCategory->duration), function () use ($participant, $sessionCategory) {
+            $data = $participant->questions()
                 ->where('category_id', $sessionCategory->category_id)
                 ->with('category')
-                ->get()
-                ->toArray();
+                ->get();
+            return base64_encode(serialize($data));
         });
         
-        $questions = collect(json_decode(json_encode($questionsArray), false));
+        class_exists(\Illuminate\Database\Eloquent\Collection::class);
+        $questions = unserialize(base64_decode($questionsSerialized));
         
         // Calculate remaining time for this category
         $startTime = \Carbon\Carbon::parse($status->started_at);
@@ -503,7 +504,7 @@ class ExamController extends Controller
         }
 
         // Invalidate dashboard cache
-        Cache::forget("dashboard_registrations_v5_user_{$participant->user_id}");
+        Cache::forget("dashboard_registrations_v6_user_{$participant->user_id}");
 
         return response()->json(['status' => 'success', 'message' => 'Ujian berhasil diselesaikan secara keseluruhan.']);
     }
