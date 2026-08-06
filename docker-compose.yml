@@ -29,7 +29,8 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      - ./storage/app/public:/app/storage/app/public
+      # Map storage ke luar folder project agar tidak mengganggu git
+      - ../irt-quiz-storage:/app/storage/app/public
     deploy:
       resources:
         limits:
