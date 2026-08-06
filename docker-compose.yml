@@ -63,8 +63,6 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-db_irt_quiz}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-@Agungdwin2004}
-      MYSQL_USER: ${DB_USERNAME:-root}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-@Agungdwin2004}
     ports:
       - "33061:3306"
     volumes:
@@ -76,7 +74,7 @@ services:
       --performance-schema=off
       --innodb-log-buffer-size=16M
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 3
