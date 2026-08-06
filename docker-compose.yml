@@ -28,8 +28,7 @@ services:
       mysql:
         condition: service_healthy
     volumes:
-      # Map storage ke luar folder project agar tidak mengganggu git
-      - ../irt-quiz-storage/public:/app/storage/app/public
+      - app_storage:/app/storage
     deploy:
       resources:
         limits:
@@ -114,3 +113,4 @@ services:
 volumes:
   redis_data:
   mysql_data:
+  app_storage:
