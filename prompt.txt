@@ -3,10 +3,8 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. perhatikan tampilan yang ada disini http://localhost:8000/admin/sessions/6.
-2. disitu kan ada actionn preview soal ya ganti namanya jadi preview pembahasan.
-3. terus buatkan action preview soal tampilan nya kayak gini http://localhost:8000/admin/sessions/6/preview-questions.
-4. tapi hanya soal tidak ada jawaban benar dan pembahasan ya
+1. terapkan redis untuk mulai ujian di get soal" pada saat awal.
+2. terapkan redis juga untuk di tampilan ini juga http://localhost/dashboard
 
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail

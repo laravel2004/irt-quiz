@@ -1,77 +1,122 @@
-# Task: Pemisahan Fitur "Preview Soal" dan "Preview Pembahasan"
+# Issue: Implementasi Redis Caching untuk Optimasi Performa
 
-## Deskripsi Singkat
-Saat ini pada halaman detail sesi ujian (URL: `/admin/sessions/{id}`), terdapat satu tombol aksi bernama "Preview Soal" yang mengarahkan ke halaman berisi soal, indikator jawaban benar/salah, dan pembahasan. 
-Tugas ini adalah mengubah tombol tersebut menjadi "Preview Pembahasan", dan membuat tombol "Preview Soal" baru yang halamannya hanya menampilkan soal murni (tanpa jawaban yang benar dan tanpa pembahasan).
+## Deskripsi
+Fitur ini bertujuan untuk mengoptimalkan performa aplikasi (mencegah *loading* lama dan server *down* saat *traffic* tinggi) dengan mengimplementasikan Redis caching pada dua area utama:
+1. Pengambilan data soal (*get soal*) saat peserta memulai ujian di halaman pengerjaan soal.
+2. Pengambilan data riwayat sesi dan hasil ujian di halaman dashboard peserta (`http://localhost/dashboard`).
 
-## Langkah-langkah Implementasi
+## Target Pekerja
+Dokumen ini disusun secara detail agar mudah diimplementasikan oleh **Junior Programmer** atau **AI Coder model ringan/murah**.
 
-Lakukan langkah-langkah di bawah ini secara berurutan:
+---
 
-### 1. Menambahkan Route Baru
-Buka file `routes/web.php`.
-Cari baris route untuk preview-questions:
-```php
-Route::get('/admin/sessions/{id}/preview-questions', [\App\Http\Controllers\Admin\ExamSessionController::class, 'previewQuestions'])->name('admin.sessions.preview-questions');
-```
-Tambahkan route baru di bawahnya untuk halaman yang murni soal:
-```php
-Route::get('/admin/sessions/{id}/preview-questions-only', [\App\Http\Controllers\Admin\ExamSessionController::class, 'previewQuestionsOnly'])->name('admin.sessions.preview-questions-only');
-```
+## Tahapan Implementasi Detail
 
-### 2. Mengupdate Controller
-Buka file `app/Http/Controllers/Admin/ExamSessionController.php`.
-Cari method `previewQuestions`. Buat duplikat dari method tersebut di bawahnya persis dengan nama `previewQuestionsOnly`:
-```php
-public function previewQuestionsOnly(Request $request, $id)
-{
-    $session = ExamSession::with(['sessionCategories.category', 'questions.category'])->findOrFail($id);
-    
-    if ($request->boolean('regenerate') || $session->questions()->count() == 0) {
-        $this->sessionService->generateSessionQuestions($id);
-        $session->load('questions.category');
-    }
+### Bagian 1: Caching Pengambilan Soal Ujian (ExamController)
+Saat ujian dimulai, mengambil data dari tabel soal cukup berat jika pesertanya ribuan. Kita akan *cache* daftar soal per peserta per mata pelajaran.
 
-    // Perhatikan perbedaan pada nama view yang direturn
-    return view('admin.sessions.preview-only', compact('session'));
-}
-```
+**File Target:** `app/Http/Controllers/ExamController.php`
+**Fungsi Target:** `main($code, $categoryId)`
 
-### 3. Modifikasi Tampilan Halaman Detail Sesi
-Buka file `resources/views/admin/sessions/show.blade.php`.
-Cari tombol "Preview Soal" (biasanya di bagian atas atau di dalam div khusus actions). Kode aslinya kurang lebih seperti ini:
-```html
-<a href="{{ route('admin.sessions.preview-questions', $session->id) }}" class="btn-primary" style="...">
-    <i class="fas fa-eye"></i> Preview Soal
-</a>
-```
-Ubah teks "Preview Soal" pada tombol tersebut menjadi "Preview Pembahasan" (ubah juga icon-nya menjadi `fa-book-open`).
-Lalu, buat satu tombol tambahan tepat di sebelahnya untuk "Preview Soal" murni, mengarah ke route yang baru. Contoh hasilnya:
-```html
-<a href="{{ route('admin.sessions.preview-questions', $session->id) }}" class="btn-primary" style="height: 32px; font-size: 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; background: rgba(var(--accent-rgb), 0.1); color: var(--accent); border: 1px solid var(--accent);">
-    <i class="fas fa-book-open"></i> Preview Pembahasan
-</a>
-<a href="{{ route('admin.sessions.preview-questions-only', $session->id) }}" class="btn-primary" style="height: 32px; font-size: 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; background: rgba(var(--accent-rgb), 0.1); color: var(--accent); border: 1px solid var(--accent);">
-    <i class="fas fa-eye"></i> Preview Soal
-</a>
-```
+**Langkah-langkah Eksekusi:**
+1. **Import Facade Cache:**
+   Tambahkan kode ini di bagian atas (bawah `use Illuminate\Http\Request;`):
+   ```php
+   use Illuminate\Support\Facades\Cache;
+   ```
 
-### 4. Membuat View Khusus "Preview Soal" (Tanpa Jawaban & Pembahasan)
-Duplikat file `resources/views/admin/sessions/preview.blade.php` dan simpan dengan nama `resources/views/admin/sessions/preview-only.blade.php`.
-Buka file `preview-only.blade.php` yang baru saja dibuat, lalu lakukan pembersihan kode agar **hanya menampilkan soal dan pilihan ganda yang netral**:
+2. **Ubah Query Pengambilan Soal:**
+   Cari blok kode pengambilan soal ini (biasanya di bawah pengecekan `$status->finished_at`):
+   ```php
+   $questions = $participant->questions()
+       ->where('category_id', $sessionCategory->category_id)
+       ->with('category')
+       ->get();
+   ```
 
-- Hapus seluruh blok kode pembahasan soal yang ada di bagian bawah (Cari blok `@if($question->explanation) ... @endif`).
-- Hapus warna latar hijau/merah dan icon check/silang yang menandakan jawaban benar/salah pada pilihan ganda. 
-- Di dalam pengecekan `@if($question->type === 'multiple_benar_salah')`:
-  - Ubah bagian yang me-render icon centang atau strip (kode yang mengecek `$isBenar`) menjadi statis saja (tanpa menandai mana yang benar).
-- Di dalam blok `@else` (tipe multiple choice):
-  - Ubah class CSS / style background yang bergantung pada `$isCorrect` menjadi warna netral untuk semua kondisi (misal `background: rgba(255,255,255,0.03)`).
-  - Ubah styling border `border: 1px solid {{ $isCorrect ? ... }}` menjadi `border: 1px solid rgba(255,255,255,0.05)`.
-  - Hapus tag icon `<i class="fas fa-check-circle" style="margin-left: 8px;"></i>` dan icon checkbox tercentang yang menandai jawaban benar.
-  - Pastikan warna teks opsinya seragam dan tidak ada yang berwarna hijau (`#10b981`).
-- Ubah Header Title `@section('title', ...)` dan tulisan judul di dalam content agar lebih merepresentasikan bahwa ini adalah "Preview Soal" murni.
+3. **Bungkus dengan fungsi Cache::remember:**
+   Ganti blok kode di atas dengan kode berikut:
+   ```php
+   $cacheKey = "exam_questions_participant_{$participant->id}_category_{$sessionCategory->category_id}";
+   
+   // Cache akan disimpan selama durasi ujian mata pelajaran tersebut
+   $questions = Cache::remember($cacheKey, now()->addMinutes((int) $sessionCategory->duration), function () use ($participant, $sessionCategory) {
+       return $participant->questions()
+           ->where('category_id', $sessionCategory->category_id)
+           ->with('category')
+           ->get();
+   });
+   ```
 
-### Kriteria Selesai (Acceptance Criteria)
-1. Di halaman `/admin/sessions/{id}` terdapat dua tombol aksi: "Preview Pembahasan" dan "Preview Soal".
-2. Menekan tombol "Preview Pembahasan" memunculkan soal lengkap dengan tanda mana yang benar dan kotak pembahasan (sama seperti perilaku sistem sebelumnya).
-3. Menekan tombol "Preview Soal" menampilkan layout yang persis namun bersih dari semua indikasi kunci jawaban maupun kotak pembahasan, benar-benar seperti tampilan saat peserta akan mengerjakan soal.
+### Bagian 2: Caching Halaman Dashboard Peserta
+Dashboard meload banyak relasi (`examSession`, `categories`, `result`), sehingga sangat butuh Redis.
+
+**File Target:** `app/Http/Controllers/Participant/DashboardController.php`
+
+**Langkah-langkah Eksekusi:**
+1. **Import Facade Cache:**
+   Tambahkan kode ini di bagian atas file:
+   ```php
+   use Illuminate\Support\Facades\Cache;
+   ```
+
+2. **Ubah Fungsi `index()`:**
+   Cari query `$registrations` berikut:
+   ```php
+   $registrations = ExamSessionParticipant::where('user_id', $user->id)
+       ->with([
+           'examSession.sessionCategories.category',
+           'examSession.sessionCategories.subCategories.subCategory',
+           'result'
+       ])
+       ->orderBy('created_at', 'asc')
+       ->get();
+   ```
+
+3. **Bungkus dengan fungsi Cache::remember:**
+   Ubah menjadi:
+   ```php
+   $cacheKey = "dashboard_registrations_user_{$user->id}";
+   
+   // Cache data dashboard selama 60 menit
+   $registrations = Cache::remember($cacheKey, now()->addMinutes(60), function () use ($user) {
+       return ExamSessionParticipant::where('user_id', $user->id)
+           ->with([
+               'examSession.sessionCategories.category',
+               'examSession.sessionCategories.subCategories.subCategory',
+               'result'
+           ])
+           ->orderBy('created_at', 'asc')
+           ->get();
+   });
+   ```
+
+### Bagian 3: Clear Cache (Invalidasi Cache)
+*Penting!* Jika peserta baru saja daftar sesi, atau baru saja menyelesaikan ujian, cache dashboard mereka **wajib dihapus** agar data terbaru langsung muncul.
+
+**Langkah-langkah Eksekusi:**
+1. **Di `DashboardController@joinSession`:**
+   Tepat sebelum baris `return redirect()->route('exam.main',...);` tambahkan:
+   ```php
+   \Illuminate\Support\Facades\Cache::forget("dashboard_registrations_user_" . auth()->id());
+   ```
+
+2. **Di `DashboardController@retakeSession`:**
+   Tepat sebelum baris `return redirect()->route('exam.terms',...);` tambahkan:
+   ```php
+   \Illuminate\Support\Facades\Cache::forget("dashboard_registrations_user_" . auth()->id());
+   ```
+
+3. **Di `ExamController@finishSession`:**
+   Tepat sebelum baris `return response()->json(['status' => 'success', ...]);` (di paling bawah fungsi finishSession), tambahkan:
+   ```php
+   \Illuminate\Support\Facades\Cache::forget("dashboard_registrations_user_{$participant->user_id}");
+   ```
+
+---
+
+## Kriteria Penerimaan Pekerjaan (Acceptance Criteria)
+- [ ] Programmer sudah memastikan `.env` menggunakan `CACHE_STORE=redis`.
+- [ ] Membuka halaman soal ujian bisa memuat instan (melalui Redis Cache).
+- [ ] Membuka halaman dashboard jauh lebih cepat.
+- [ ] Saat mencoba "Akhiri Ujian" (Selesai), halaman dashboard langsung menampilkan *score* (tidak memberikan data usang akibat nyangkut di cache).

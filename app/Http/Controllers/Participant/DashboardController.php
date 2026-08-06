@@ -7,6 +7,7 @@ use App\Models\ExamSession;
 use App\Models\ExamSessionParticipant;
 use App\Traits\ResponseTrait;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -17,14 +18,21 @@ class DashboardController extends Controller
         $user = auth()->user();
         
         // Get sessions where this user is registered, grouped by exam session
-        $registrations = ExamSessionParticipant::where('user_id', $user->id)
-            ->with([
-                'examSession.sessionCategories.category',
-                'examSession.sessionCategories.subCategories.subCategory',
-                'result'
-            ])
-            ->orderBy('created_at', 'asc')
-            ->get();
+        $cacheKey = "dashboard_registrations_v5_user_{$user->id}";
+        
+        $registrationsArray = Cache::remember($cacheKey, now()->addMinutes(60), function () use ($user) {
+            return ExamSessionParticipant::where('user_id', $user->id)
+                ->with([
+                    'examSession.sessionCategories.category',
+                    'examSession.sessionCategories.subCategories.subCategory',
+                    'result'
+                ])
+                ->orderBy('created_at', 'asc')
+                ->get()
+                ->toArray();
+        });
+        
+        $registrations = collect(json_decode(json_encode($registrationsArray), false));
             
         $groupedRegistrations = $registrations->groupBy('exam_session_id');
 
@@ -335,6 +343,8 @@ class DashboardController extends Controller
         // Store registration ID in session for the ExamController to pick up
         session(['participant_id' => $registration->id]);
 
+        Cache::forget("dashboard_registrations_v5_user_" . auth()->id());
+
         return redirect()->route('exam.main', ['code' => $session->code]);
     }
 
@@ -378,6 +388,8 @@ class DashboardController extends Controller
         ]);
 
         session(['participant_id' => $newRegistration->id]);
+
+        Cache::forget("dashboard_registrations_v5_user_" . auth()->id());
 
         return redirect()->route('exam.terms', $session->code)->with('success', 'Percobaan baru berhasil dibuat. Silakan baca term sebelum mulai mengerjakan.');
     }

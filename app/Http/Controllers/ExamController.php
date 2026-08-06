@@ -8,6 +8,7 @@ use App\Models\QuestionBank;
 use App\Models\UserAnswer;
 use App\Services\ExamSessionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ExamController extends Controller
@@ -264,11 +265,17 @@ class ExamController extends Controller
             return redirect()->route('exam.categories', $code)->with('error', 'Anda sudah menyelesaikan mata pelajaran ini.');
         }
 
-        // Get questions specifically for this category
-        $questions = $participant->questions()
-            ->where('category_id', $sessionCategory->category_id)
-            ->with('category')
-            ->get();
+        $cacheKey = "exam_questions_v5_participant_{$participant->id}_category_{$sessionCategory->category_id}";
+        
+        $questionsArray = Cache::remember($cacheKey, now()->addMinutes((int) $sessionCategory->duration), function () use ($participant, $sessionCategory) {
+            return $participant->questions()
+                ->where('category_id', $sessionCategory->category_id)
+                ->with('category')
+                ->get()
+                ->toArray();
+        });
+        
+        $questions = collect(json_decode(json_encode($questionsArray), false));
         
         // Calculate remaining time for this category
         $startTime = \Carbon\Carbon::parse($status->started_at);
@@ -494,6 +501,9 @@ class ExamController extends Controller
                 }
             }
         }
+
+        // Invalidate dashboard cache
+        Cache::forget("dashboard_registrations_v5_user_{$participant->user_id}");
 
         return response()->json(['status' => 'success', 'message' => 'Ujian berhasil diselesaikan secara keseluruhan.']);
     }

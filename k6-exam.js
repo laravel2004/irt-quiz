@@ -8,7 +8,7 @@ export const options = {
     iterations: 50,   // Jumlah iterasi total (masing-masing VU akan jalan 1x)
 };
 
-const BASE_URL = 'https://exam.jagobelajar.com';
+const BASE_URL = 'https://exam.tampilku.id';
 
 // ==========================================
 // KONFIGURASI DATA (Sesuaikan dengan DB Anda)
