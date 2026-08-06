@@ -490,7 +490,8 @@
             const leftPane = document.getElementById('examLeftPane');
             if (q.question_image) {
                 leftPane.style.display = 'block';
-                leftPane.innerHTML = `<img src="/storage/${q.question_image}" alt="Gambar soal" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #e2e8f0; pointer-events: none;">`;
+                let imgUrl = q.question_image.startsWith('http') || q.question_image.startsWith('/') ? q.question_image : `{{ asset('storage') }}/${q.question_image}`;
+                leftPane.innerHTML = `<img src="${imgUrl}" alt="Gambar soal" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #e2e8f0; pointer-events: none;">`;
             } else {
                 leftPane.style.display = 'none';
             }

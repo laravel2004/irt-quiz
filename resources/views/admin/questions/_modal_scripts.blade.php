@@ -557,7 +557,8 @@
             document.getElementById('scoreIncorrect').value = q.score_incorrect || 0;
             
             if (q.question_image) {
-                document.getElementById('imagePreview').src = `/storage/${q.question_image}`;
+                let imgUrl = q.question_image.startsWith('http') || q.question_image.startsWith('/') ? q.question_image : `{{ asset('storage') }}/${q.question_image}`;
+                document.getElementById('imagePreview').src = imgUrl;
                 document.getElementById('imagePreview').style.display = 'block';
                 document.getElementById('imagePlaceholder').style.display = 'none';
             }
@@ -625,7 +626,8 @@
             document.getElementById('previewScoreIncorrect').textContent = q.score_incorrect || 0;
             
             if (q.question_image) {
-                document.getElementById('previewImage').src = `/storage/${q.question_image}`;
+                let imgUrl = q.question_image.startsWith('http') || q.question_image.startsWith('/') ? q.question_image : `{{ asset('storage') }}/${q.question_image}`;
+                document.getElementById('previewImage').src = imgUrl;
                 document.getElementById('previewImageContainer').style.display = 'block';
             } else {
                 document.getElementById('previewImageContainer').style.display = 'none';

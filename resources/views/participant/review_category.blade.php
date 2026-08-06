@@ -128,7 +128,7 @@
             {!! $question->question_text !!}
             @if($question->question_image)
             <div style="margin-top: 16px;">
-                <img src="/storage/{{ $question->question_image }}" style="max-width: 100%; border-radius: 12px; border: 1px solid var(--glass-border);">
+                <img src="{{ Str::startsWith($question->question_image, ['http://', 'https://', '/']) ? $question->question_image : asset('storage/' . $question->question_image) }}" style="max-width: 100%; border-radius: 12px; border: 1px solid var(--glass-border);">
             </div>
             @endif
         </div>
