@@ -3,11 +3,19 @@
 namespace App\Jobs;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Queue\Queueable;
 
-class CalculateIRTJob implements ShouldQueue
+class CalculateIRTJob implements ShouldQueue, ShouldBeUnique
 {
     use Queueable;
+
+    public $uniqueFor = 3600;
+
+    public function uniqueId(): string
+    {
+        return (string) $this->sessionId;
+    }
 
     public $sessionId;
 
