@@ -113,12 +113,10 @@ class DashboardController extends Controller
                 ->with('info', 'Sedang menghitung hasil Anda...');
         }
 
-        $registration = \Illuminate\Support\Facades\Cache::remember("result_data_{$registrationId}", now()->addHours(1), function () use ($registrationId) {
-            return ExamSessionParticipant::with([
-                'examSession.sessionCategories.category',
-                'result.categoryResults.category'
-            ])->find($registrationId);
-        });
+        $registration = ExamSessionParticipant::with([
+            'examSession.sessionCategories.category',
+            'result.categoryResults.category'
+        ])->find($registrationId);
 
         return view('participant.result', compact('registration'));
     }
@@ -134,59 +132,57 @@ class DashboardController extends Controller
         }
 
         // Cache the heavy data since it's immutable after finishing
-        $cacheData = \Illuminate\Support\Facades\Cache::remember("review_data_{$registrationId}", now()->addHours(24), function () use ($registrationId) {
-            $registration = ExamSessionParticipant::with([
-                'examSession.sessionCategories.category',
-                'questions.category',
-                'questions.subCategory',
-                'userAnswers',
-                'result.categoryResults.category'
-            ])->find($registrationId);
+        $registration = ExamSessionParticipant::with([
+            'examSession.sessionCategories.category',
+            'questions.category',
+            'questions.subCategory',
+            'userAnswers',
+            'result.categoryResults.category'
+        ])->find($registrationId);
 
-            // Map answers for easy access in view
-            $answers = $registration->userAnswers->pluck('answer', 'question_bank_id')->toArray();
-            $userAnswersMapped = $registration->userAnswers->keyBy('question_bank_id');
+        // Map answers for easy access in view
+        $answers = $registration->userAnswers->pluck('answer', 'question_bank_id')->toArray();
+        $userAnswersMapped = $registration->userAnswers->keyBy('question_bank_id');
 
-            $mapelStats = [];
+        $mapelStats = [];
 
-            foreach ($registration->questions as $question) {
-                $catName = $question->category->name ?? 'Lainnya';
-                $subCatName = $question->subCategory->name ?? 'Lainnya';
+        foreach ($registration->questions as $question) {
+            $catName = $question->category->name ?? 'Lainnya';
+            $subCatName = $question->subCategory->name ?? 'Lainnya';
 
-                if (!isset($mapelStats[$catName])) {
-                    $mapelStats[$catName] = [
-                        'benar' => 0, 
-                        'salah' => 0,
-                        'subMapel' => []
-                    ];
-                }
-                if (!isset($mapelStats[$catName]['subMapel'][$subCatName])) {
-                    $mapelStats[$catName]['subMapel'][$subCatName] = ['benar' => 0, 'salah' => 0];
-                }
-
-                $userAnswer = $userAnswersMapped->get($question->id);
-                if ($userAnswer && $userAnswer->is_correct) {
-                    $mapelStats[$catName]['benar']++;
-                    $mapelStats[$catName]['subMapel'][$subCatName]['benar']++;
-                } else {
-                    $mapelStats[$catName]['salah']++;
-                    $mapelStats[$catName]['subMapel'][$subCatName]['salah']++;
-                }
+            if (!isset($mapelStats[$catName])) {
+                $mapelStats[$catName] = [
+                    'benar' => 0, 
+                    'salah' => 0,
+                    'subMapel' => []
+                ];
+            }
+            if (!isset($mapelStats[$catName]['subMapel'][$subCatName])) {
+                $mapelStats[$catName]['subMapel'][$subCatName] = ['benar' => 0, 'salah' => 0];
             }
 
-            $chartDataMapel = [
-                'labels' => array_keys($mapelStats),
-                'benar' => array_column($mapelStats, 'benar'),
-                'salah' => array_column($mapelStats, 'salah'),
-                'details' => $mapelStats
-            ];
+            $userAnswer = $userAnswersMapped->get($question->id);
+            if ($userAnswer && $userAnswer->is_correct) {
+                $mapelStats[$catName]['benar']++;
+                $mapelStats[$catName]['subMapel'][$subCatName]['benar']++;
+            } else {
+                $mapelStats[$catName]['salah']++;
+                $mapelStats[$catName]['subMapel'][$subCatName]['salah']++;
+            }
+        }
 
-            return [
-                'registration' => $registration,
-                'answers' => $answers,
-                'chartDataMapel' => $chartDataMapel
-            ];
-        });
+        $chartDataMapel = [
+            'labels' => array_keys($mapelStats),
+            'benar' => array_column($mapelStats, 'benar'),
+            'salah' => array_column($mapelStats, 'salah'),
+            'details' => $mapelStats
+        ];
+
+        $cacheData = [
+            'registration' => $registration,
+            'answers' => $answers,
+            'chartDataMapel' => $chartDataMapel
+        ];
 
         return view('participant.review', $cacheData);
     }
@@ -201,29 +197,27 @@ class DashboardController extends Controller
             return redirect()->route('participant.dashboard')->with('error', 'Ujian belum selesai.');
         }
 
-        $cacheData = \Illuminate\Support\Facades\Cache::remember("review_category_{$registrationId}_{$categoryId}", now()->addHours(24), function () use ($registrationId, $categoryId) {
-            $registration = ExamSessionParticipant::with(['examSession', 'questions' => function($q) use ($categoryId) {
-                $q->where('category_id', $categoryId)->with('category');
-            }, 'userAnswers' => function($q) use ($categoryId) {
-                $q->whereHas('question', function($sq) use ($categoryId) {
-                    $sq->where('category_id', $categoryId);
-                });
-            }])->find($registrationId);
+        $registration = ExamSessionParticipant::with(['examSession', 'questions' => function($q) use ($categoryId) {
+            $q->where('category_id', $categoryId)->with('category');
+        }, 'userAnswers' => function($q) use ($categoryId) {
+            $q->whereHas('question', function($sq) use ($categoryId) {
+                $sq->where('category_id', $categoryId);
+            });
+        }])->find($registrationId);
 
-            if ($registration->questions->isEmpty()) {
-                return null;
-            }
-
+        if ($registration->questions->isEmpty()) {
+            $cacheData = null;
+        } else {
             // Map answers for easy access in view
             $answers = $registration->userAnswers->pluck('answer', 'question_bank_id')->toArray();
             $category = $registration->questions->first()->category;
 
-            return [
+            $cacheData = [
                 'registration' => $registration,
                 'answers' => $answers,
                 'category' => $category
             ];
-        });
+        }
 
         if (!$cacheData) {
             return redirect()->route('participant.review', $registrationId)->with('error', 'Mata pelajaran tidak ditemukan.');
