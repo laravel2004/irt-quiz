@@ -478,11 +478,6 @@ class ExamController extends Controller
         // Dispatch IRT calculation to Queue
         \App\Jobs\CalculateIRTJob::dispatch($participant->exam_session_id);
 
-        // Dispatch AI Analysis to Queue
-        if ($participant->privilege === 'premium') {
-            \App\Jobs\GenerateAiAnalysisJob::dispatch($participant->id);
-        }
-
         // Invalidate dashboard cache
         Cache::forget("dashboard_registrations_v6_user_{$participant->user_id}");
 
