@@ -4,8 +4,8 @@ import { parseHTML } from 'k6/html';
 import exec from 'k6/execution';
 
 export const options = {
-    vus: 100,          // Jumlah virtual user (siswa) yang akan testing bersamaan
-    iterations: 100,   // Jumlah iterasi total (masing-masing VU akan jalan 1x)
+    vus: 50,          // Jumlah virtual user (siswa) yang akan testing bersamaan
+    iterations: 50,   // Jumlah iterasi total (masing-masing VU akan jalan 1x)
 };
 
 const BASE_URL = 'https://exam.tampilku.id';

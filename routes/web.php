@@ -15,6 +15,7 @@ Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->n
 Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth'])->group(function() {
     Route::get('/dashboard', [\App\Http\Controllers\Participant\DashboardController::class, 'index'])->name('participant.dashboard');
+    Route::post('/dashboard', function () { return redirect()->route('participant.dashboard'); });
     Route::post('/dashboard/join-session', [\App\Http\Controllers\Participant\DashboardController::class, 'joinSession'])->name('participant.join-session');
     Route::get('/dashboard/session/{sessionId}', [\App\Http\Controllers\Participant\DashboardController::class, 'showSession'])->name('participant.session.show');
     Route::get('/dashboard/result/{registrationId}', [\App\Http\Controllers\Participant\DashboardController::class, 'showResult'])->name('participant.result');
@@ -46,6 +47,7 @@ Route::post('/register-session/{code}', [\App\Http\Controllers\PublicSessionCont
 Route::get('/register-session/{code}/success', [\App\Http\Controllers\PublicSessionController::class, 'success'])->name('public.session.success');
 Route::middleware(AdminMiddleware::class)->group(function () {
     Route::get('/admin', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
+    Route::post('/admin', function () { return redirect()->route('admin.dashboard'); });
     // Routes available to both Superadmin and Admin Sesi
     Route::resource('/admin/sessions', \App\Http\Controllers\Admin\ExamSessionController::class)->names('admin.sessions');
     Route::get('/admin/sessions/{id}/preview-questions', [\App\Http\Controllers\Admin\ExamSessionController::class, 'previewQuestions'])->name('admin.sessions.preview-questions');
