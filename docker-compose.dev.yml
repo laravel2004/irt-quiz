@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: irt_quiz_app_dev
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      SERVER_NAME: ":80"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_HOST: mysql
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    volumes:
+      - .:/app # Map seluruh project untuk live editing
+
+  vite:
+    image: node:20-alpine
+    container_name: irt_quiz_vite_dev
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - app
+
+  redis:
+    image: redis:alpine
+    container_name: irt_quiz_redis_dev
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6380:6379" # Port diubah sedikit agar tidak bentrok dengan production docker
+    volumes:
+      - redis_data_dev:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  mysql:
+    image: mysql:8.0
+    container_name: irt_quiz_mysql_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-db_irt_quiz}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-@Agungdwin2004}
+    ports:
+      - "33062:3306" # Port diubah sedikit agar tidak bentrok dengan production docker
+    volumes:
+      - mysql_data_dev:/var/lib/mysql
+    command: >
+      --innodb-buffer-pool-size=256M
+      --max-connections=100
+      --performance-schema=off
+      --innodb-log-buffer-size=16M
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: irt_quiz_queue_dev
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      - app
+      - redis
+      - mysql
+    volumes:
+      - .:/app
+
+volumes:
+  redis_data_dev:
+  mysql_data_dev:

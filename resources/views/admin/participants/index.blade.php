@@ -59,6 +59,12 @@
                     </td>
                     <td style="font-size: 0.85rem; color: var(--text-secondary);">{{ Str::limit($user->address, 50) ?? '-' }}</td>
                     <td style="text-align: center;">
+                        <button class="btn-icon" onclick="openReportHistoryModal({{ $user->id }})" title="History Raport" style="color: #3b82f6;">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button class="btn-icon" onclick="openReportModal({{ $user->id }})" title="Cetak Raport" style="color: #10b981;">
+                            <i class="fas fa-file-alt"></i>
+                        </button>
                         <button class="btn-icon" onclick="editParticipant({{ $user->id }})" title="Edit">
                             <i class="fas fa-edit"></i>
                         </button>
@@ -193,6 +199,96 @@
         </form>
     </div>
 </div>
+
+<!-- Modal Cetak Raport -->
+<div class="modal-overlay" id="reportModal">
+    <div class="modal-content glass animate-fade-in" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 id="reportModalTitle">Cetak Raport</h3>
+            <button class="close-modal" onclick="closeReportModal()">&times;</button>
+        </div>
+
+        <!-- State 1: Loading daftar sesi -->
+        <div id="reportLoading" style="text-align: center; padding: 40px;">
+            <div style="width: 40px; height: 40px; border: 3px solid rgba(59, 130, 246, 0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+            <p style="color: var(--text-secondary);">Memuat daftar sesi ujian...</p>
+        </div>
+
+        <!-- State 2: Daftar sesi untuk dipilih -->
+        <div id="reportSessionList" style="display: none;">
+            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">
+                Pilih sesi ujian yang ingin dimasukkan ke dalam raport:
+            </p>
+            <div id="sessionCheckboxes" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Checkbox sesi akan di-generate oleh JavaScript -->
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end;">
+                <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeReportModal()">Batal</button>
+                <button type="button" class="btn-primary" onclick="submitGenerateReport()" id="generateReportBtn" style="background: #10b981;">
+                    <i class="fas fa-file-alt"></i> Generate Raport
+                </button>
+            </div>
+        </div>
+
+        <!-- State 3: Proses generate -->
+        <div id="reportProcessing" style="display: none; text-align: center; padding: 40px;">
+            <div style="width: 40px; height: 40px; border: 3px solid rgba(16, 185, 129, 0.3); border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+            <p style="color: var(--text-secondary);">Raport sedang digenerate, mohon tunggu...</p>
+        </div>
+
+        <!-- State 4: Selesai -->
+        <div id="reportDone" style="display: none; text-align: center; padding: 40px;">
+            <div style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <i class="fas fa-check" style="font-size: 1.5rem; color: #10b981;"></i>
+            </div>
+            <h4 style="margin-bottom: 8px;">Raport Berhasil Digenerate!</h4>
+            <a id="viewReportLink" href="#" class="btn-primary" style="display: inline-flex; margin-top: 16px; background: #10b981; text-decoration: none;">
+                <i class="fas fa-eye"></i> Lihat Raport
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal History Raport -->
+<div class="modal-overlay" id="reportHistoryModal">
+    <div class="modal-content glass animate-fade-in" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3 id="reportHistoryModalTitle">History Raport</h3>
+            <button class="close-modal" onclick="closeReportHistoryModal()">&times;</button>
+        </div>
+
+        <div id="reportHistoryLoading" style="text-align: center; padding: 40px;">
+            <div style="width: 40px; height: 40px; border: 3px solid rgba(59, 130, 246, 0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+            <p style="color: var(--text-secondary);">Memuat history raport...</p>
+        </div>
+
+        <div id="reportHistoryContent" style="display: none;">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tanggal Generate</th>
+                            <th>Sesi Ujian</th>
+                            <th>Status</th>
+                            <th>Admin</th>
+                            <th style="width: 100px; text-align: center;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportHistoryTableBody">
+                        <!-- Disisipkan via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeReportHistoryModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
 @endsection
 
 @push('scripts')
@@ -276,6 +372,208 @@
                 }
             });
         });
+    }
+
+    // ==================== CETAK RAPORT ====================
+    let currentReportUserId = null;
+
+    function openReportModal(userId) {
+        currentReportUserId = userId;
+        const modal = document.getElementById('reportModal');
+        modal.classList.add('active');
+
+        // Reset semua state
+        document.getElementById('reportLoading').style.display = 'block';
+        document.getElementById('reportSessionList').style.display = 'none';
+        document.getElementById('reportProcessing').style.display = 'none';
+        document.getElementById('reportDone').style.display = 'none';
+
+        // Fetch daftar sesi ujian user ini
+        fetch(`/admin/participants/${userId}/report-sessions`, {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('reportLoading').style.display = 'none';
+
+            if (data.data.sessions.length === 0) {
+                showToast('Peserta ini belum pernah menyelesaikan ujian.', 'error');
+                closeReportModal();
+                return;
+            }
+
+            document.getElementById('reportModalTitle').innerText = 'Cetak Raport: ' + data.data.user_name;
+
+            // Generate checkbox untuk setiap sesi
+            const container = document.getElementById('sessionCheckboxes');
+            container.innerHTML = '';
+
+            data.data.sessions.forEach(session => {
+                const div = document.createElement('div');
+                div.style.cssText = 'padding: 12px 16px; border: 1px solid var(--glass-border); border-radius: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s ease;';
+
+                div.innerHTML = `
+                    <input type="checkbox" value="${session.exam_session_id}" id="session_${session.exam_session_id}" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="session_${session.exam_session_id}" style="cursor: pointer; flex: 1;">
+                        <div style="font-weight: 600; font-size: 0.95rem;">${session.session_name}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Percobaan: ${session.attempt_count}x</div>
+                    </label>
+                `;
+
+                // Klik div = toggle checkbox
+                div.addEventListener('click', function(e) {
+                    if (e.target.tagName !== 'INPUT') {
+                        const cb = div.querySelector('input[type="checkbox"]');
+                        cb.checked = !cb.checked;
+                    }
+                });
+
+                container.appendChild(div);
+            });
+
+            document.getElementById('reportSessionList').style.display = 'block';
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Gagal memuat data sesi ujian.', 'error');
+            closeReportModal();
+        });
+    }
+
+    function closeReportModal() {
+        document.getElementById('reportModal').classList.remove('active');
+    }
+
+    function submitGenerateReport() {
+        // Kumpulkan semua checkbox yang dicentang
+        const checkboxes = document.querySelectorAll('#sessionCheckboxes input[type="checkbox"]:checked');
+        const sessionIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        if (sessionIds.length === 0) {
+            showToast('Pilih minimal 1 sesi ujian.', 'error');
+            return;
+        }
+
+        // Tampilkan state processing
+        document.getElementById('reportSessionList').style.display = 'none';
+        document.getElementById('reportProcessing').style.display = 'block';
+
+        // Kirim request ke backend
+        fetch(`/admin/participants/${currentReportUserId}/generate-report`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ session_ids: sessionIds })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const reportCardId = data.data.report_card_id;
+                // Mulai polling status
+                pollReportStatus(reportCardId);
+            } else {
+                showToast(data.message || 'Gagal generate raport.', 'error');
+                document.getElementById('reportProcessing').style.display = 'none';
+                document.getElementById('reportSessionList').style.display = 'block';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Terjadi kesalahan sistem.', 'error');
+            document.getElementById('reportProcessing').style.display = 'none';
+            document.getElementById('reportSessionList').style.display = 'block';
+        });
+    }
+
+    function pollReportStatus(reportCardId) {
+        const interval = setInterval(() => {
+            fetch(`/admin/report-cards/${reportCardId}/status`, {
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.data.status === 'completed') {
+                    clearInterval(interval);
+                    document.getElementById('reportProcessing').style.display = 'none';
+                    document.getElementById('reportDone').style.display = 'block';
+                    document.getElementById('viewReportLink').href = `/admin/report-cards/${reportCardId}/view`;
+                } else if (data.data.status === 'failed') {
+                    clearInterval(interval);
+                    showToast('Gagal generate raport: ' + (data.data.error_message || 'Unknown error'), 'error');
+                    closeReportModal();
+                }
+                // Jika masih 'processing', polling lanjut
+            })
+            .catch(() => {
+                clearInterval(interval);
+                showToast('Gagal mengecek status raport.', 'error');
+                closeReportModal();
+            });
+        }, 2000); // Poll setiap 2 detik
+    }
+
+    // ==================== HISTORY RAPORT ====================
+    function openReportHistoryModal(userId) {
+        const modal = document.getElementById('reportHistoryModal');
+        modal.classList.add('active');
+
+        document.getElementById('reportHistoryLoading').style.display = 'block';
+        document.getElementById('reportHistoryContent').style.display = 'none';
+
+        fetch(`/admin/participants/${userId}/report-history`, {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('reportHistoryLoading').style.display = 'none';
+            document.getElementById('reportHistoryModalTitle').innerText = 'History Raport: ' + data.data.user_name;
+
+            const tbody = document.getElementById('reportHistoryTableBody');
+            tbody.innerHTML = '';
+
+            if (data.data.reports.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 20px;">Belum ada history raport.</td></tr>`;
+            } else {
+                data.data.reports.forEach(report => {
+                    let statusBadge = '';
+                    if (report.status === 'completed') {
+                        statusBadge = '<span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">Selesai</span>';
+                    } else if (report.status === 'failed') {
+                        statusBadge = '<span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">Gagal</span>';
+                    } else {
+                        statusBadge = '<span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">Diproses</span>';
+                    }
+
+                    let actionBtn = report.status === 'completed' 
+                        ? `<a href="/admin/report-cards/${report.id}/view" target="_blank" class="btn-primary" style="background: #10b981; text-decoration: none; padding: 6px 12px; font-size: 0.8rem; display: inline-flex; border-radius: 6px;"><i class="fas fa-eye"></i></a>`
+                        : '-';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${report.created_at}</td>
+                            <td><div style="font-size: 0.85rem; max-width: 250px; white-space: normal; line-height: 1.4;">${report.sessions_text}</div></td>
+                            <td>${statusBadge}</td>
+                            <td>${report.generated_by_name}</td>
+                            <td style="text-align: center;">${actionBtn}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('reportHistoryContent').style.display = 'block';
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Gagal memuat history raport.', 'error');
+            closeReportHistoryModal();
+        });
+    }
+
+    function closeReportHistoryModal() {
+        document.getElementById('reportHistoryModal').classList.remove('active');
     }
 
     // Removed client-side search, handled via backend now

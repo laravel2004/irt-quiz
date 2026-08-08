@@ -1,0 +1,8 @@
+- [x] Tahap 1: Migration `create_report_cards_table`
+- [x] Tahap 2: Model `ReportCard.php`
+- [x] Tahap 3: Job `GenerateReportCardJob.php`
+- [x] Tahap 4: Routes `web.php`
+- [x] Tahap 5: Method di `ParticipantController.php`
+- [x] Tahap 6: Modal & JavaScript di `index.blade.php`
+- [x] Tahap 7: View `report.blade.php`
+- [x] Testing

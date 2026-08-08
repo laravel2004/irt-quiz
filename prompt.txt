@@ -3,9 +3,16 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. terapkan redis untuk mulai ujian di get soal" pada saat awal.
-2. terapkan redis juga untuk di tampilan ini juga http://localhost/dashboard
-
+1. perhatikan halaman http://localhost:8000/admin/participants.
+2. aku ingin menambahkan action cetak raport.
+3. setelah di click cetak raport nanti ada pilihan checkbox sesi ujian yang terdaftar pada user tersebut.
+4. admin akan memilih sesi ujian yang akan di cetak.
+5. setelah ada button generate raport.
+6. didalam proses nya itu sistem mengambil semua jawaban user di percobaan terbaru dari sesi ujian yang dipilih.
+7. setelah itu akan di lakukan mapping dari soal nya tersebut question_id akan di mapping per mata pelajaran dan sub mata pelajaran.
+8. jika ada soal yang sama contoh di sesi ujian A ada soal yang sama dengan sesi ujian B maka pilih salah satu saja.
+9. setelah itu menampilkan per mata pelajaran dan sub mata pelajaran. jumlah soal yang sudah diujikan benar berapa dan salah berapa.
+10. buat sistem ini pakai job agar loading nya tidak lama 
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail
 dengan target  junior programmer atau model yang lebih murah bisa mengerjakan

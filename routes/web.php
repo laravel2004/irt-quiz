@@ -69,6 +69,13 @@ Route::middleware(AdminMiddleware::class)->group(function () {
         
         // Admin Management of Participants (Users)
         Route::resource('/admin/participants', \App\Http\Controllers\Admin\ParticipantController::class)->names('admin.participants');
+        
+        // Cetak Raport
+        Route::get('/admin/participants/{id}/report-sessions', [\App\Http\Controllers\Admin\ParticipantController::class, 'getReportSessions'])->name('admin.participants.report-sessions');
+        Route::get('/admin/participants/{id}/report-history', [\App\Http\Controllers\Admin\ParticipantController::class, 'reportHistory'])->name('admin.participants.report-history');
+        Route::post('/admin/participants/{id}/generate-report', [\App\Http\Controllers\Admin\ParticipantController::class, 'generateReport'])->name('admin.participants.generate-report');
+        Route::get('/admin/report-cards/{id}/status', [\App\Http\Controllers\Admin\ParticipantController::class, 'reportStatus'])->name('admin.report-cards.status');
+        Route::get('/admin/report-cards/{id}/view', [\App\Http\Controllers\Admin\ParticipantController::class, 'viewReport'])->name('admin.report-cards.view');
     });
 });
 
