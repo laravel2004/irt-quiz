@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\ExamSessionParticipant;
 use App\Models\ReportCard;
 use App\Jobs\GenerateReportCardJob;
+use App\Jobs\GenerateReportCardAiAnalysisJob;
 
 class ParticipantController extends Controller
 {
@@ -217,5 +218,68 @@ class ParticipantController extends Controller
         }
 
         return view('admin.participants.report', compact('reportCard'));
+    }
+
+    /**
+     * Tampilkan halaman raport untuk dicetak.
+     */
+    public function printReport($id)
+    {
+        $reportCard = ReportCard::with('user')->findOrFail($id);
+
+        if ($reportCard->status !== 'completed') {
+            return redirect()->route('admin.report-cards.view', $id)
+                             ->with('error', 'Raport belum selesai diproses.');
+        }
+
+        return view('admin.participants.report-print', compact('reportCard'));
+    }
+
+    /**
+     * Trigger generate analisis AI untuk sebuah report card.
+     * Mendukung generate pertama kali dan re-generate.
+     */
+    public function generateAiAnalysis(Request $request, $id)
+    {
+        $reportCard = ReportCard::findOrFail($id);
+
+        // Cek apakah raport sudah completed
+        if ($reportCard->status !== 'completed') {
+            return $this->errorResponse('Raport belum selesai diproses.', 400);
+        }
+
+        // Jika sedang diproses, jangan dispatch lagi
+        if ($reportCard->ai_analysis_status === 'processing') {
+            return $this->successResponse([
+                'ai_analysis_status' => 'processing',
+            ], 'Analisis AI sedang diproses.');
+        }
+
+        // Reset status dan dispatch job baru (untuk generate pertama kali ATAU re-generate)
+        $reportCard->update([
+            'ai_analysis_status' => 'processing',
+            'ai_analysis'        => null,
+        ]);
+
+        GenerateReportCardAiAnalysisJob::dispatch($reportCard->id);
+
+        return $this->successResponse([
+            'ai_analysis_status' => 'processing',
+        ], 'Analisis AI sedang diproses. Tunggu beberapa saat.');
+    }
+
+    /**
+     * Cek status analisis AI (dipanggil polling dari frontend).
+     */
+    public function aiAnalysisStatus($id)
+    {
+        $reportCard = ReportCard::findOrFail($id);
+
+        return $this->successResponse([
+            'ai_analysis_status' => $reportCard->ai_analysis_status,
+            'ai_analysis'        => $reportCard->ai_analysis_status === 'completed'
+                ? $reportCard->ai_analysis
+                : null,
+        ]);
     }
 }

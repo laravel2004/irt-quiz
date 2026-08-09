@@ -155,4 +155,124 @@ class AIService
 
         Berikan jawaban dalam JSON murni tanpa markdown dengan keys: analisis_progres, pola_kekurangan, strategi_lanjutan.";
     }
+
+    /**
+     * Analisis raport peserta berdasarkan data report_data.
+     *
+     * @param array $data  Berisi: participant_name, report_data (array kategori & sub-kategori)
+     * @return array|null  Berisi: ringkasan, kelebihan, kekurangan, rekomendasi
+     */
+    public function generateReportCardAnalysis(array $data): ?array
+    {
+        try {
+            $prompt = $this->buildReportCardPrompt($data);
+
+            $response = Http::timeout((int) env('OPENAI_TIMEOUT', 60))
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type'  => 'application/json',
+                ])->post($this->baseUrl . '/chat/completions', [
+                    'model'    => $this->model,
+                    'messages' => [
+                        [
+                            'role'    => 'system',
+                            'content' => 'Anda adalah Konsultan Pendidikan Senior yang ahli dalam analisis hasil belajar siswa. Tugas Anda adalah memberikan analisis raport yang mendalam, spesifik, dan actionable berdasarkan data per mata pelajaran dan sub mata pelajaran. Gunakan bahasa Indonesia yang profesional namun mudah dipahami. Output wajib dalam format JSON murni (tanpa markdown) dengan keys: ringkasan, kelebihan, kekurangan, rekomendasi. Setiap value berupa string berisi 2-3 paragraf.',
+                        ],
+                        [
+                            'role'    => 'user',
+                            'content' => $prompt,
+                        ],
+                    ],
+                    'temperature' => 0.8,
+                ]);
+
+            if ($response->successful()) {
+                $content = $response->json()['choices'][0]['message']['content'];
+                $content = str_replace(['```json', '```'], '', $content);
+                $decoded = json_decode(trim($content), true);
+
+                // Pastikan semua key yang diharapkan berupa string
+                if (is_array($decoded)) {
+                    foreach (['ringkasan', 'kelebihan', 'kekurangan', 'rekomendasi'] as $key) {
+                        if (isset($decoded[$key]) && is_array($decoded[$key])) {
+                            $decoded[$key] = implode("\n\n", array_map(
+                                fn($v) => is_array($v) ? json_encode($v) : (string) $v,
+                                $decoded[$key]
+                            ));
+                        }
+                    }
+                }
+
+                return $decoded;
+            }
+
+            Log::error('OpenAI ReportCard Analysis Error: ' . $response->body());
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('AI ReportCard Analysis Error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Bangun prompt untuk analisis raport.
+     */
+    protected function buildReportCardPrompt(array $data): string
+    {
+        $name = $data['participant_name'];
+        $reportData = $data['report_data'];
+
+        // Bangun ringkasan per mata pelajaran
+        $categoryLines = "";
+        $totalSoalAll = 0;
+        $totalBenarAll = 0;
+        $totalSalahAll = 0;
+
+        foreach ($reportData as $category) {
+            $categoryName = $category['category_name'];
+            $totalSoal    = $category['total_soal'];
+            $totalBenar   = $category['total_benar'];
+            $totalSalah   = $category['total_salah'];
+            $persen       = $totalSoal > 0 ? round(($totalBenar / $totalSoal) * 100) : 0;
+
+            $totalSoalAll  += $totalSoal;
+            $totalBenarAll += $totalBenar;
+            $totalSalahAll += $totalSalah;
+
+            $categoryLines .= "\n📚 $categoryName: $totalBenar benar dari $totalSoal soal ($persen%)\n";
+
+            // Detail sub-kategori
+            if (!empty($category['sub_categories'])) {
+                foreach ($category['sub_categories'] as $sub) {
+                    $subPersen = $sub['total_soal'] > 0
+                        ? round(($sub['total_benar'] / $sub['total_soal']) * 100)
+                        : 0;
+                    $categoryLines .= "   - {$sub['sub_category_name']}: {$sub['total_benar']} benar dari {$sub['total_soal']} soal ($subPersen%)\n";
+                }
+            }
+        }
+
+        $persenAll = $totalSoalAll > 0 ? round(($totalBenarAll / $totalSoalAll) * 100) : 0;
+
+        return "Berikan analisis raport ujian untuk siswa bernama: $name.
+
+Berikut data raport per mata pelajaran dan sub mata pelajaran:
+$categoryLines
+
+Ringkasan Keseluruhan:
+- Total Soal: $totalSoalAll
+- Total Benar: $totalBenarAll
+- Total Salah: $totalSalahAll
+- Persentase Keseluruhan: $persenAll%
+
+Instruksi Analisis:
+1. **ringkasan**: Berikan gambaran umum performa siswa secara keseluruhan. Sebutkan persentase total dan highlight bidang terkuat dan terlemah.
+2. **kelebihan**: Identifikasi mata pelajaran dan sub mata pelajaran yang dikuasai dengan baik (persentase tinggi). Jelaskan apa artinya bagi siswa.
+3. **kekurangan**: Analisis mata pelajaran dan sub mata pelajaran yang masih lemah. Jelaskan apakah kelemahannya merata atau terpusat di sub-bidang tertentu.
+4. **rekomendasi**: Berikan saran belajar yang spesifik dan taktis per mata pelajaran yang lemah. Prioritaskan sub mata pelajaran yang paling butuh perbaikan.
+
+Berikan jawaban dalam format JSON murni (tanpa markdown wrapper) dengan keys: ringkasan, kelebihan, kekurangan, rekomendasi. Setiap value berupa narasi 2-3 paragraf.";
+    }
 }
+

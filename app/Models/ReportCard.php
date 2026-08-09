@@ -13,11 +13,14 @@ class ReportCard extends Model
         'status',
         'report_data',
         'error_message',
+        'ai_analysis',
+        'ai_analysis_status',
     ];
 
     protected $casts = [
         'session_ids'  => 'array',
         'report_data'  => 'array',
+        'ai_analysis'  => 'array',
     ];
 
     public function user()

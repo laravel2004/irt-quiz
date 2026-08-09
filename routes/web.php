@@ -76,6 +76,9 @@ Route::middleware(AdminMiddleware::class)->group(function () {
         Route::post('/admin/participants/{id}/generate-report', [\App\Http\Controllers\Admin\ParticipantController::class, 'generateReport'])->name('admin.participants.generate-report');
         Route::get('/admin/report-cards/{id}/status', [\App\Http\Controllers\Admin\ParticipantController::class, 'reportStatus'])->name('admin.report-cards.status');
         Route::get('/admin/report-cards/{id}/view', [\App\Http\Controllers\Admin\ParticipantController::class, 'viewReport'])->name('admin.report-cards.view');
+        Route::get('/admin/report-cards/{id}/print', [\App\Http\Controllers\Admin\ParticipantController::class, 'printReport'])->name('admin.report-cards.print');
+        Route::post('/admin/report-cards/{id}/generate-ai-analysis', [\App\Http\Controllers\Admin\ParticipantController::class, 'generateAiAnalysis'])->name('admin.report-cards.generate-ai-analysis');
+        Route::get('/admin/report-cards/{id}/ai-analysis-status', [\App\Http\Controllers\Admin\ParticipantController::class, 'aiAnalysisStatus'])->name('admin.report-cards.ai-analysis-status');
     });
 });
 
