@@ -68,6 +68,9 @@ Route::middleware(AdminMiddleware::class)->group(function () {
         Route::resource('/admin/questions', \App\Http\Controllers\Admin\QuestionBankController::class)->names('admin.questions');
         
         // Admin Management of Participants (Users)
+        Route::get('/admin/participants/all-basic', [\App\Http\Controllers\Admin\ParticipantController::class, 'allBasicParticipants'])->name('admin.participants.all-basic');
+        Route::get('/admin/participants/bulk-report/sessions', [\App\Http\Controllers\Admin\ParticipantController::class, 'getBulkReportSessions'])->name('admin.participants.bulk-report-sessions');
+        Route::post('/admin/participants/bulk-report/generate', [\App\Http\Controllers\Admin\ParticipantController::class, 'bulkGenerateReport'])->name('admin.participants.bulk-generate-report');
         Route::resource('/admin/participants', \App\Http\Controllers\Admin\ParticipantController::class)->names('admin.participants');
         
         // Cetak Raport

@@ -282,4 +282,113 @@ class ParticipantController extends Controller
                 : null,
         ]);
     }
+
+    // ==================== BULK RAPORT ====================
+
+    /**
+     * Ambil semua peserta role 'basic' (tanpa pagination) untuk modal bulk raport.
+     */
+    public function allBasicParticipants()
+    {
+        $users = User::where('role', 'basic')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return $this->successResponse([
+            'participants' => $users,
+        ]);
+    }
+
+    /**
+     * Ambil daftar sesi ujian yang SEMUA user terpilih pernah ikuti.
+     * Dipanggil via GET dengan query: ?user_ids[]=1&user_ids[]=2&user_ids[]=3
+     */
+    public function getBulkReportSessions(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_ids'   => 'required|array|min:1',
+            'user_ids.*' => 'integer|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationResponse($validator->errors());
+        }
+
+        $userIds = $request->user_ids;
+
+        // Untuk setiap user, ambil daftar exam_session_id yang pernah dikerjakan
+        $sessionSets = [];
+        foreach ($userIds as $userId) {
+            $sessionIds = ExamSessionParticipant::where('user_id', $userId)
+                ->whereNotNull('finished_at')
+                ->pluck('exam_session_id')
+                ->unique()
+                ->toArray();
+            $sessionSets[] = $sessionIds;
+        }
+
+        // Cari irisan (intersection) dari semua set
+        if (count($sessionSets) === 1) {
+            $commonSessionIds = $sessionSets[0];
+        } else {
+            $commonSessionIds = array_values(array_intersect(...$sessionSets));
+        }
+
+        // Ambil data nama sesi
+        $sessions = \App\Models\ExamSession::whereIn('id', $commonSessionIds)
+            ->get()
+            ->map(function ($session) {
+                return [
+                    'id'   => $session->id,
+                    'name' => $session->name,
+                ];
+            });
+
+        return $this->successResponse([
+            'sessions' => $sessions,
+        ]);
+    }
+
+    /**
+     * Bulk generate raport untuk beberapa peserta sekaligus.
+     * Menerima: { user_ids: [1,2,3], session_ids: [5,6] }
+     * Mengembalikan: array of report_card_id yang baru dibuat
+     */
+    public function bulkGenerateReport(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_ids'      => 'required|array|min:1',
+            'user_ids.*'    => 'integer|exists:users,id',
+            'session_ids'   => 'required|array|min:1',
+            'session_ids.*' => 'integer|exists:exam_sessions,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationResponse($validator->errors());
+        }
+
+        $reportCards = [];
+
+        foreach ($request->user_ids as $userId) {
+            $reportCard = ReportCard::create([
+                'user_id'      => $userId,
+                'generated_by' => auth()->id(),
+                'session_ids'  => $request->session_ids,
+                'status'       => 'processing',
+            ]);
+
+            GenerateReportCardJob::dispatch($reportCard->id);
+
+            $user = User::find($userId);
+            $reportCards[] = [
+                'report_card_id' => $reportCard->id,
+                'user_id'        => $userId,
+                'user_name'      => $user->name,
+            ];
+        }
+
+        return $this->successResponse([
+            'report_cards' => $reportCards,
+        ], 'Bulk raport sedang diproses.');
+    }
 }

@@ -22,6 +22,9 @@
                     </a>
                 @endif
             </form>
+            <button class="btn-primary" onclick="openBulkReportModal()" style="flex-shrink: 0; background: #10b981;">
+                <i class="fas fa-file-alt"></i> Bulk Raport
+            </button>
             <button class="btn-primary" onclick="openParticipantModal('create')" style="flex-shrink: 0;">
                 <i class="fas fa-plus"></i> Tambah Peserta
             </button>
@@ -281,6 +284,104 @@
             </div>
             <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
                 <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeReportHistoryModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Bulk Raport -->
+<div class="modal-overlay" id="bulkReportModal">
+    <div class="modal-content glass animate-fade-in" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3 id="bulkReportModalTitle">Bulk Generate Raport</h3>
+            <button class="close-modal" onclick="closeBulkReportModal()">&times;</button>
+        </div>
+
+        <!-- STEP 1: Pilih Peserta -->
+        <div id="bulkStep1">
+            <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 0.9rem;">
+                Centang peserta yang ingin dicetak raportnya:
+            </p>
+            
+            <div style="position: relative; margin-bottom: 16px;">
+                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                <input type="text" id="bulkSearchParticipant" class="form-input" placeholder="Cari nama peserta..." style="padding-left: 36px; margin-bottom: 0;" oninput="filterBulkParticipants()">
+            </div>
+            
+            <div style="margin-bottom: 12px;">
+                <label style="cursor: pointer; font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="bulkSelectAll" onchange="toggleSelectAllParticipants()" style="width: 16px; height: 16px;">
+                    Pilih Semua
+                </label>
+            </div>
+            
+            <!-- Loading saat fetch peserta -->
+            <div id="bulkParticipantLoading" style="text-align: center; padding: 40px;">
+                <div style="width: 40px; height: 40px; border: 3px solid rgba(59, 130, 246, 0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+                <p style="color: var(--text-secondary);">Memuat daftar peserta...</p>
+            </div>
+            
+            <div id="bulkParticipantList" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; display: none;">
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: space-between; align-items: center;">
+                <span id="bulkSelectedCount" style="font-size: 0.85rem; color: var(--text-secondary);">0 peserta dipilih</span>
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeBulkReportModal()">Batal</button>
+                    <button type="button" class="btn-primary" onclick="bulkGoToStep2()" style="background: #3b82f6;">
+                        Lanjut <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Pilih Sesi Ujian -->
+        <div id="bulkStep2" style="display: none;">
+            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">
+                Pilih sesi ujian yang ingin dimasukkan ke raport:
+            </p>
+            
+            <div id="bulkSessionLoading" style="text-align: center; padding: 40px;">
+                <div style="width: 40px; height: 40px; border: 3px solid rgba(59, 130, 246, 0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+                <p style="color: var(--text-secondary);">Memuat daftar sesi ujian...</p>
+            </div>
+            
+            <div id="bulkSessionCheckboxes" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            </div>
+            
+            <div id="bulkStep2Actions" style="display: none;">
+                <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: space-between;">
+                    <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="bulkBackToStep1()">
+                        <i class="fas fa-arrow-left"></i> Kembali
+                    </button>
+                    <button type="button" class="btn-primary" onclick="bulkSubmitGenerate()" style="background: #10b981;">
+                        <i class="fas fa-file-alt"></i> Generate Raport
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Processing -->
+        <div id="bulkStep3" style="display: none;">
+            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">
+                Raport sedang digenerate, mohon tunggu...
+            </p>
+            <div id="bulkProgressList" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+            </div>
+        </div>
+
+        <!-- STEP 4: Done -->
+        <div id="bulkStep4" style="display: none;">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                    <i class="fas fa-check" style="font-size: 1.5rem; color: #10b981;"></i>
+                </div>
+                <h4>Bulk Raport Selesai!</h4>
+            </div>
+            <div id="bulkResultList" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn-primary" onclick="closeBulkReportModal()">Tutup</button>
             </div>
         </div>
     </div>
@@ -577,5 +678,334 @@
     }
 
     // Removed client-side search, handled via backend now
+
+    // ==================== BULK RAPORT ====================
+    let bulkAllParticipants = []; // Cache semua peserta
+    let bulkSelectedUserIds = [];
+    let bulkReportCards = []; // Array {report_card_id, user_id, user_name, status}
+    let bulkPollInterval = null;
+
+    function openBulkReportModal() {
+        // Reset semua state
+        document.getElementById('bulkStep1').style.display = 'block';
+        document.getElementById('bulkStep2').style.display = 'none';
+        document.getElementById('bulkStep3').style.display = 'none';
+        document.getElementById('bulkStep4').style.display = 'none';
+        document.getElementById('bulkParticipantLoading').style.display = 'block';
+        document.getElementById('bulkParticipantList').style.display = 'none';
+        document.getElementById('bulkSearchParticipant').value = '';
+        document.getElementById('bulkSelectAll').checked = false;
+        document.getElementById('bulkSelectedCount').innerText = '0 peserta dipilih';
+        document.getElementById('bulkReportModalTitle').innerText = 'Bulk Generate Raport';
+        bulkSelectedUserIds = [];
+        bulkReportCards = [];
+        if (bulkPollInterval) clearInterval(bulkPollInterval);
+
+        document.getElementById('bulkReportModal').classList.add('active');
+
+        // Fetch semua peserta
+        fetch('{{ route("admin.participants.all-basic") }}', {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            bulkAllParticipants = data.data.participants;
+            renderBulkParticipantList(bulkAllParticipants);
+            document.getElementById('bulkParticipantLoading').style.display = 'none';
+            document.getElementById('bulkParticipantList').style.display = 'flex';
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Gagal memuat daftar peserta.', 'error');
+            closeBulkReportModal();
+        });
+    }
+
+    function closeBulkReportModal() {
+        document.getElementById('bulkReportModal').classList.remove('active');
+        if (bulkPollInterval) clearInterval(bulkPollInterval);
+    }
+
+    function renderBulkParticipantList(participants) {
+        const container = document.getElementById('bulkParticipantList');
+        container.innerHTML = '';
+
+        if (participants.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">Tidak ada peserta ditemukan.</p>';
+            return;
+        }
+
+        participants.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'bulk-participant-item';
+            div.dataset.name = p.name.toLowerCase();
+            div.style.cssText = 'padding: 12px 16px; border: 1px solid var(--glass-border); border-radius: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s ease;';
+            div.innerHTML = `
+                <input type="checkbox" value="${p.id}" class="bulk-participant-cb" style="width: 18px; height: 18px; cursor: pointer;" onchange="updateBulkSelectedCount()">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 0.95rem;">${p.name}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">${p.email}</div>
+                </div>
+            `;
+            div.addEventListener('click', function(e) {
+                if (e.target.tagName !== 'INPUT') {
+                    const cb = div.querySelector('input[type="checkbox"]');
+                    cb.checked = !cb.checked;
+                    updateBulkSelectedCount();
+                }
+            });
+            container.appendChild(div);
+        });
+    }
+
+    function filterBulkParticipants() {
+        const query = document.getElementById('bulkSearchParticipant').value.toLowerCase();
+        const items = document.querySelectorAll('.bulk-participant-item');
+        items.forEach(item => {
+            item.style.display = item.dataset.name.includes(query) ? 'flex' : 'none';
+        });
+    }
+
+    function toggleSelectAllParticipants() {
+        const isChecked = document.getElementById('bulkSelectAll').checked;
+        const checkboxes = document.querySelectorAll('.bulk-participant-cb');
+        checkboxes.forEach(cb => {
+            // Hanya toggle yang visible (tidak ter-filter)
+            if (cb.closest('.bulk-participant-item').style.display !== 'none') {
+                cb.checked = isChecked;
+            }
+        });
+        updateBulkSelectedCount();
+    }
+
+    function updateBulkSelectedCount() {
+        const count = document.querySelectorAll('.bulk-participant-cb:checked').length;
+        document.getElementById('bulkSelectedCount').innerText = count + ' peserta dipilih';
+    }
+
+    function bulkGoToStep2() {
+        const checkboxes = document.querySelectorAll('.bulk-participant-cb:checked');
+        bulkSelectedUserIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        if (bulkSelectedUserIds.length === 0) {
+            showToast('Pilih minimal 1 peserta.', 'error');
+            return;
+        }
+
+        // Pindah ke step 2
+        document.getElementById('bulkStep1').style.display = 'none';
+        document.getElementById('bulkStep2').style.display = 'block';
+        document.getElementById('bulkSessionLoading').style.display = 'block';
+        document.getElementById('bulkSessionCheckboxes').innerHTML = '';
+        document.getElementById('bulkStep2Actions').style.display = 'none';
+        document.getElementById('bulkReportModalTitle').innerText = `Bulk Raport (${bulkSelectedUserIds.length} peserta)`;
+
+        // Build query string
+        const params = bulkSelectedUserIds.map(id => `user_ids[]=${id}`).join('&');
+
+        fetch(`{{ route('admin.participants.bulk-report-sessions') }}?${params}`, {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('bulkSessionLoading').style.display = 'none';
+
+            if (data.data.sessions.length === 0) {
+                document.getElementById('bulkSessionCheckboxes').innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">Tidak ada sesi ujian yang dikerjakan oleh semua peserta terpilih.</p>';
+                document.getElementById('bulkStep2Actions').style.display = 'block';
+                return;
+            }
+
+            const container = document.getElementById('bulkSessionCheckboxes');
+            data.data.sessions.forEach(session => {
+                const div = document.createElement('div');
+                div.style.cssText = 'padding: 12px 16px; border: 1px solid var(--glass-border); border-radius: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s ease;';
+                div.innerHTML = `
+                    <input type="checkbox" value="${session.id}" class="bulk-session-cb" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label style="cursor: pointer; flex: 1;">
+                        <div style="font-weight: 600; font-size: 0.95rem;">${session.name}</div>
+                    </label>
+                `;
+                div.addEventListener('click', function(e) {
+                    if (e.target.tagName !== 'INPUT') {
+                        const cb = div.querySelector('input[type="checkbox"]');
+                        cb.checked = !cb.checked;
+                    }
+                });
+                container.appendChild(div);
+            });
+
+            document.getElementById('bulkStep2Actions').style.display = 'block';
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Gagal memuat daftar sesi ujian.', 'error');
+            bulkBackToStep1();
+        });
+    }
+
+    function bulkBackToStep1() {
+        document.getElementById('bulkStep2').style.display = 'none';
+        document.getElementById('bulkStep1').style.display = 'block';
+        document.getElementById('bulkReportModalTitle').innerText = 'Bulk Generate Raport';
+    }
+
+    function bulkSubmitGenerate() {
+        const sessionCheckboxes = document.querySelectorAll('.bulk-session-cb:checked');
+        const sessionIds = Array.from(sessionCheckboxes).map(cb => parseInt(cb.value));
+
+        if (sessionIds.length === 0) {
+            showToast('Pilih minimal 1 sesi ujian.', 'error');
+            return;
+        }
+
+        // Pindah ke step 3 (processing)
+        document.getElementById('bulkStep2').style.display = 'none';
+        document.getElementById('bulkStep3').style.display = 'block';
+        document.getElementById('bulkReportModalTitle').innerText = 'Memproses Raport...';
+
+        // Buat progress list per peserta
+        const progressList = document.getElementById('bulkProgressList');
+        progressList.innerHTML = '';
+        bulkSelectedUserIds.forEach(uid => {
+            const participant = bulkAllParticipants.find(p => p.id === uid);
+            const div = document.createElement('div');
+            div.id = `bulk-progress-${uid}`;
+            div.style.cssText = 'padding: 12px 16px; border: 1px solid var(--glass-border); border-radius: 12px; display: flex; align-items: center; gap: 12px;';
+            div.innerHTML = `
+                <div style="width: 24px; height: 24px; border: 3px solid rgba(59, 130, 246, 0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; flex-shrink: 0;" class="bulk-spinner"></div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 0.95rem;">${participant ? participant.name : 'User #' + uid}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);" class="bulk-status-text">Memproses...</div>
+                </div>
+            `;
+            progressList.appendChild(div);
+        });
+
+        // POST ke backend
+        fetch('{{ route("admin.participants.bulk-generate-report") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ user_ids: bulkSelectedUserIds, session_ids: sessionIds })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                bulkReportCards = data.data.report_cards.map(rc => ({
+                    ...rc,
+                    status: 'processing'
+                }));
+                pollBulkReportStatus();
+            } else {
+                showToast(data.message || 'Gagal generate raport.', 'error');
+                closeBulkReportModal();
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Terjadi kesalahan sistem.', 'error');
+            closeBulkReportModal();
+        });
+    }
+
+    function pollBulkReportStatus() {
+        bulkPollInterval = setInterval(() => {
+            const pending = bulkReportCards.filter(rc => rc.status === 'processing');
+
+            if (pending.length === 0) {
+                clearInterval(bulkPollInterval);
+                showBulkResults();
+                return;
+            }
+
+            pending.forEach(rc => {
+                fetch(`/admin/report-cards/${rc.report_card_id}/status`, {
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.data.status === 'completed' || data.data.status === 'failed') {
+                        rc.status = data.data.status;
+                        rc.error_message = data.data.error_message;
+                        updateBulkProgressItem(rc);
+
+                        // Cek apakah semua selesai
+                        const stillPending = bulkReportCards.filter(r => r.status === 'processing');
+                        if (stillPending.length === 0) {
+                            clearInterval(bulkPollInterval);
+                            setTimeout(() => showBulkResults(), 500);
+                        }
+                    }
+                })
+                .catch(() => {});
+            });
+        }, 2000);
+    }
+
+    function updateBulkProgressItem(rc) {
+        const div = document.getElementById(`bulk-progress-${rc.user_id}`);
+        if (!div) return;
+
+        const spinner = div.querySelector('.bulk-spinner');
+        const statusText = div.querySelector('.bulk-status-text');
+
+        if (rc.status === 'completed') {
+            spinner.style.animation = 'none';
+            spinner.style.border = 'none';
+            spinner.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981; font-size: 1.2rem;"></i>';
+            statusText.innerText = 'Selesai';
+            statusText.style.color = '#10b981';
+        } else if (rc.status === 'failed') {
+            spinner.style.animation = 'none';
+            spinner.style.border = 'none';
+            spinner.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444; font-size: 1.2rem;"></i>';
+            statusText.innerText = 'Gagal: ' + (rc.error_message || 'Unknown error');
+            statusText.style.color = '#ef4444';
+        }
+    }
+
+    function showBulkResults() {
+        document.getElementById('bulkStep3').style.display = 'none';
+        document.getElementById('bulkStep4').style.display = 'block';
+        document.getElementById('bulkReportModalTitle').innerText = 'Bulk Raport Selesai';
+
+        const resultList = document.getElementById('bulkResultList');
+        resultList.innerHTML = '';
+
+        const completed = bulkReportCards.filter(rc => rc.status === 'completed');
+        const failed = bulkReportCards.filter(rc => rc.status === 'failed');
+
+        completed.forEach(rc => {
+            const div = document.createElement('div');
+            div.style.cssText = 'padding: 12px 16px; border: 1px solid #10b981; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: rgba(16, 185, 129, 0.05);';
+            div.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                    <span style="font-weight: 600;">${rc.user_name}</span>
+                </div>
+                <a href="/admin/report-cards/${rc.report_card_id}/view" target="_blank" class="btn-primary" style="background: #10b981; text-decoration: none; padding: 6px 16px; font-size: 0.8rem; border-radius: 8px;">
+                    <i class="fas fa-eye"></i> Lihat
+                </a>
+            `;
+            resultList.appendChild(div);
+        });
+
+        failed.forEach(rc => {
+            const div = document.createElement('div');
+            div.style.cssText = 'padding: 12px 16px; border: 1px solid #ef4444; border-radius: 12px; display: flex; align-items: center; gap: 12px; background: rgba(239, 68, 68, 0.05);';
+            div.innerHTML = `
+                <i class="fas fa-times-circle" style="color: #ef4444;"></i>
+                <div>
+                    <span style="font-weight: 600;">${rc.user_name}</span>
+                    <div style="font-size: 0.75rem; color: #ef4444;">${rc.error_message || 'Gagal generate'}</div>
+                </div>
+            `;
+            resultList.appendChild(div);
+        });
+    }
 </script>
 @endpush
