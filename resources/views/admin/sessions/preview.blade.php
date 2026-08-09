@@ -48,9 +48,48 @@
             grid-template-columns: 1fr;
         }
     }
+    
+    @media print {
+        body {
+            background: #fff !important;
+        }
+        .sidebar, .mobile-header, header, .no-print {
+            display: none !important;
+        }
+        .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+        }
+        .glass {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin-bottom: 16px !important;
+        }
+        .question-container {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            margin-bottom: 24px !important;
+            border-left: none !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            padding-bottom: 24px !important;
+        }
+        .session-preview-option {
+            border: 1px solid #e2e8f0 !important;
+            background: #fff !important;
+            break-inside: avoid;
+        }
+        .session-preview-option-grid > div {
+            border: 1px solid #e2e8f0 !important;
+            background: #fff !important;
+            break-inside: avoid;
+        }
+    }
 </style>
 
-<div style="margin-bottom: 24px;">
+<div class="no-print" style="margin-bottom: 24px;">
     <a href="{{ route('admin.sessions.show', $session->id) }}" style="color: var(--text-secondary); text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
         <i class="fas fa-arrow-left"></i> Kembali ke Detail Sesi
     </a>
@@ -62,7 +101,10 @@
             <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 8px;">Daftar Soal Terpilih</h2>
             <p style="color: var(--text-secondary); font-size: 0.9rem;">Berikut adalah {{ $session->questions->count() }} butir soal yang telah di-generate untuk sesi <strong>{{ $session->name }}</strong>.</p>
         </div>
-        <div style="text-align: right;">
+        <div style="text-align: right; display: flex; gap: 12px; align-items: center; justify-content: flex-end;" class="no-print">
+            <button onclick="window.print()" style="background: #ffffff; color: var(--text-primary); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                <i class="fas fa-print"></i> Cetak PDF
+            </button>
             <div style="background: rgba(var(--accent-rgb), 0.1); color: var(--accent); padding: 8px 16px; border-radius: 12px; font-weight: 600; font-size: 0.9rem;">
                 <i class="fas fa-check-circle"></i> Soal Terkunci
             </div>
@@ -72,7 +114,7 @@
 
 <div style="display: flex; flex-direction: column; gap: 24px;">
     @foreach($session->questions as $index => $question)
-    <div class="glass animate-fade-in" style="padding: 24px; border-left: 4px solid var(--accent);">
+    <div class="glass animate-fade-in question-container" style="padding: 24px; border-left: 4px solid var(--accent);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
             <div style="display: flex; gap: 12px; align-items: center;">
                 <span style="width: 32px; height: 32px; background: var(--accent); color: #0f172a; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: 'Outfit', sans-serif;">
@@ -196,19 +238,18 @@
 
 @push('scripts')
 <script>
-    window.MathJax = {
-        tex: {
-            inlineMath: [['\\(', '\\)']],
-            displayMath: [['\\[', '\\]']],
-            packages: {'[+]': ['mhchem']}
-        },
-        loader: {load: ['[tex]/mhchem']},
-        startup: {
-            pageReady: () => {
-                return MathJax.startup.defaultPageReady();
-            }
+    document.addEventListener("DOMContentLoaded", function() {
+        if (typeof renderMathInElement === 'function') {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true},
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });
         }
-    };
+    });
 </script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 @endpush
