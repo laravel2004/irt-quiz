@@ -4,9 +4,10 @@ atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
 1. perhatikan halaman https://exam.jagobelajar.com/admin/participants.
-2. untuk generate raport ini, manfaatkan open api yang saya miliki untuk analisis raport yang digenerate tersebut
-3. terus isian analisis itu taruh di bagian bawah sendiri tampilan yang di bagian ini ya https://exam.jagobelajar.com/admin/report-cards/1/view.
-4. analisis ai nya itu berdasarkan raport yang digenerate tersebut ya
+2. tambahkan action bulk raport di samping tambah peserta.
+3. nanti user bisa memilih user siapa aja yang mau di cetak setelah itu memilih sesi ujian yang ingin di raport kan.
+4. setelah itu baru generate raport sesuai jumlah peserta yang di pilih.
+
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail
 dengan target  junior programmer atau model yang lebih murah bisa mengerjakan

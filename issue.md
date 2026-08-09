@@ -1,907 +1,484 @@
-# 🎯 ISSUE: Fitur Analisis AI pada Raport Peserta
+# Issue: Fitur Bulk Generate Raport
 
-## Ringkasan
+## Deskripsi
 
-Menambahkan fitur **Analisis AI** pada halaman **View Raport** (`/admin/report-cards/{id}/view`).
-
-Ketika admin sudah men-generate raport peserta dari halaman **Manajemen Peserta** (`/admin/participants`), raport yang sudah selesai akan ditampilkan di halaman view raport. **Fitur baru ini** akan menambahkan section analisis AI di **bagian paling bawah** halaman view raport tersebut.
-
-Analisis AI ini menggunakan **OpenAI API** yang sudah ada di project (lihat `app/Services/AIService.php`), dan kontennya berisi analisis mendalam berdasarkan data raport yang sudah di-generate (per mata pelajaran dan sub mata pelajaran).
+Tambahkan fitur **Bulk Raport** di halaman **Manajemen Peserta** (`/admin/participants`).  
+Saat ini, admin hanya bisa mencetak raport satu per satu per peserta. Fitur ini memungkinkan admin memilih **beberapa peserta sekaligus**, lalu memilih **sesi ujian**, kemudian men-generate raport untuk semua peserta yang dipilih secara massal.
 
 ---
 
-## Referensi File yang Sudah Ada
+## Alur Fitur (User Flow)
 
-Sebelum mulai coding, **baca dan pahami** file-file ini:
-
-| File | Fungsi |
-|---|---|
-| `app/Http/Controllers/Admin/ParticipantController.php` | Controller utama. Method `viewReport()` (baris 210-220) menampilkan halaman raport |
-| `app/Models/ReportCard.php` | Model raport. Field penting: `report_data` (JSON berisi data per kategori/sub-kategori) |
-| `app/Jobs/GenerateReportCardJob.php` | Job yang men-generate data raport. Pahami struktur `report_data` yang dihasilkan |
-| `app/Services/AIService.php` | Service AI yang sudah ada. Ada method `generateAnalysis()` dan `generateAggregateAnalysis()` |
-| `resources/views/admin/participants/report.blade.php` | View halaman raport (84 baris). Ini yang akan ditambah section AI |
-| `database/migrations/2026_08_08_120000_create_report_cards_table.php` | Struktur tabel `report_cards` |
-| `.env` | Konfigurasi OpenAI API Key, Model, dan Base URL sudah ada (baris 68-71) |
-
----
-
-## Struktur Data `report_data` yang Sudah Ada
-
-Data raport disimpan di kolom `report_data` (JSON) pada tabel `report_cards`. Strukturnya seperti ini:
-
-```json
-[
-  {
-    "category_name": "Matematika",
-    "total_soal": 20,
-    "total_benar": 15,
-    "total_salah": 5,
-    "sub_categories": [
-      {
-        "sub_category_name": "Aljabar",
-        "total_soal": 10,
-        "total_benar": 8,
-        "total_salah": 2
-      },
-      {
-        "sub_category_name": "Geometri",
-        "total_soal": 10,
-        "total_benar": 7,
-        "total_salah": 3
-      }
-    ]
-  },
-  {
-    "category_name": "IPA",
-    "total_soal": 15,
-    "total_benar": 10,
-    "total_salah": 5,
-    "sub_categories": [
-      {
-        "sub_category_name": "Biologi",
-        "total_soal": 8,
-        "total_benar": 6,
-        "total_salah": 2
-      }
-    ]
-  }
-]
+```
+1. Admin masuk ke halaman /admin/participants
+2. Admin klik tombol "Bulk Raport" (di samping tombol "Tambah Peserta")
+3. Muncul modal STEP 1: Pilih peserta (checklist dari daftar peserta)
+4. Admin centang peserta-peserta yang diinginkan, lalu klik "Lanjut"
+5. Muncul modal STEP 2: Pilih sesi ujian (checklist dari sesi yang tersedia)
+   - Sesi yang ditampilkan adalah sesi yang SEMUA peserta terpilih pernah ikuti
+6. Admin centang sesi ujian yang diinginkan, lalu klik "Generate Raport"
+7. Muncul state PROCESSING: Loading bar/spinner per peserta
+8. Backend men-dispatch Job generate raport per peserta
+9. Frontend polling status semua raport
+10. Setelah selesai semua, muncul state DONE: Daftar raport yang berhasil, 
+    dengan tombol "Lihat" per peserta
 ```
 
-Data inilah yang akan dikirim ke OpenAI API untuk dianalisis.
+---
+
+## Referensi Kode yang Sudah Ada
+
+Sebelum mulai, **baca dan pahami** file-file ini karena fitur baru akan mengikuti pola yang sama:
+
+| Fungsi | File | Keterangan |
+|--------|------|------------|
+| **Halaman Peserta (View)** | `resources/views/admin/participants/index.blade.php` | Template Blade utama. Lihat bagaimana modal cetak raport per-user bekerja (line 203-250) |
+| **Controller** | `app/Http/Controllers/Admin/ParticipantController.php` | Lihat method `generateReport()` (line 166-193) sebagai contoh yang akan di-clone |
+| **Routes** | `routes/web.php` (line 70-81) | Semua route terkait raport ada di sini |
+| **Model** | `app/Models/ReportCard.php` | Model raport, perhatikan `fillable` dan `casts` |
+| **Job** | `app/Jobs/GenerateReportCardJob.php` | Job yang memproses raport di background queue |
+| **Migration** | `database/migrations/2026_08_08_120000_create_report_cards_table.php` | Struktur tabel `report_cards` |
 
 ---
 
 ## Tahapan Implementasi
 
----
+### Tahap 1: Tambah Tombol "Bulk Raport" di View
 
-### TAHAP 1: Buat Migration — Tambah Kolom `ai_analysis` di Tabel `report_cards`
+**File:** `resources/views/admin/participants/index.blade.php`
 
-**Tujuan:** Menambah kolom baru untuk menyimpan hasil analisis AI.
+**Apa yang dilakukan:**  
+Tambahkan tombol baru di sebelah tombol "Tambah Peserta".
 
-**Langkah-langkah:**
-
-1. Jalankan command untuk membuat migration baru:
-   ```bash
-   php artisan make:migration add_ai_analysis_to_report_cards_table
-   ```
-
-2. Buka file migration yang baru dibuat di `database/migrations/`, lalu isi seperti ini:
-
-   ```php
-   <?php
-
-   use Illuminate\Database\Migrations\Migration;
-   use Illuminate\Database\Schema\Blueprint;
-   use Illuminate\Support\Facades\Schema;
-
-   return new class extends Migration
-   {
-       public function up(): void
-       {
-           Schema::table('report_cards', function (Blueprint $table) {
-               $table->json('ai_analysis')->nullable()->after('report_data');
-               $table->string('ai_analysis_status')->default('pending')->after('ai_analysis');
-               // Nilai status: pending | processing | completed | failed
-           });
-       }
-
-       public function down(): void
-       {
-           Schema::table('report_cards', function (Blueprint $table) {
-               $table->dropColumn(['ai_analysis', 'ai_analysis_status']);
-           });
-       }
-   };
-   ```
-
-3. Jalankan migration:
-   ```bash
-   php artisan migrate
-   ```
-
-**Penjelasan kolom baru:**
-- `ai_analysis` (JSON, nullable) → Menyimpan hasil analisis AI dalam format JSON
-- `ai_analysis_status` (string, default 'pending') → Status proses analisis: `pending`, `processing`, `completed`, `failed`
-
----
-
-### TAHAP 2: Update Model `ReportCard`
-
-**Tujuan:** Menambahkan kolom baru ke `$fillable` dan `$casts` di model.
-
-**File:** `app/Models/ReportCard.php`
-
-**Ubah menjadi:**
-
-```php
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Model;
-
-class ReportCard extends Model
-{
-    protected $fillable = [
-        'user_id',
-        'generated_by',
-        'session_ids',
-        'status',
-        'report_data',
-        'error_message',
-        'ai_analysis',           // ← TAMBAH INI
-        'ai_analysis_status',    // ← TAMBAH INI
-    ];
-
-    protected $casts = [
-        'session_ids'  => 'array',
-        'report_data'  => 'array',
-        'ai_analysis'  => 'array',   // ← TAMBAH INI
-    ];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function generatedBy()
-    {
-        return $this->belongsTo(User::class, 'generated_by');
-    }
-}
+**Lokasi tepat:** Cari baris ini (sekitar line 25-27):
+```html
+<button class="btn-primary" onclick="openParticipantModal('create')" style="flex-shrink: 0;">
+    <i class="fas fa-plus"></i> Tambah Peserta
+</button>
 ```
 
-**Yang berubah:**
-- Tambah `'ai_analysis'` dan `'ai_analysis_status'` ke array `$fillable`
-- Tambah `'ai_analysis' => 'array'` ke array `$casts`
-
----
-
-### TAHAP 3: Tambah Method Baru di `AIService`
-
-**Tujuan:** Membuat method khusus untuk menganalisis data raport.
-
-**File:** `app/Services/AIService.php`
-
-**Tambahkan method baru berikut di akhir class (sebelum closing `}` terakhir):**
-
-```php
-/**
- * Analisis raport peserta berdasarkan data report_data.
- *
- * @param array $data  Berisi: participant_name, report_data (array kategori & sub-kategori)
- * @return array|null  Berisi: ringkasan, kelebihan, kekurangan, rekomendasi
- */
-public function generateReportCardAnalysis(array $data): ?array
-{
-    try {
-        $prompt = $this->buildReportCardPrompt($data);
-
-        $response = Http::timeout((int) env('OPENAI_TIMEOUT', 60))
-            ->withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type'  => 'application/json',
-            ])->post($this->baseUrl . '/chat/completions', [
-                'model'    => $this->model,
-                'messages' => [
-                    [
-                        'role'    => 'system',
-                        'content' => 'Anda adalah Konsultan Pendidikan Senior yang ahli dalam analisis hasil belajar siswa. Tugas Anda adalah memberikan analisis raport yang mendalam, spesifik, dan actionable berdasarkan data per mata pelajaran dan sub mata pelajaran. Gunakan bahasa Indonesia yang profesional namun mudah dipahami. Output wajib dalam format JSON murni (tanpa markdown) dengan keys: ringkasan, kelebihan, kekurangan, rekomendasi. Setiap value berupa string berisi 2-3 paragraf.',
-                    ],
-                    [
-                        'role'    => 'user',
-                        'content' => $prompt,
-                    ],
-                ],
-                'temperature' => 0.8,
-            ]);
-
-        if ($response->successful()) {
-            $content = $response->json()['choices'][0]['message']['content'];
-            $content = str_replace(['```json', '```'], '', $content);
-            $decoded = json_decode(trim($content), true);
-
-            // Pastikan semua key yang diharapkan berupa string
-            if (is_array($decoded)) {
-                foreach (['ringkasan', 'kelebihan', 'kekurangan', 'rekomendasi'] as $key) {
-                    if (isset($decoded[$key]) && is_array($decoded[$key])) {
-                        $decoded[$key] = implode("\n\n", array_map(
-                            fn($v) => is_array($v) ? json_encode($v) : (string) $v,
-                            $decoded[$key]
-                        ));
-                    }
-                }
-            }
-
-            return $decoded;
-        }
-
-        Log::error('OpenAI ReportCard Analysis Error: ' . $response->body());
-        return null;
-
-    } catch (\Exception $e) {
-        Log::error('AI ReportCard Analysis Error: ' . $e->getMessage());
-        return null;
-    }
-}
-
-/**
- * Bangun prompt untuk analisis raport.
- */
-protected function buildReportCardPrompt(array $data): string
-{
-    $name = $data['participant_name'];
-    $reportData = $data['report_data'];
-
-    // Bangun ringkasan per mata pelajaran
-    $categoryLines = "";
-    $totalSoalAll = 0;
-    $totalBenarAll = 0;
-    $totalSalahAll = 0;
-
-    foreach ($reportData as $category) {
-        $categoryName = $category['category_name'];
-        $totalSoal    = $category['total_soal'];
-        $totalBenar   = $category['total_benar'];
-        $totalSalah   = $category['total_salah'];
-        $persen       = $totalSoal > 0 ? round(($totalBenar / $totalSoal) * 100) : 0;
-
-        $totalSoalAll  += $totalSoal;
-        $totalBenarAll += $totalBenar;
-        $totalSalahAll += $totalSalah;
-
-        $categoryLines .= "\n📚 $categoryName: $totalBenar benar dari $totalSoal soal ($persen%)\n";
-
-        // Detail sub-kategori
-        if (!empty($category['sub_categories'])) {
-            foreach ($category['sub_categories'] as $sub) {
-                $subPersen = $sub['total_soal'] > 0
-                    ? round(($sub['total_benar'] / $sub['total_soal']) * 100)
-                    : 0;
-                $categoryLines .= "   - {$sub['sub_category_name']}: {$sub['total_benar']} benar dari {$sub['total_soal']} soal ($subPersen%)\n";
-            }
-        }
-    }
-
-    $persenAll = $totalSoalAll > 0 ? round(($totalBenarAll / $totalSoalAll) * 100) : 0;
-
-    return "Berikan analisis raport ujian untuk siswa bernama: $name.
-
-Berikut data raport per mata pelajaran dan sub mata pelajaran:
-$categoryLines
-
-Ringkasan Keseluruhan:
-- Total Soal: $totalSoalAll
-- Total Benar: $totalBenarAll
-- Total Salah: $totalSalahAll
-- Persentase Keseluruhan: $persenAll%
-
-Instruksi Analisis:
-1. **ringkasan**: Berikan gambaran umum performa siswa secara keseluruhan. Sebutkan persentase total dan highlight bidang terkuat dan terlemah.
-2. **kelebihan**: Identifikasi mata pelajaran dan sub mata pelajaran yang dikuasai dengan baik (persentase tinggi). Jelaskan apa artinya bagi siswa.
-3. **kekurangan**: Analisis mata pelajaran dan sub mata pelajaran yang masih lemah. Jelaskan apakah kelemahannya merata atau terpusat di sub-bidang tertentu.
-4. **rekomendasi**: Berikan saran belajar yang spesifik dan taktis per mata pelajaran yang lemah. Prioritaskan sub mata pelajaran yang paling butuh perbaikan.
-
-Berikan jawaban dalam format JSON murni (tanpa markdown wrapper) dengan keys: ringkasan, kelebihan, kekurangan, rekomendasi. Setiap value berupa narasi 2-3 paragraf.";
-}
+**Tambahkan SEBELUM tombol di atas:**
+```html
+<button class="btn-primary" onclick="openBulkReportModal()" style="flex-shrink: 0; background: #10b981;">
+    <i class="fas fa-file-alt"></i> Bulk Raport
+</button>
 ```
 
 ---
 
-### TAHAP 4: Buat Job `GenerateReportCardAiAnalysisJob`
+### Tahap 2: Tambah Modal Bulk Raport di View
 
-**Tujuan:** Membuat background job yang memanggil AI API, supaya tidak blocking request HTTP.
+**File:** `resources/views/admin/participants/index.blade.php`
 
-**Langkah:**
+**Apa yang dilakukan:**  
+Tambahkan HTML modal baru SETELAH modal `reportHistoryModal` (setelah line 287). Modal ini punya 4 state:
 
-1. Buat file baru: `app/Jobs/GenerateReportCardAiAnalysisJob.php`
+1. **Step 1 - Pilih Peserta**: Tampilkan daftar peserta dengan checkbox
+2. **Step 2 - Pilih Sesi Ujian**: Tampilkan daftar sesi ujian dengan checkbox
+3. **Processing**: Loading spinner dengan progress per peserta
+4. **Done**: Daftar hasil raport yang berhasil
 
-2. Isi file tersebut:
+**HTML modal yang harus ditambahkan:**
 
-```php
-<?php
+```html
+<!-- Modal Bulk Raport -->
+<div class="modal-overlay" id="bulkReportModal">
+    <div class="modal-content glass animate-fade-in" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3 id="bulkReportModalTitle">Bulk Generate Raport</h3>
+            <button class="close-modal" onclick="closeBulkReportModal()">&times;</button>
+        </div>
 
-namespace App\Jobs;
+        <!-- STEP 1: Pilih Peserta -->
+        <div id="bulkStep1">
+            <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 0.9rem;">
+                Centang peserta yang ingin dicetak raportnya:
+            </p>
+            
+            <!-- Search box untuk filter peserta -->
+            <div style="position: relative; margin-bottom: 16px;">
+                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                <input type="text" id="bulkSearchParticipant" class="form-input" placeholder="Cari nama peserta..." style="padding-left: 36px; margin-bottom: 0;" oninput="filterBulkParticipants()">
+            </div>
+            
+            <!-- Tombol Select All -->
+            <div style="margin-bottom: 12px;">
+                <label style="cursor: pointer; font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="bulkSelectAll" onchange="toggleSelectAllParticipants()" style="width: 16px; height: 16px;">
+                    Pilih Semua
+                </label>
+            </div>
+            
+            <div id="bulkParticipantList" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Diisi via JavaScript -->
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: space-between; align-items: center;">
+                <span id="bulkSelectedCount" style="font-size: 0.85rem; color: var(--text-secondary);">0 peserta dipilih</span>
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeBulkReportModal()">Batal</button>
+                    <button type="button" class="btn-primary" onclick="bulkGoToStep2()" style="background: #3b82f6;">
+                        Lanjut <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-use App\Models\ReportCard;
-use App\Services\AIService;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
+        <!-- STEP 2: Pilih Sesi Ujian -->
+        <div id="bulkStep2" style="display: none;">
+            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">
+                Pilih sesi ujian yang ingin dimasukkan ke raport:
+            </p>
+            
+            <!-- Loading saat fetch sesi -->
+            <div id="bulkSessionLoading" style="text-align: center; padding: 40px;">
+                <div style="width: 40px; height: 40px; border: 3px solid rgba(59, 130, 246, 0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+                <p style="color: var(--text-secondary);">Memuat daftar sesi ujian...</p>
+            </div>
+            
+            <div id="bulkSessionCheckboxes" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Diisi via JavaScript -->
+            </div>
+            
+            <div id="bulkStep2Actions" style="display: none;">
+                <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: space-between;">
+                    <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="bulkBackToStep1()">
+                        <i class="fas fa-arrow-left"></i> Kembali
+                    </button>
+                    <button type="button" class="btn-primary" onclick="bulkSubmitGenerate()" style="background: #10b981;">
+                        <i class="fas fa-file-alt"></i> Generate Raport
+                    </button>
+                </div>
+            </div>
+        </div>
 
-class GenerateReportCardAiAnalysisJob implements ShouldQueue
-{
-    use Queueable;
+        <!-- STEP 3: Processing -->
+        <div id="bulkStep3" style="display: none;">
+            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">
+                Raport sedang digenerate, mohon tunggu...
+            </p>
+            <div id="bulkProgressList" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+                <!-- Progress per peserta diisi via JavaScript -->
+            </div>
+        </div>
 
-    public int $reportCardId;
-
-    /**
-     * Buat instance baru.
-     */
-    public function __construct(int $reportCardId)
-    {
-        $this->reportCardId = $reportCardId;
-    }
-
-    /**
-     * Jalankan job.
-     */
-    public function handle(): void
-    {
-        $reportCard = ReportCard::with('user')->find($this->reportCardId);
-
-        // Guard: pastikan report card ada dan sudah completed
-        if (!$reportCard || $reportCard->status !== 'completed') {
-            Log::warning("ReportCardAiAnalysis: ReportCard #{$this->reportCardId} not found or not completed.");
-            return;
-        }
-
-        // Guard: pastikan ada report_data
-        if (empty($reportCard->report_data)) {
-            Log::warning("ReportCardAiAnalysis: ReportCard #{$this->reportCardId} has no report_data.");
-            $reportCard->update(['ai_analysis_status' => 'failed']);
-            return;
-        }
-
-        try {
-            // Update status jadi processing
-            $reportCard->update(['ai_analysis_status' => 'processing']);
-
-            // Panggil AI Service
-            $aiService = new AIService();
-            $analysis = $aiService->generateReportCardAnalysis([
-                'participant_name' => $reportCard->user->name,
-                'report_data'      => $reportCard->report_data,
-            ]);
-
-            if ($analysis) {
-                $reportCard->update([
-                    'ai_analysis'        => $analysis,
-                    'ai_analysis_status' => 'completed',
-                ]);
-                Log::info("ReportCardAiAnalysis: ReportCard #{$this->reportCardId} analysis completed.");
-            } else {
-                $reportCard->update(['ai_analysis_status' => 'failed']);
-                Log::error("ReportCardAiAnalysis: ReportCard #{$this->reportCardId} AI returned null.");
-            }
-
-        } catch (\Exception $e) {
-            Log::error("ReportCardAiAnalysis: ReportCard #{$this->reportCardId} failed: " . $e->getMessage());
-            $reportCard->update(['ai_analysis_status' => 'failed']);
-        }
-    }
-}
+        <!-- STEP 4: Done -->
+        <div id="bulkStep4" style="display: none;">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                    <i class="fas fa-check" style="font-size: 1.5rem; color: #10b981;"></i>
+                </div>
+                <h4>Bulk Raport Selesai!</h4>
+            </div>
+            <div id="bulkResultList" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+                <!-- Daftar hasil raport diisi via JavaScript -->
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn-primary" onclick="closeBulkReportModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
 ```
 
 ---
 
-### TAHAP 5: Tambah Route dan Controller Method
-
-**Tujuan:** Menambahkan 2 endpoint baru:
-1. `POST /admin/report-cards/{id}/generate-ai-analysis` → Trigger generate analisis AI
-2. `GET /admin/report-cards/{id}/ai-analysis-status` → Polling status analisis AI
-
-#### 5A. Tambah Route
+### Tahap 3: Tambah Route Baru di Backend
 
 **File:** `routes/web.php`
 
-Cari blok route yang berisi route report-cards (sekitar baris 77-78). Tambahkan 2 route baru **tepat di bawah** baris `Route::get('/admin/report-cards/{id}/view', ...)`:
+**Apa yang dilakukan:**  
+Tambahkan 2 route baru di dalam group `SuperAdminMiddleware`. 
+
+**PENTING:** Taruh route ini **SEBELUM** baris `Route::resource('/admin/participants', ...)` (line 71) agar tidak ditangkap oleh resource route sebagai parameter `{participant}`.
 
 ```php
-// Route yang sudah ada (JANGAN HAPUS):
-Route::get('/admin/report-cards/{id}/view', [\App\Http\Controllers\Admin\ParticipantController::class, 'viewReport'])->name('admin.report-cards.view');
-
-// ↓↓↓ TAMBAH 2 ROUTE BARU DI BAWAH INI ↓↓↓
-Route::post('/admin/report-cards/{id}/generate-ai-analysis', [\App\Http\Controllers\Admin\ParticipantController::class, 'generateAiAnalysis'])->name('admin.report-cards.generate-ai-analysis');
-Route::get('/admin/report-cards/{id}/ai-analysis-status', [\App\Http\Controllers\Admin\ParticipantController::class, 'aiAnalysisStatus'])->name('admin.report-cards.ai-analysis-status');
+// Bulk Raport
+Route::get('/admin/participants/bulk-report/sessions', [\App\Http\Controllers\Admin\ParticipantController::class, 'getBulkReportSessions'])->name('admin.participants.bulk-report-sessions');
+Route::post('/admin/participants/bulk-report/generate', [\App\Http\Controllers\Admin\ParticipantController::class, 'bulkGenerateReport'])->name('admin.participants.bulk-generate-report');
 ```
 
-#### 5B. Tambah Method di Controller
+---
+
+### Tahap 4: Tambah Method di Controller
 
 **File:** `app/Http/Controllers/Admin/ParticipantController.php`
 
-Pertama, tambahkan import di bagian atas file (setelah `use App\Jobs\GenerateReportCardJob;`):
+**Apa yang dilakukan:**  
+Tambahkan 2 method baru di dalam class `ParticipantController`:
 
-```php
-use App\Jobs\GenerateReportCardAiAnalysisJob;
-```
+#### Method 1: `getBulkReportSessions`
 
-Lalu tambahkan 2 method baru di akhir class (sebelum closing `}` terakhir, setelah method `viewReport()`):
+Method ini menerima daftar `user_ids[]` via query string, lalu mengembalikan sesi ujian yang **semua** user tersebut pernah ikuti (irisan/intersection).
 
 ```php
 /**
- * Trigger generate analisis AI untuk sebuah report card.
- * Mendukung generate pertama kali dan re-generate.
+ * Ambil daftar sesi ujian yang SEMUA user terpilih pernah ikuti.
+ * Dipanggil via GET dengan query: ?user_ids[]=1&user_ids[]=2&user_ids[]=3
  */
-public function generateAiAnalysis(Request $request, $id)
+public function getBulkReportSessions(Request $request)
 {
-    $reportCard = ReportCard::findOrFail($id);
-
-    // Cek apakah raport sudah completed
-    if ($reportCard->status !== 'completed') {
-        return $this->errorResponse('Raport belum selesai diproses.', 400);
-    }
-
-    // Jika sedang diproses, jangan dispatch lagi
-    if ($reportCard->ai_analysis_status === 'processing') {
-        return $this->successResponse([
-            'ai_analysis_status' => 'processing',
-        ], 'Analisis AI sedang diproses.');
-    }
-
-    // Reset status dan dispatch job baru (untuk generate pertama kali ATAU re-generate)
-    $reportCard->update([
-        'ai_analysis_status' => 'processing',
-        'ai_analysis'        => null,
+    $validator = Validator::make($request->all(), [
+        'user_ids'   => 'required|array|min:1',
+        'user_ids.*' => 'integer|exists:users,id',
     ]);
 
-    GenerateReportCardAiAnalysisJob::dispatch($reportCard->id);
+    if ($validator->fails()) {
+        return $this->validationResponse($validator->errors());
+    }
 
-    return $this->successResponse([
-        'ai_analysis_status' => 'processing',
-    ], 'Analisis AI sedang diproses. Tunggu beberapa saat.');
-}
+    $userIds = $request->user_ids;
 
-/**
- * Cek status analisis AI (dipanggil polling dari frontend).
- */
-public function aiAnalysisStatus($id)
-{
-    $reportCard = ReportCard::findOrFail($id);
+    // Untuk setiap user, ambil daftar exam_session_id yang pernah dikerjakan
+    $sessionSets = [];
+    foreach ($userIds as $userId) {
+        $sessionIds = ExamSessionParticipant::where('user_id', $userId)
+            ->whereNotNull('finished_at')
+            ->pluck('exam_session_id')
+            ->unique()
+            ->toArray();
+        $sessionSets[] = $sessionIds;
+    }
 
-    return $this->successResponse([
-        'ai_analysis_status' => $reportCard->ai_analysis_status,
-        'ai_analysis'        => $reportCard->ai_analysis_status === 'completed'
-            ? $reportCard->ai_analysis
-            : null,
-    ]);
-}
-```
+    // Cari irisan (intersection) dari semua set
+    // Ini agar hanya sesi yang SEMUA peserta pernah ikuti yang tampil
+    $commonSessionIds = array_values(array_intersect(...$sessionSets));
 
----
-
-### TAHAP 6: Update View — Tambah Section Analisis AI di Bawah Raport
-
-**Tujuan:** Menambahkan section analisis AI di **bagian paling bawah** halaman view raport.
-
-**File:** `resources/views/admin/participants/report.blade.php`
-
-**Ganti SELURUH isi file** menjadi seperti di bawah ini. Perhatikan bahwa yang berubah hanya bagian setelah `@endif` terakhir dari loop `@foreach` — di situ ditambahkan section baru untuk analisis AI:
-
-```blade
-@extends('layouts.admin')
-
-@section('title', 'Raport: ' . $reportCard->user->name)
-@section('header_title', 'Raport Peserta')
-
-@section('content')
-<div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
-        <div>
-            <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">
-                Raport: {{ $reportCard->user->name }}
-            </h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                Digenerate pada {{ $reportCard->updated_at->format('d M Y, H:i') }} WIB
-            </p>
-        </div>
-        <a href="{{ route('admin.participants.index') }}" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary); text-decoration: none;">
-            <i class="fas fa-arrow-left"></i> Kembali
-        </a>
-    </div>
-
-    @php $reportData = $reportCard->report_data; @endphp
-
-    @if(!$reportData || count($reportData) === 0)
-        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-            Tidak ada data jawaban untuk ditampilkan.
-        </div>
-    @else
-        @foreach($reportData as $category)
-        <div style="margin-bottom: 32px; border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden;">
-            <!-- Header Mata Pelajaran -->
-            <div style="background: #f1f5f9; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
-                <h4 style="font-family: 'Outfit', sans-serif; margin: 0;">
-                    {{ $category['category_name'] }}
-                </h4>
-                <div style="display: flex; gap: 16px; font-size: 0.85rem;">
-                    <span><strong>Total:</strong> {{ $category['total_soal'] }} soal</span>
-                    <span style="color: #10b981;"><strong>Benar:</strong> {{ $category['total_benar'] }}</span>
-                    <span style="color: #ef4444;"><strong>Salah:</strong> {{ $category['total_salah'] }}</span>
-                </div>
-            </div>
-
-            <!-- Detail Sub Mata Pelajaran -->
-            <div style="padding: 0;">
-                <table class="data-table" style="margin: 0; border: none;">
-                    <thead>
-                        <tr>
-                            <th>Sub Mata Pelajaran</th>
-                            <th style="text-align: center; width: 100px;">Total Soal</th>
-                            <th style="text-align: center; width: 100px;">Benar</th>
-                            <th style="text-align: center; width: 100px;">Salah</th>
-                            <th style="text-align: center; width: 120px;">Persentase</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($category['sub_categories'] as $sub)
-                        @php
-                            $persen = $sub['total_soal'] > 0 ? round(($sub['total_benar'] / $sub['total_soal']) * 100) : 0;
-                            $barColor = $persen >= 70 ? '#10b981' : ($persen >= 40 ? '#eab308' : '#ef4444');
-                        @endphp
-                        <tr>
-                            <td>{{ $sub['sub_category_name'] }}</td>
-                            <td style="text-align: center;">{{ $sub['total_soal'] }}</td>
-                            <td style="text-align: center; color: #10b981; font-weight: 600;">{{ $sub['total_benar'] }}</td>
-                            <td style="text-align: center; color: #ef4444; font-weight: 600;">{{ $sub['total_salah'] }}</td>
-                            <td style="text-align: center;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <div style="flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden;">
-                                        <div style="width: {{ $persen }}%; height: 100%; background: {{ $barColor }}; border-radius: 4px;"></div>
-                                    </div>
-                                    <span style="font-weight: 600; font-size: 0.85rem; color: {{ $barColor }};">{{ $persen }}%</span>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        @endforeach
-    @endif
-</div>
-
-{{-- ============================================================ --}}
-{{-- SECTION BARU: Analisis AI (di bawah raport) --}}
-{{-- ============================================================ --}}
-<div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;" id="aiAnalysisSection">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <div>
-            <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 4px;">
-                <i class="fas fa-robot" style="color: #8b5cf6;"></i> Analisis AI
-            </h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                Analisis otomatis berdasarkan data raport di atas menggunakan AI.
-            </p>
-        </div>
-
-        {{-- Tombol Generate hanya muncul jika belum ada analisis --}}
-        @if($reportCard->ai_analysis_status !== 'completed')
-            <button class="btn-primary" id="btnGenerateAi" onclick="generateAiAnalysis()" style="background: linear-gradient(135deg, #8b5cf6, #6366f1);">
-                <i class="fas fa-magic"></i> Generate Analisis AI
-            </button>
-        @else
-            <button class="btn-primary" id="btnRegenerateAi" onclick="generateAiAnalysis(true)" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);">
-                <i class="fas fa-redo"></i> Re-generate
-            </button>
-        @endif
-    </div>
-
-    {{-- State 1: Loading / Processing --}}
-    <div id="aiLoading" style="display: none; text-align: center; padding: 40px;">
-        <div style="width: 50px; height: 50px; border: 3px solid rgba(139, 92, 246, 0.3); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-        <p style="color: var(--text-secondary); font-size: 0.95rem;">Sedang menganalisis raport dengan AI...</p>
-        <p style="color: var(--text-secondary); font-size: 0.8rem;">Proses ini membutuhkan waktu 10-30 detik.</p>
-    </div>
-
-    {{-- State 2: Belum ada analisis --}}
-    <div id="aiEmpty" style="{{ $reportCard->ai_analysis_status === 'completed' ? 'display: none;' : '' }} text-align: center; padding: 40px;">
-        <div style="width: 60px; height: 60px; background: rgba(139, 92, 246, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-            <i class="fas fa-robot" style="font-size: 1.5rem; color: #8b5cf6;"></i>
-        </div>
-        <p style="color: var(--text-secondary);">Belum ada analisis AI. Klik tombol <strong>"Generate Analisis AI"</strong> untuk memulai.</p>
-    </div>
-
-    {{-- State 3: Hasil analisis AI --}}
-    <div id="aiResult" style="{{ $reportCard->ai_analysis_status !== 'completed' ? 'display: none;' : '' }}">
-        @if($reportCard->ai_analysis_status === 'completed' && $reportCard->ai_analysis)
-            @php $ai = $reportCard->ai_analysis; @endphp
-
-            {{-- Ringkasan --}}
-            @if(!empty($ai['ringkasan']))
-            <div style="margin-bottom: 24px; padding: 20px; background: rgba(59, 130, 246, 0.05); border-left: 4px solid #3b82f6; border-radius: 0 12px 12px 0;">
-                <h4 style="margin: 0 0 12px 0; color: #3b82f6; font-family: 'Outfit', sans-serif;">
-                    <i class="fas fa-chart-line"></i> Ringkasan
-                </h4>
-                <p style="color: var(--text-primary); line-height: 1.7; margin: 0; white-space: pre-line;">{{ $ai['ringkasan'] }}</p>
-            </div>
-            @endif
-
-            {{-- Kelebihan --}}
-            @if(!empty($ai['kelebihan']))
-            <div style="margin-bottom: 24px; padding: 20px; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; border-radius: 0 12px 12px 0;">
-                <h4 style="margin: 0 0 12px 0; color: #10b981; font-family: 'Outfit', sans-serif;">
-                    <i class="fas fa-star"></i> Kelebihan
-                </h4>
-                <p style="color: var(--text-primary); line-height: 1.7; margin: 0; white-space: pre-line;">{{ $ai['kelebihan'] }}</p>
-            </div>
-            @endif
-
-            {{-- Kekurangan --}}
-            @if(!empty($ai['kekurangan']))
-            <div style="margin-bottom: 24px; padding: 20px; background: rgba(239, 68, 68, 0.05); border-left: 4px solid #ef4444; border-radius: 0 12px 12px 0;">
-                <h4 style="margin: 0 0 12px 0; color: #ef4444; font-family: 'Outfit', sans-serif;">
-                    <i class="fas fa-exclamation-triangle"></i> Kekurangan
-                </h4>
-                <p style="color: var(--text-primary); line-height: 1.7; margin: 0; white-space: pre-line;">{{ $ai['kekurangan'] }}</p>
-            </div>
-            @endif
-
-            {{-- Rekomendasi --}}
-            @if(!empty($ai['rekomendasi']))
-            <div style="margin-bottom: 0; padding: 20px; background: rgba(139, 92, 246, 0.05); border-left: 4px solid #8b5cf6; border-radius: 0 12px 12px 0;">
-                <h4 style="margin: 0 0 12px 0; color: #8b5cf6; font-family: 'Outfit', sans-serif;">
-                    <i class="fas fa-lightbulb"></i> Rekomendasi
-                </h4>
-                <p style="color: var(--text-primary); line-height: 1.7; margin: 0; white-space: pre-line;">{{ $ai['rekomendasi'] }}</p>
-            </div>
-            @endif
-        @endif
-    </div>
-
-    {{-- State 4: Gagal --}}
-    <div id="aiFailed" style="display: none; text-align: center; padding: 40px;">
-        <div style="width: 60px; height: 60px; background: rgba(239, 68, 68, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-            <i class="fas fa-times" style="font-size: 1.5rem; color: #ef4444;"></i>
-        </div>
-        <p style="color: #ef4444; font-weight: 600;">Gagal menghasilkan analisis AI.</p>
-        <p style="color: var(--text-secondary); font-size: 0.85rem;">Silakan coba lagi dengan menekan tombol "Generate Analisis AI".</p>
-    </div>
-</div>
-
-<style>
-    @keyframes spin { to { transform: rotate(360deg); } }
-</style>
-@endsection
-
-@push('scripts')
-<script>
-    const REPORT_CARD_ID = {{ $reportCard->id }};
-    let aiPollingInterval = null;
-
-    /**
-     * Fungsi utama untuk memulai generate analisis AI.
-     * @param {boolean} isRegenerate - true jika user klik "Re-generate"
-     */
-    function generateAiAnalysis(isRegenerate = false) {
-        // Konfirmasi jika re-generate
-        if (isRegenerate) {
-            if (!confirm('Yakin ingin men-generate ulang analisis AI? Hasil sebelumnya akan ditimpa.')) {
-                return;
-            }
-        }
-
-        // Tampilkan state loading
-        showAiState('loading');
-
-        // Kirim POST request ke backend
-        fetch(`/admin/report-cards/${REPORT_CARD_ID}/generate-ai-analysis`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
-                    || document.querySelector('input[name="_token"]')?.value,
-                'Accept': 'application/json'
-            },
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                if (data.data.ai_analysis_status === 'completed' && data.data.ai_analysis) {
-                    // Sudah selesai (mungkin dari cache)
-                    renderAiResult(data.data.ai_analysis);
-                    showAiState('result');
-                } else {
-                    // Mulai polling
-                    startAiPolling();
-                }
-            } else {
-                showToast(data.message || 'Gagal memulai analisis AI.', 'error');
-                showAiState('empty');
-            }
-        })
-        .catch(err => {
-            console.error('Error generating AI analysis:', err);
-            showToast('Terjadi kesalahan sistem.', 'error');
-            showAiState('empty');
+    // Ambil data nama sesi
+    $sessions = \App\Models\ExamSession::whereIn('id', $commonSessionIds)
+        ->get()
+        ->map(function ($session) {
+            return [
+                'id'   => $session->id,
+                'name' => $session->name,
+            ];
         });
+
+    return $this->successResponse([
+        'sessions' => $sessions,
+    ]);
+}
+```
+
+#### Method 2: `bulkGenerateReport`
+
+Method ini menerima daftar `user_ids` dan `session_ids`, lalu membuat `ReportCard` dan dispatch `GenerateReportCardJob` untuk SETIAP user.
+
+```php
+/**
+ * Bulk generate raport untuk beberapa peserta sekaligus.
+ * Menerima: { user_ids: [1,2,3], session_ids: [5,6] }
+ * Mengembalikan: array of report_card_id yang baru dibuat
+ */
+public function bulkGenerateReport(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'user_ids'      => 'required|array|min:1',
+        'user_ids.*'    => 'integer|exists:users,id',
+        'session_ids'   => 'required|array|min:1',
+        'session_ids.*' => 'integer|exists:exam_sessions,id',
+    ]);
+
+    if ($validator->fails()) {
+        return $this->validationResponse($validator->errors());
     }
 
-    /**
-     * Polling status analisis AI setiap 3 detik.
-     */
-    function startAiPolling() {
-        // Clear polling sebelumnya jika ada
-        if (aiPollingInterval) clearInterval(aiPollingInterval);
+    $reportCards = [];
 
-        aiPollingInterval = setInterval(() => {
-            fetch(`/admin/report-cards/${REPORT_CARD_ID}/ai-analysis-status`, {
-                headers: { 'Accept': 'application/json' }
-            })
-            .then(res => res.json())
-            .then(data => {
-                const status = data.data.ai_analysis_status;
+    foreach ($request->user_ids as $userId) {
+        $reportCard = ReportCard::create([
+            'user_id'      => $userId,
+            'generated_by' => auth()->id(),
+            'session_ids'  => $request->session_ids,
+            'status'       => 'processing',
+        ]);
 
-                if (status === 'completed') {
-                    clearInterval(aiPollingInterval);
-                    aiPollingInterval = null;
-                    renderAiResult(data.data.ai_analysis);
-                    showAiState('result');
-                    showToast('Analisis AI berhasil digenerate!');
-                } else if (status === 'failed') {
-                    clearInterval(aiPollingInterval);
-                    aiPollingInterval = null;
-                    showAiState('failed');
-                    showToast('Gagal menghasilkan analisis AI.', 'error');
-                }
-                // Jika masih 'processing', polling lanjut
-            })
-            .catch(() => {
-                clearInterval(aiPollingInterval);
-                aiPollingInterval = null;
-                showAiState('failed');
-            });
-        }, 3000); // Poll setiap 3 detik
-    }
+        GenerateReportCardJob::dispatch($reportCard->id);
 
-    /**
-     * Render hasil analisis AI ke dalam DOM.
-     * @param {object} analysis - Object dengan keys: ringkasan, kelebihan, kekurangan, rekomendasi
-     */
-    function renderAiResult(analysis) {
-        if (!analysis) return;
-
-        const sections = [
-            { key: 'ringkasan',   icon: 'fa-chart-line',           color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.05)',  label: 'Ringkasan' },
-            { key: 'kelebihan',   icon: 'fa-star',                 color: '#10b981', bgColor: 'rgba(16, 185, 129, 0.05)',  label: 'Kelebihan' },
-            { key: 'kekurangan',  icon: 'fa-exclamation-triangle', color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.05)',   label: 'Kekurangan' },
-            { key: 'rekomendasi', icon: 'fa-lightbulb',            color: '#8b5cf6', bgColor: 'rgba(139, 92, 246, 0.05)',  label: 'Rekomendasi' },
+        $user = \App\Models\User::find($userId);
+        $reportCards[] = [
+            'report_card_id' => $reportCard->id,
+            'user_id'        => $userId,
+            'user_name'      => $user->name,
         ];
-
-        let html = '';
-        sections.forEach((section, index) => {
-            const content = analysis[section.key];
-            if (content) {
-                const isLast = index === sections.length - 1;
-                html += `
-                    <div style="margin-bottom: ${isLast ? '0' : '24px'}; padding: 20px; background: ${section.bgColor}; border-left: 4px solid ${section.color}; border-radius: 0 12px 12px 0;">
-                        <h4 style="margin: 0 0 12px 0; color: ${section.color}; font-family: 'Outfit', sans-serif;">
-                            <i class="fas ${section.icon}"></i> ${section.label}
-                        </h4>
-                        <p style="color: var(--text-primary); line-height: 1.7; margin: 0; white-space: pre-line;">${escapeHtml(content)}</p>
-                    </div>
-                `;
-            }
-        });
-
-        document.getElementById('aiResult').innerHTML = html;
-
-        // Update tombol: ganti Generate jadi Re-generate
-        const btnGenerate = document.getElementById('btnGenerateAi');
-        if (btnGenerate) {
-            btnGenerate.outerHTML = `
-                <button class="btn-primary" id="btnRegenerateAi" onclick="generateAiAnalysis(true)" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);">
-                    <i class="fas fa-redo"></i> Re-generate
-                </button>
-            `;
-        }
     }
 
-    /**
-     * Tampilkan state tertentu, sembunyikan yang lain.
-     * @param {string} state - 'loading' | 'empty' | 'result' | 'failed'
-     */
-    function showAiState(state) {
-        document.getElementById('aiLoading').style.display = state === 'loading' ? 'block' : 'none';
-        document.getElementById('aiEmpty').style.display   = state === 'empty'   ? 'block' : 'none';
-        document.getElementById('aiResult').style.display   = state === 'result'  ? 'block' : 'none';
-        document.getElementById('aiFailed').style.display   = state === 'failed'  ? 'block' : 'none';
-    }
+    return $this->successResponse([
+        'report_cards' => $reportCards,
+    ], 'Bulk raport sedang diproses.');
+}
+```
 
-    /**
-     * Escape HTML untuk mencegah XSS.
-     */
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.appendChild(document.createTextNode(text));
-        return div.innerHTML;
-    }
-</script>
-@endpush
+> **Catatan:** Jangan lupa tambahkan `use App\Models\ExamSession;` di bagian atas controller jika belum ada.
+
+---
+
+### Tahap 5: Tambah JavaScript di View
+
+**File:** `resources/views/admin/participants/index.blade.php`
+
+**Apa yang dilakukan:**  
+Tambahkan blok JavaScript baru di dalam `@push('scripts')`, SEBELUM tag penutup `</script>`. Kode ini mengelola semua interaksi modal Bulk Raport.
+
+**Berikut pseudocode yang harus diimplementasikan sebagai JavaScript:**
+
+```
+VARIABLE: selectedUserIds = []  // Array user_id yang dipilih
+VARIABLE: bulkReportCardIds = []  // Array report_card_id yang sedang diproses
+
+FUNCTION openBulkReportModal():
+    1. Reset semua state (semua step hidden kecuali step 1)
+    2. Tampilkan modal (add class 'active')
+    3. Ambil SEMUA peserta dari tabel HTML yang sudah ada di halaman
+       - Loop setiap <tr> di tbody tabel peserta
+       - Untuk setiap baris, ambil:
+         - user_id dari onclick attribute tombol edit: editParticipant(ID)
+         - Nama dari kolom pertama
+       - Buat checkbox item untuk setiap peserta
+    4. Tampilkan di container #bulkParticipantList
+    
+    ALTERNATIF (lebih baik):
+    - Buat API endpoint baru GET /admin/participants/all-basic 
+      yang mengembalikan semua peserta (tanpa pagination)
+    - Atau gunakan data dari halaman saat ini saja (sesuai pagination)
+    
+    CATATAN: Karena halaman participants sudah pakai pagination,
+    sebaiknya buat endpoint baru yang mengembalikan SEMUA user role 'basic'
+    agar admin bisa pilih dari semua peserta, bukan hanya yang di halaman ini.
+
+FUNCTION closeBulkReportModal():
+    1. Sembunyikan modal (remove class 'active')
+
+FUNCTION filterBulkParticipants():
+    1. Ambil nilai input search
+    2. Filter daftar peserta yang tampil berdasarkan nama
+
+FUNCTION toggleSelectAllParticipants():
+    1. Jika checkbox "Select All" dicentang, centang semua
+    2. Jika di-uncheck, uncheck semua
+    3. Update counter "X peserta dipilih"
+
+FUNCTION updateSelectedCount():
+    1. Hitung jumlah checkbox yang dicentang
+    2. Update text #bulkSelectedCount
+
+FUNCTION bulkGoToStep2():
+    1. Kumpulkan semua user_id yang dicentang
+    2. Jika kosong, tampilkan showToast('Pilih minimal 1 peserta', 'error')
+    3. Simpan ke selectedUserIds
+    4. Sembunyikan Step 1, tampilkan Step 2
+    5. Tampilkan loading
+    6. Fetch GET /admin/participants/bulk-report/sessions?user_ids[]=1&user_ids[]=2...
+    7. Parse response, tampilkan daftar sesi sebagai checkbox
+    8. Jika sesi kosong, tampilkan pesan "Tidak ada sesi ujian yang dikerjakan semua peserta"
+    9. Sembunyikan loading, tampilkan daftar sesi dan tombol action
+
+FUNCTION bulkBackToStep1():
+    1. Sembunyikan Step 2, tampilkan Step 1
+
+FUNCTION bulkSubmitGenerate():
+    1. Kumpulkan semua session_id yang dicentang
+    2. Jika kosong, tampilkan showToast('Pilih minimal 1 sesi', 'error')
+    3. Sembunyikan Step 2, tampilkan Step 3
+    4. Buat progress item per peserta (nama + spinner)
+    5. Fetch POST /admin/participants/bulk-report/generate
+       Body: { user_ids: selectedUserIds, session_ids: [...] }
+    6. Dari response, ambil array report_cards
+    7. Simpan ke bulkReportCardIds
+    8. Mulai polling status untuk semua report card
+
+FUNCTION pollBulkReportStatus():
+    1. Setiap 2 detik, loop semua report_card_id
+    2. Untuk setiap ID, fetch GET /admin/report-cards/{id}/status
+       (GUNAKAN ENDPOINT YANG SUDAH ADA, tidak perlu buat baru!)
+    3. Jika status = 'completed':
+       - Update UI progress item peserta tsb menjadi centang hijau
+    4. Jika status = 'failed':
+       - Update UI progress item peserta tsb menjadi silang merah
+    5. Jika SEMUA sudah selesai (completed/failed):
+       - Stop polling
+       - Sembunyikan Step 3, tampilkan Step 4
+       - Tampilkan daftar hasil dengan link "Lihat Raport"
+```
+
+**Contoh implementasi JavaScript (bisa langsung dicopy):**
+
+Implementasi akan mengikuti pola yang sudah ada di `openReportModal()`, `submitGenerateReport()`, dan `pollReportStatus()` di file yang sama. Bedanya:
+- Alih-alih 1 user, kita memproses BANYAK user
+- Polling dilakukan untuk BANYAK report card sekaligus
+- Ada 4 step alih-alih 4 state
+
+---
+
+### Tahap 6 (Opsional tapi Direkomendasikan): Endpoint List All Participants
+
+**File:** `app/Http/Controllers/Admin/ParticipantController.php`  
+**File:** `routes/web.php`
+
+Karena halaman peserta sudah pakai **pagination** (hanya tampil ~15 peserta per halaman), modal bulk raport perlu bisa mengambil SEMUA peserta. Ada 2 opsi:
+
+**Opsi A (Lebih Simpel):** Ambil data dari tabel HTML di halaman saat ini saja.  
+- Pro: Tidak perlu endpoint baru  
+- Kontra: Admin hanya bisa pilih peserta yang tampil di halaman saat ini  
+
+**Opsi B (Direkomendasikan):** Buat endpoint API baru.
+
+Route (taruh SEBELUM resource route):
+```php
+Route::get('/admin/participants/all-basic', [\App\Http\Controllers\Admin\ParticipantController::class, 'allBasicParticipants'])->name('admin.participants.all-basic');
+```
+
+Method:
+```php
+public function allBasicParticipants()
+{
+    $users = \App\Models\User::where('role', 'basic')
+        ->orderBy('name')
+        ->get(['id', 'name', 'email']);
+
+    return $this->successResponse([
+        'participants' => $users,
+    ]);
+}
 ```
 
 ---
 
-### TAHAP 7: Testing
+## Checklist Sebelum Merge
 
-Lakukan testing dengan urutan berikut:
-
-#### 7A. Pastikan Migration Berhasil
-
-```bash
-php artisan migrate:status
-```
-
-Pastikan migration baru (`add_ai_analysis_to_report_cards_table`) sudah ter-migrate.
-
-#### 7B. Pastikan Queue Worker Berjalan
-
-```bash
-php artisan queue:work --tries=3
-```
-
-Job analisis AI akan berjalan di background melalui queue. Pastikan queue worker aktif.
-
-#### 7C. Test Flow Lengkap
-
-1. Buka halaman `/admin/participants`
-2. Klik icon "Cetak Raport" (ikon hijau) pada salah satu peserta
-3. Pilih sesi ujian, klik "Generate Raport"
-4. Setelah raport selesai, klik "Lihat Raport" → Ini akan membuka halaman `/admin/report-cards/{id}/view`
-5. Scroll ke bawah, akan ada section "Analisis AI"
-6. Klik tombol **"Generate Analisis AI"**
-7. Tunggu loading spinner (10-30 detik)
-8. Setelah selesai, akan muncul 4 section: Ringkasan, Kelebihan, Kekurangan, Rekomendasi
-9. Test tombol **"Re-generate"** untuk memastikan analisis bisa digenerate ulang
-
-#### 7D. Test Error Handling
-
-1. Matikan queue worker, klik "Generate Analisis AI"
-2. Pastikan status tetap "processing" dan tidak crash
-3. Coba set `OPENAI_API_KEY` ke value salah, pastikan status berubah ke "failed" dan UI menampilkan pesan error
+- [ ] Tombol "Bulk Raport" muncul di samping "Tambah Peserta" 
+- [ ] Modal Step 1 menampilkan daftar peserta dengan checkbox
+- [ ] Fitur search/filter di Step 1 berfungsi
+- [ ] Tombol "Pilih Semua" berfungsi
+- [ ] Step 2 menampilkan sesi ujian yang valid (irisan dari semua peserta terpilih)
+- [ ] Klik "Generate Raport" membuat report card per peserta
+- [ ] Progress per peserta ditampilkan di Step 3
+- [ ] Polling status berjalan dan UI terupdate per peserta
+- [ ] Step 4 menampilkan daftar raport yang sukses dengan link "Lihat"
+- [ ] Error handling: jika ada raport gagal, tetap tampilkan yang sukses
+- [ ] Raport yang digenerate bisa dilihat di History Raport masing-masing peserta
 
 ---
 
-## Checklist Akhir
+## File yang Akan Diubah/Ditambah
 
-Sebelum PR / merge, pastikan:
+| File | Aksi | Deskripsi |
+|------|------|-----------|
+| `resources/views/admin/participants/index.blade.php` | MODIFY | Tambah tombol, modal HTML, dan JavaScript |
+| `app/Http/Controllers/Admin/ParticipantController.php` | MODIFY | Tambah 2-3 method baru |
+| `routes/web.php` | MODIFY | Tambah 2-3 route baru |
 
-- [ ] Migration baru sudah dibuat dan berhasil dijalankan
-- [ ] Model `ReportCard` sudah diupdate (`$fillable` dan `$casts`)
-- [ ] Method `generateReportCardAnalysis()` dan `buildReportCardPrompt()` sudah ditambahkan di `AIService`
-- [ ] Job `GenerateReportCardAiAnalysisJob` sudah dibuat
-- [ ] 2 Route baru sudah ditambahkan di `web.php`
-- [ ] 2 Method baru (`generateAiAnalysis`, `aiAnalysisStatus`) sudah ditambahkan di `ParticipantController`
-- [ ] View `report.blade.php` sudah diupdate dengan section Analisis AI + JavaScript polling
-- [ ] Queue worker berjalan dan job berhasil dieksekusi
-- [ ] Tidak ada error di `storage/logs/laravel.log`
-- [ ] Tombol Generate dan Re-generate berfungsi
-- [ ] XSS prevention sudah diterapkan (`escapeHtml()` di JavaScript)
+**TIDAK perlu** membuat migration baru karena tabel `report_cards` yang sudah ada mendukung fitur ini sepenuhnya (1 record per user per generate).
 
 ---
 
-## Daftar File yang Diubah / Dibuat
+## Tips untuk Implementor
 
-| Aksi | File |
-|---|---|
-| **BUAT BARU** | `database/migrations/xxxx_add_ai_analysis_to_report_cards_table.php` |
-| **BUAT BARU** | `app/Jobs/GenerateReportCardAiAnalysisJob.php` |
-| **EDIT** | `app/Models/ReportCard.php` (tambah `$fillable` dan `$casts`) |
-| **EDIT** | `app/Services/AIService.php` (tambah 2 method baru) |
-| **EDIT** | `routes/web.php` (tambah 2 route baru) |
-| **EDIT** | `app/Http/Controllers/Admin/ParticipantController.php` (tambah 2 method + 1 import) |
-| **EDIT** | `resources/views/admin/participants/report.blade.php` (tambah section AI + JS) |
+1. **Mulai dari backend dulu** (route + controller method), test pakai Postman/curl
+2. **Lalu buat UI** (tombol + modal HTML) 
+3. **Terakhir JavaScript** (interaksi modal)
+4. Selalu lihat **pola kode yang sudah ada** di file yang sama — jangan buat pola baru
+5. Gunakan `showToast()` untuk notifikasi (sudah ada di layout admin)
+6. Gunakan `customConfirm()` untuk konfirmasi (sudah ada di layout admin)
+7. Semua fetch request harus kirim header `'X-CSRF-TOKEN'` dan `'Accept': 'application/json'`
+8. Endpoint polling status (`/admin/report-cards/{id}/status`) sudah ada, **jangan buat baru**
