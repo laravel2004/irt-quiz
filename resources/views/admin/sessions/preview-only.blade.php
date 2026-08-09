@@ -95,7 +95,7 @@
     </a>
 </div>
 
-<div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 32px;">
+<div class="glass animate-fade-in no-print" style="padding: 32px; margin-bottom: 32px;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
             <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 8px;">Daftar Soal Terpilih</h2>
