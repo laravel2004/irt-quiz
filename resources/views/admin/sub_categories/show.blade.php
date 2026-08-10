@@ -123,6 +123,12 @@
 
 <style>
     /* Preview Modal Custom Styling */
+    #previewText img, #previewExplanation img, #previewOptions img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        margin: 8px 0;
+    }
     .preview-option-item {
         padding: 12px 16px;
         background: rgba(255,255,255,0.03);

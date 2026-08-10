@@ -166,4 +166,23 @@ class QuestionBankController extends Controller
 
         return $this->successResponse($codes);
     }
+
+    public function uploadImage(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // max 5MB
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => $validator->errors()->first()
+            ], 422);
+        }
+
+        $path = $request->file('file')->store('questions/inline', 'public');
+
+        return response()->json([
+            'location' => '/storage/' . $path
+        ]);
+    }
 }

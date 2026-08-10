@@ -1,484 +1,402 @@
-# Issue: Fitur Bulk Generate Raport
+# 🖼️ ISSUE: Fitur Upload Gambar di Konten Soal & Pembahasan
 
-## Deskripsi
-
-Tambahkan fitur **Bulk Raport** di halaman **Manajemen Peserta** (`/admin/participants`).  
-Saat ini, admin hanya bisa mencetak raport satu per satu per peserta. Fitur ini memungkinkan admin memilih **beberapa peserta sekaligus**, lalu memilih **sesi ujian**, kemudian men-generate raport untuk semua peserta yang dipilih secara massal.
-
----
-
-## Alur Fitur (User Flow)
-
-```
-1. Admin masuk ke halaman /admin/participants
-2. Admin klik tombol "Bulk Raport" (di samping tombol "Tambah Peserta")
-3. Muncul modal STEP 1: Pilih peserta (checklist dari daftar peserta)
-4. Admin centang peserta-peserta yang diinginkan, lalu klik "Lanjut"
-5. Muncul modal STEP 2: Pilih sesi ujian (checklist dari sesi yang tersedia)
-   - Sesi yang ditampilkan adalah sesi yang SEMUA peserta terpilih pernah ikuti
-6. Admin centang sesi ujian yang diinginkan, lalu klik "Generate Raport"
-7. Muncul state PROCESSING: Loading bar/spinner per peserta
-8. Backend men-dispatch Job generate raport per peserta
-9. Frontend polling status semua raport
-10. Setelah selesai semua, muncul state DONE: Daftar raport yang berhasil, 
-    dengan tombol "Lihat" per peserta
-```
+**Prioritas:** Medium  
+**Estimasi:** 4-6 jam  
+**Halaman terkait:** `http://localhost:8000/admin/sub-categories/{id}` → Tombol "Buat Bank Soal"
 
 ---
 
-## Referensi Kode yang Sudah Ada
+## 📋 Deskripsi
 
-Sebelum mulai, **baca dan pahami** file-file ini karena fitur baru akan mengikuti pola yang sama:
+Saat ini, form bank soal menggunakan **TinyMCE** sebagai rich text editor untuk field **Konten Soal** (`question_text`) dan **Pembahasan** (`explanation`). Editor ini sudah support formatting teks (bold, italic, list, dll) dan rumus matematika.
 
-| Fungsi | File | Keterangan |
-|--------|------|------------|
-| **Halaman Peserta (View)** | `resources/views/admin/participants/index.blade.php` | Template Blade utama. Lihat bagaimana modal cetak raport per-user bekerja (line 203-250) |
-| **Controller** | `app/Http/Controllers/Admin/ParticipantController.php` | Lihat method `generateReport()` (line 166-193) sebagai contoh yang akan di-clone |
-| **Routes** | `routes/web.php` (line 70-81) | Semua route terkait raport ada di sini |
-| **Model** | `app/Models/ReportCard.php` | Model raport, perhatikan `fillable` dan `casts` |
-| **Job** | `app/Jobs/GenerateReportCardJob.php` | Job yang memproses raport di background queue |
-| **Migration** | `database/migrations/2026_08_08_120000_create_report_cards_table.php` | Struktur tabel `report_cards` |
+**Yang diinginkan:** Tambahkan kemampuan **upload gambar langsung** di dalam editor TinyMCE untuk kedua field tersebut (Konten Soal dan Pembahasan), sehingga admin bisa menyisipkan gambar di tengah-tengah teks soal maupun pembahasan.
+
+> ⚠️ **PENTING:** Ini BERBEDA dengan field "Gambar Soal (Opsional)" yang sudah ada. Field itu adalah gambar terpisah (satu file upload). Yang diminta di sini adalah kemampuan menyisipkan gambar **di dalam** konten teks editor (inline image).
 
 ---
 
-## Tahapan Implementasi
+## 🔍 Hasil Analisis Codebase
 
-### Tahap 1: Tambah Tombol "Bulk Raport" di View
+### A. Kondisi Database (Migration)
 
-**File:** `resources/views/admin/participants/index.blade.php`
+**Kolom yang sudah ada di tabel `question_banks`:**
 
-**Apa yang dilakukan:**  
-Tambahkan tombol baru di sebelah tombol "Tambah Peserta".
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `question_text` | `text` | Konten soal — sudah menyimpan HTML dari TinyMCE |
+| `question_image` | `string, nullable` | Gambar terpisah (bukan inline) — sudah ada |
+| `explanation` | `text, nullable` | Pembahasan — sudah menyimpan HTML dari TinyMCE |
 
-**Lokasi tepat:** Cari baris ini (sekitar line 25-27):
-```html
-<button class="btn-primary" onclick="openParticipantModal('create')" style="flex-shrink: 0;">
-    <i class="fas fa-plus"></i> Tambah Peserta
-</button>
+✅ **Kesimpulan Database:** Kolom `question_text` dan `explanation` bertipe `TEXT` dan sudah menyimpan konten HTML. Gambar inline akan disimpan sebagai tag `<img src="...">` di dalam HTML. **TIDAK PERLU menambah kolom baru atau membuat migration baru.** Tipe `TEXT` di MySQL bisa menampung hingga ~65KB, yang cukup untuk HTML dengan URL gambar.
+
+### B. Kondisi TinyMCE Saat Ini
+
+**File:** `resources/views/admin/questions/_modal_scripts.blade.php` (baris 11-83)
+
+```javascript
+// Konfigurasi TinyMCE saat ini:
+tinymce.init({
+    selector: '#qText',                    // Konten Soal
+    plugins: 'lists link code table charmap', // ❌ Belum ada plugin 'image'
+    toolbar: '... | charmap code | mathBtn',  // ❌ Belum ada tombol 'image'
+});
+
+tinymce.init({
+    selector: '#explanationText',           // Pembahasan
+    plugins: 'lists link code table charmap', // ❌ Belum ada plugin 'image'
+    toolbar: '... | charmap code | mathBtn',  // ❌ Belum ada tombol 'image'
+});
 ```
 
-**Tambahkan SEBELUM tombol di atas:**
-```html
-<button class="btn-primary" onclick="openBulkReportModal()" style="flex-shrink: 0; background: #10b981;">
-    <i class="fas fa-file-alt"></i> Bulk Raport
-</button>
-```
+### C. Kondisi Backend
+
+**File:** `app/Http/Controllers/Admin/QuestionBankController.php`
+
+- Method `store()` (baris 53-87): Sudah handle upload `question_image` sebagai file terpisah
+- Method `update()` (baris 96-136): Sama, sudah handle upload file terpisah
+- **Belum ada endpoint** untuk meng-handle upload gambar inline dari TinyMCE
+
+### D. Kondisi Storage
+
+- Storage symlink sudah aktif: `public/storage` → `storage/app/public`
+- Disk `public` sudah dikonfigurasi di `config/filesystems.php`
+- Gambar `question_image` disimpan ke folder `questions/` di disk `public`
+
+### E. Tampilan Student-Side
+
+- **Exam view** (`resources/views/exam/main.blade.php`): Render `question_text` via `innerHTML` (baris 487) — ✅ sudah support tag `<img>`
+- **Review view** (`resources/views/participant/review_category.blade.php`): Render via `{!! $question->question_text !!}` (baris 128) dan `{!! $question->explanation !!}` (baris 218) — ✅ sudah support tag `<img>`
 
 ---
 
-### Tahap 2: Tambah Modal Bulk Raport di View
+## 📝 Tahapan Implementasi
 
-**File:** `resources/views/admin/participants/index.blade.php`
+### Tahap 1: Buat Endpoint Upload Gambar di Backend
 
-**Apa yang dilakukan:**  
-Tambahkan HTML modal baru SETELAH modal `reportHistoryModal` (setelah line 287). Modal ini punya 4 state:
+**Tujuan:** Buat API endpoint baru yang menerima file gambar dari TinyMCE dan mengembalikan URL gambar yang bisa diakses publik.
 
-1. **Step 1 - Pilih Peserta**: Tampilkan daftar peserta dengan checkbox
-2. **Step 2 - Pilih Sesi Ujian**: Tampilkan daftar sesi ujian dengan checkbox
-3. **Processing**: Loading spinner dengan progress per peserta
-4. **Done**: Daftar hasil raport yang berhasil
+**File yang diubah:** `app/Http/Controllers/Admin/QuestionBankController.php`
 
-**HTML modal yang harus ditambahkan:**
+**Yang harus dilakukan:**
 
-```html
-<!-- Modal Bulk Raport -->
-<div class="modal-overlay" id="bulkReportModal">
-    <div class="modal-content glass animate-fade-in" style="max-width: 700px;">
-        <div class="modal-header">
-            <h3 id="bulkReportModalTitle">Bulk Generate Raport</h3>
-            <button class="close-modal" onclick="closeBulkReportModal()">&times;</button>
-        </div>
-
-        <!-- STEP 1: Pilih Peserta -->
-        <div id="bulkStep1">
-            <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 0.9rem;">
-                Centang peserta yang ingin dicetak raportnya:
-            </p>
-            
-            <!-- Search box untuk filter peserta -->
-            <div style="position: relative; margin-bottom: 16px;">
-                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
-                <input type="text" id="bulkSearchParticipant" class="form-input" placeholder="Cari nama peserta..." style="padding-left: 36px; margin-bottom: 0;" oninput="filterBulkParticipants()">
-            </div>
-            
-            <!-- Tombol Select All -->
-            <div style="margin-bottom: 12px;">
-                <label style="cursor: pointer; font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="bulkSelectAll" onchange="toggleSelectAllParticipants()" style="width: 16px; height: 16px;">
-                    Pilih Semua
-                </label>
-            </div>
-            
-            <div id="bulkParticipantList" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-                <!-- Diisi via JavaScript -->
-            </div>
-            
-            <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: space-between; align-items: center;">
-                <span id="bulkSelectedCount" style="font-size: 0.85rem; color: var(--text-secondary);">0 peserta dipilih</span>
-                <div style="display: flex; gap: 12px;">
-                    <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="closeBulkReportModal()">Batal</button>
-                    <button type="button" class="btn-primary" onclick="bulkGoToStep2()" style="background: #3b82f6;">
-                        Lanjut <i class="fas fa-arrow-right"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- STEP 2: Pilih Sesi Ujian -->
-        <div id="bulkStep2" style="display: none;">
-            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">
-                Pilih sesi ujian yang ingin dimasukkan ke raport:
-            </p>
-            
-            <!-- Loading saat fetch sesi -->
-            <div id="bulkSessionLoading" style="text-align: center; padding: 40px;">
-                <div style="width: 40px; height: 40px; border: 3px solid rgba(59, 130, 246, 0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-                <p style="color: var(--text-secondary);">Memuat daftar sesi ujian...</p>
-            </div>
-            
-            <div id="bulkSessionCheckboxes" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-                <!-- Diisi via JavaScript -->
-            </div>
-            
-            <div id="bulkStep2Actions" style="display: none;">
-                <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: space-between;">
-                    <button type="button" class="btn-primary" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);" onclick="bulkBackToStep1()">
-                        <i class="fas fa-arrow-left"></i> Kembali
-                    </button>
-                    <button type="button" class="btn-primary" onclick="bulkSubmitGenerate()" style="background: #10b981;">
-                        <i class="fas fa-file-alt"></i> Generate Raport
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- STEP 3: Processing -->
-        <div id="bulkStep3" style="display: none;">
-            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">
-                Raport sedang digenerate, mohon tunggu...
-            </p>
-            <div id="bulkProgressList" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
-                <!-- Progress per peserta diisi via JavaScript -->
-            </div>
-        </div>
-
-        <!-- STEP 4: Done -->
-        <div id="bulkStep4" style="display: none;">
-            <div style="text-align: center; margin-bottom: 24px;">
-                <div style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                    <i class="fas fa-check" style="font-size: 1.5rem; color: #10b981;"></i>
-                </div>
-                <h4>Bulk Raport Selesai!</h4>
-            </div>
-            <div id="bulkResultList" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
-                <!-- Daftar hasil raport diisi via JavaScript -->
-            </div>
-            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
-                <button type="button" class="btn-primary" onclick="closeBulkReportModal()">Tutup</button>
-            </div>
-        </div>
-    </div>
-</div>
-```
-
----
-
-### Tahap 3: Tambah Route Baru di Backend
-
-**File:** `routes/web.php`
-
-**Apa yang dilakukan:**  
-Tambahkan 2 route baru di dalam group `SuperAdminMiddleware`. 
-
-**PENTING:** Taruh route ini **SEBELUM** baris `Route::resource('/admin/participants', ...)` (line 71) agar tidak ditangkap oleh resource route sebagai parameter `{participant}`.
-
-```php
-// Bulk Raport
-Route::get('/admin/participants/bulk-report/sessions', [\App\Http\Controllers\Admin\ParticipantController::class, 'getBulkReportSessions'])->name('admin.participants.bulk-report-sessions');
-Route::post('/admin/participants/bulk-report/generate', [\App\Http\Controllers\Admin\ParticipantController::class, 'bulkGenerateReport'])->name('admin.participants.bulk-generate-report');
-```
-
----
-
-### Tahap 4: Tambah Method di Controller
-
-**File:** `app/Http/Controllers/Admin/ParticipantController.php`
-
-**Apa yang dilakukan:**  
-Tambahkan 2 method baru di dalam class `ParticipantController`:
-
-#### Method 1: `getBulkReportSessions`
-
-Method ini menerima daftar `user_ids[]` via query string, lalu mengembalikan sesi ujian yang **semua** user tersebut pernah ikuti (irisan/intersection).
+1. Tambahkan method baru `uploadImage` di `QuestionBankController`:
 
 ```php
 /**
- * Ambil daftar sesi ujian yang SEMUA user terpilih pernah ikuti.
- * Dipanggil via GET dengan query: ?user_ids[]=1&user_ids[]=2&user_ids[]=3
+ * Handle image upload from TinyMCE editor.
+ * Menerima file gambar, simpan ke storage, return URL.
  */
-public function getBulkReportSessions(Request $request)
+public function uploadImage(Request $request)
 {
     $validator = Validator::make($request->all(), [
-        'user_ids'   => 'required|array|min:1',
-        'user_ids.*' => 'integer|exists:users,id',
+        'file' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // max 5MB
     ]);
 
     if ($validator->fails()) {
-        return $this->validationResponse($validator->errors());
+        return response()->json([
+            'error' => $validator->errors()->first()
+        ], 422);
     }
 
-    $userIds = $request->user_ids;
+    $path = $request->file('file')->store('questions/inline', 'public');
 
-    // Untuk setiap user, ambil daftar exam_session_id yang pernah dikerjakan
-    $sessionSets = [];
-    foreach ($userIds as $userId) {
-        $sessionIds = ExamSessionParticipant::where('user_id', $userId)
-            ->whereNotNull('finished_at')
-            ->pluck('exam_session_id')
-            ->unique()
-            ->toArray();
-        $sessionSets[] = $sessionIds;
-    }
+    return response()->json([
+        'location' => asset('storage/' . $path)
+    ]);
+}
+```
 
-    // Cari irisan (intersection) dari semua set
-    // Ini agar hanya sesi yang SEMUA peserta pernah ikuti yang tampil
-    $commonSessionIds = array_values(array_intersect(...$sessionSets));
+**Penjelasan kode:**
+- `$request->file('file')` → ambil file yang diupload dari TinyMCE
+- `->store('questions/inline', 'public')` → simpan ke folder `storage/app/public/questions/inline/`
+- `asset('storage/' . $path)` → buat URL publik yang bisa diakses browser
+- TinyMCE mengharapkan response JSON dengan key `location` yang berisi URL gambar
 
-    // Ambil data nama sesi
-    $sessions = \App\Models\ExamSession::whereIn('id', $commonSessionIds)
-        ->get()
-        ->map(function ($session) {
-            return [
-                'id'   => $session->id,
-                'name' => $session->name,
-            ];
+> 💡 **Catatan:** Folder `questions/inline/` dipakai agar terpisah dari gambar `question_image` yang ada di `questions/`.
+
+---
+
+### Tahap 2: Tambah Route untuk Endpoint Upload
+
+**File yang diubah:** `routes/web.php`
+
+**Yang harus dilakukan:**
+
+Cari blok route admin yang di-protect oleh `SuperAdminMiddleware` (sekitar baris 64-68), lalu tambahkan route baru **di dalam** blok tersebut:
+
+```php
+Route::post('/admin/questions/upload-image', [
+    \App\Http\Controllers\Admin\QuestionBankController::class, 'uploadImage'
+])->name('admin.questions.upload-image');
+```
+
+> ⚠️ **PENTING:** Route ini **HARUS** ditaruh **SEBELUM** baris `Route::resource('/admin/questions', ...)` (baris 68). Kalau ditaruh setelahnya, route `resource` akan menangkap path `upload-image` sebagai parameter `{question}` dan error 404.
+
+**Lokasi yang benar (di antara baris 67 dan 68):**
+
+```php
+Route::get('/admin/questions/kode-soal', ...)->name('admin.questions.kode-soal');
+// ↓↓↓ TAMBAHKAN DI SINI ↓↓↓
+Route::post('/admin/questions/upload-image', [\App\Http\Controllers\Admin\QuestionBankController::class, 'uploadImage'])->name('admin.questions.upload-image');
+// ↑↑↑ SEBELUM RESOURCE ↑↑↑
+Route::resource('/admin/questions', ...)->names('admin.questions');
+```
+
+---
+
+### Tahap 3: Update Konfigurasi TinyMCE di Frontend
+
+**File yang diubah:** `resources/views/admin/questions/_modal_scripts.blade.php`
+
+**Yang harus dilakukan:**
+
+Ubah kedua inisialisasi TinyMCE (untuk `#qText` dan `#explanationText`) dengan menambahkan:
+1. Plugin `image` ke daftar plugins
+2. Tombol `image` ke toolbar
+3. Konfigurasi `images_upload_handler` sebagai custom uploader
+
+#### 3a. Ubah konfigurasi TinyMCE untuk `#qText` (Konten Soal)
+
+**Cari baris ini** (sekitar baris 23-52):
+
+```javascript
+tinymce.init({
+    selector: '#qText',
+    height: 250,
+    menubar: false,
+    skin: 'oxide',
+    content_css: false,
+    plugins: 'lists link code table charmap',
+    toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | charmap code | mathBtn',
+```
+
+**Ubah menjadi:**
+
+```javascript
+tinymce.init({
+    selector: '#qText',
+    height: 250,
+    menubar: false,
+    skin: 'oxide',
+    content_css: false,
+    plugins: 'lists link code table charmap image',
+    toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | image | charmap code | mathBtn',
+    // Konfigurasi upload gambar
+    automatic_uploads: true,
+    images_reuse_filename: false,
+    file_picker_types: 'image',
+    images_upload_handler: function(blobInfo) {
+        return new Promise(function(resolve, reject) {
+            var formData = new FormData();
+            formData.append('file', blobInfo.blob(), blobInfo.filename());
+
+            fetch('{{ route("admin.questions.upload-image") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(json) {
+                        reject('Upload gagal: ' + (json.error || response.statusText));
+                    });
+                }
+                return response.json();
+            })
+            .then(function(json) {
+                if (json && json.location) {
+                    resolve(json.location);
+                } else {
+                    reject('Response tidak valid dari server');
+                }
+            })
+            .catch(function(error) {
+                reject('Upload error: ' + error.message);
+            });
         });
-
-    return $this->successResponse([
-        'sessions' => $sessions,
-    ]);
-}
+    },
 ```
 
-#### Method 2: `bulkGenerateReport`
+#### 3b. Ubah konfigurasi TinyMCE untuk `#explanationText` (Pembahasan)
 
-Method ini menerima daftar `user_ids` dan `session_ids`, lalu membuat `ReportCard` dan dispatch `GenerateReportCardJob` untuk SETIAP user.
+**Lakukan hal yang PERSIS sama** seperti 3a, tapi untuk blok `tinymce.init` yang kedua (selector `#explanationText`, sekitar baris 54-83).
 
-```php
-/**
- * Bulk generate raport untuk beberapa peserta sekaligus.
- * Menerima: { user_ids: [1,2,3], session_ids: [5,6] }
- * Mengembalikan: array of report_card_id yang baru dibuat
- */
-public function bulkGenerateReport(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'user_ids'      => 'required|array|min:1',
-        'user_ids.*'    => 'integer|exists:users,id',
-        'session_ids'   => 'required|array|min:1',
-        'session_ids.*' => 'integer|exists:exam_sessions,id',
-    ]);
+Perubahan yang sama:
+- `plugins: 'lists link code table charmap image'` ← tambah `image`
+- `toolbar: '... | image | charmap code | mathBtn'` ← tambah `image`
+- Tambahkan seluruh blok `automatic_uploads`, `images_upload_handler`, dll (copy-paste yang sama)
 
-    if ($validator->fails()) {
-        return $this->validationResponse($validator->errors());
+---
+
+### Tahap 4: Tambah Styling untuk Gambar Inline
+
+**File yang diubah:** `resources/views/admin/questions/_modal_scripts.blade.php`
+
+**Yang harus dilakukan:**
+
+Di kedua konfigurasi TinyMCE, update `content_style` agar gambar yang dimasukkan ke editor terlihat rapi:
+
+**Cari:**
+```javascript
+content_style: `
+    body { 
+        font-family: 'Inter', sans-serif; 
+        font-size: 14px; 
+        color: #0f172a; 
+        background: #ffffff;
+        padding: 12px;
     }
+    p { margin: 0 0 10px; }
+`,
+```
 
-    $reportCards = [];
-
-    foreach ($request->user_ids as $userId) {
-        $reportCard = ReportCard::create([
-            'user_id'      => $userId,
-            'generated_by' => auth()->id(),
-            'session_ids'  => $request->session_ids,
-            'status'       => 'processing',
-        ]);
-
-        GenerateReportCardJob::dispatch($reportCard->id);
-
-        $user = \App\Models\User::find($userId);
-        $reportCards[] = [
-            'report_card_id' => $reportCard->id,
-            'user_id'        => $userId,
-            'user_name'      => $user->name,
-        ];
+**Ubah menjadi:**
+```javascript
+content_style: `
+    body { 
+        font-family: 'Inter', sans-serif; 
+        font-size: 14px; 
+        color: #0f172a; 
+        background: #ffffff;
+        padding: 12px;
     }
+    p { margin: 0 0 10px; }
+    img { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; }
+`,
+```
 
-    return $this->successResponse([
-        'report_cards' => $reportCards,
-    ], 'Bulk raport sedang diproses.');
+> 💡 Ini agar gambar yang disisipkan di editor tidak meluber keluar area editor.
+
+---
+
+### Tahap 5: Pastikan Gambar Inline Tampil di Sisi Student & Preview
+
+**File yang perlu dicek (BIASANYA tidak perlu diubah, tapi perlu ditambah CSS):**
+
+Karena konten `question_text` dan `explanation` sudah di-render sebagai raw HTML (`{!! !!}` atau `innerHTML`), gambar inline (`<img src="...">`) akan otomatis tampil. **Tapi** perlu pastikan styling-nya:
+
+#### 5a. Review view — `resources/views/participant/review_category.blade.php`
+
+**Cek baris 16-18** — sudah ada styling untuk `img` di `.review-explanation`:
+```css
+.review-explanation img {
+    max-width: 100%;
+    height: auto;
+    ...
 }
 ```
 
-> **Catatan:** Jangan lupa tambahkan `use App\Models\ExamSession;` di bagian atas controller jika belum ada.
+**Tambahkan** styling yang sama untuk konten soal jika belum ada. Cari class yang membungkus `question_text` dan tambahkan:
 
----
-
-### Tahap 5: Tambah JavaScript di View
-
-**File:** `resources/views/admin/participants/index.blade.php`
-
-**Apa yang dilakukan:**  
-Tambahkan blok JavaScript baru di dalam `@push('scripts')`, SEBELUM tag penutup `</script>`. Kode ini mengelola semua interaksi modal Bulk Raport.
-
-**Berikut pseudocode yang harus diimplementasikan sebagai JavaScript:**
-
-```
-VARIABLE: selectedUserIds = []  // Array user_id yang dipilih
-VARIABLE: bulkReportCardIds = []  // Array report_card_id yang sedang diproses
-
-FUNCTION openBulkReportModal():
-    1. Reset semua state (semua step hidden kecuali step 1)
-    2. Tampilkan modal (add class 'active')
-    3. Ambil SEMUA peserta dari tabel HTML yang sudah ada di halaman
-       - Loop setiap <tr> di tbody tabel peserta
-       - Untuk setiap baris, ambil:
-         - user_id dari onclick attribute tombol edit: editParticipant(ID)
-         - Nama dari kolom pertama
-       - Buat checkbox item untuk setiap peserta
-    4. Tampilkan di container #bulkParticipantList
-    
-    ALTERNATIF (lebih baik):
-    - Buat API endpoint baru GET /admin/participants/all-basic 
-      yang mengembalikan semua peserta (tanpa pagination)
-    - Atau gunakan data dari halaman saat ini saja (sesuai pagination)
-    
-    CATATAN: Karena halaman participants sudah pakai pagination,
-    sebaiknya buat endpoint baru yang mengembalikan SEMUA user role 'basic'
-    agar admin bisa pilih dari semua peserta, bukan hanya yang di halaman ini.
-
-FUNCTION closeBulkReportModal():
-    1. Sembunyikan modal (remove class 'active')
-
-FUNCTION filterBulkParticipants():
-    1. Ambil nilai input search
-    2. Filter daftar peserta yang tampil berdasarkan nama
-
-FUNCTION toggleSelectAllParticipants():
-    1. Jika checkbox "Select All" dicentang, centang semua
-    2. Jika di-uncheck, uncheck semua
-    3. Update counter "X peserta dipilih"
-
-FUNCTION updateSelectedCount():
-    1. Hitung jumlah checkbox yang dicentang
-    2. Update text #bulkSelectedCount
-
-FUNCTION bulkGoToStep2():
-    1. Kumpulkan semua user_id yang dicentang
-    2. Jika kosong, tampilkan showToast('Pilih minimal 1 peserta', 'error')
-    3. Simpan ke selectedUserIds
-    4. Sembunyikan Step 1, tampilkan Step 2
-    5. Tampilkan loading
-    6. Fetch GET /admin/participants/bulk-report/sessions?user_ids[]=1&user_ids[]=2...
-    7. Parse response, tampilkan daftar sesi sebagai checkbox
-    8. Jika sesi kosong, tampilkan pesan "Tidak ada sesi ujian yang dikerjakan semua peserta"
-    9. Sembunyikan loading, tampilkan daftar sesi dan tombol action
-
-FUNCTION bulkBackToStep1():
-    1. Sembunyikan Step 2, tampilkan Step 1
-
-FUNCTION bulkSubmitGenerate():
-    1. Kumpulkan semua session_id yang dicentang
-    2. Jika kosong, tampilkan showToast('Pilih minimal 1 sesi', 'error')
-    3. Sembunyikan Step 2, tampilkan Step 3
-    4. Buat progress item per peserta (nama + spinner)
-    5. Fetch POST /admin/participants/bulk-report/generate
-       Body: { user_ids: selectedUserIds, session_ids: [...] }
-    6. Dari response, ambil array report_cards
-    7. Simpan ke bulkReportCardIds
-    8. Mulai polling status untuk semua report card
-
-FUNCTION pollBulkReportStatus():
-    1. Setiap 2 detik, loop semua report_card_id
-    2. Untuk setiap ID, fetch GET /admin/report-cards/{id}/status
-       (GUNAKAN ENDPOINT YANG SUDAH ADA, tidak perlu buat baru!)
-    3. Jika status = 'completed':
-       - Update UI progress item peserta tsb menjadi centang hijau
-    4. Jika status = 'failed':
-       - Update UI progress item peserta tsb menjadi silang merah
-    5. Jika SEMUA sudah selesai (completed/failed):
-       - Stop polling
-       - Sembunyikan Step 3, tampilkan Step 4
-       - Tampilkan daftar hasil dengan link "Lihat Raport"
+```css
+.review-question-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 8px 0;
+}
 ```
 
-**Contoh implementasi JavaScript (bisa langsung dicopy):**
+#### 5b. Exam view — `resources/views/exam/main.blade.php`
 
-Implementasi akan mengikuti pola yang sudah ada di `openReportModal()`, `submitGenerateReport()`, dan `pollReportStatus()` di file yang sama. Bedanya:
-- Alih-alih 1 user, kita memproses BANYAK user
-- Polling dilakukan untuk BANYAK report card sekaligus
-- Ada 4 step alih-alih 4 state
+**Cari elemen dengan id `questionText`** (baris 487), lalu pastikan ada CSS:
 
----
-
-### Tahap 6 (Opsional tapi Direkomendasikan): Endpoint List All Participants
-
-**File:** `app/Http/Controllers/Admin/ParticipantController.php`  
-**File:** `routes/web.php`
-
-Karena halaman peserta sudah pakai **pagination** (hanya tampil ~15 peserta per halaman), modal bulk raport perlu bisa mengambil SEMUA peserta. Ada 2 opsi:
-
-**Opsi A (Lebih Simpel):** Ambil data dari tabel HTML di halaman saat ini saja.  
-- Pro: Tidak perlu endpoint baru  
-- Kontra: Admin hanya bisa pilih peserta yang tampil di halaman saat ini  
-
-**Opsi B (Direkomendasikan):** Buat endpoint API baru.
-
-Route (taruh SEBELUM resource route):
-```php
-Route::get('/admin/participants/all-basic', [\App\Http\Controllers\Admin\ParticipantController::class, 'allBasicParticipants'])->name('admin.participants.all-basic');
+```css
+#questionText img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 8px 0;
+}
 ```
 
-Method:
-```php
-public function allBasicParticipants()
-{
-    $users = \App\Models\User::where('role', 'basic')
-        ->orderBy('name')
-        ->get(['id', 'name', 'email']);
+#### 5c. Preview modal (Admin) — `resources/views/admin/sub_categories/show.blade.php`
 
-    return $this->successResponse([
-        'participants' => $users,
-    ]);
+**Cari** `#previewText` dan `#previewExplanation`, tambahkan:
+
+```css
+#previewText img,
+#previewExplanation img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 8px 0;
 }
 ```
 
 ---
 
-## Checklist Sebelum Merge
+## ✅ Checklist Verifikasi
 
-- [ ] Tombol "Bulk Raport" muncul di samping "Tambah Peserta" 
-- [ ] Modal Step 1 menampilkan daftar peserta dengan checkbox
-- [ ] Fitur search/filter di Step 1 berfungsi
-- [ ] Tombol "Pilih Semua" berfungsi
-- [ ] Step 2 menampilkan sesi ujian yang valid (irisan dari semua peserta terpilih)
-- [ ] Klik "Generate Raport" membuat report card per peserta
-- [ ] Progress per peserta ditampilkan di Step 3
-- [ ] Polling status berjalan dan UI terupdate per peserta
-- [ ] Step 4 menampilkan daftar raport yang sukses dengan link "Lihat"
-- [ ] Error handling: jika ada raport gagal, tetap tampilkan yang sukses
-- [ ] Raport yang digenerate bisa dilihat di History Raport masing-masing peserta
+Setelah semua perubahan selesai, lakukan tes berikut:
+
+### Test 1: Upload gambar di Konten Soal
+- [ ] Buka `http://localhost:8000/admin/sub-categories/1`
+- [ ] Klik "Buat Bank Soal"
+- [ ] Di editor "Konten Soal", klik ikon gambar (🖼️) di toolbar
+- [ ] Upload file gambar (JPG/PNG, max 5MB)
+- [ ] Gambar harus muncul di dalam editor
+- [ ] Simpan soal → cek apakah berhasil tanpa error
+
+### Test 2: Upload gambar di Pembahasan
+- [ ] Sama seperti Test 1, tapi di editor "Pembahasan"
+- [ ] Upload gambar di tengah-tengah teks pembahasan
+- [ ] Simpan dan pastikan berhasil
+
+### Test 3: Preview soal (Admin)
+- [ ] Klik ikon mata 👁️ di daftar soal
+- [ ] Gambar inline di konten soal harus tampil
+- [ ] Gambar inline di pembahasan harus tampil
+
+### Test 4: Tampilan di sisi siswa
+- [ ] Buka ujian yang berisi soal tersebut
+- [ ] Gambar inline di soal harus tampil saat mengerjakan
+- [ ] Gambar inline di pembahasan harus tampil saat review jawaban
+
+### Test 5: Edit soal
+- [ ] Edit soal yang sudah ada gambar inline
+- [ ] Gambar harus tetap muncul di editor
+- [ ] Bisa tambah/hapus gambar, lalu simpan
+
+### Test 6: Validasi file
+- [ ] Coba upload file non-gambar (PDF, docx) → harus ditolak
+- [ ] Coba upload file > 5MB → harus ditolak
 
 ---
 
-## File yang Akan Diubah/Ditambah
+## 📁 Ringkasan File yang Diubah
 
-| File | Aksi | Deskripsi |
-|------|------|-----------|
-| `resources/views/admin/participants/index.blade.php` | MODIFY | Tambah tombol, modal HTML, dan JavaScript |
-| `app/Http/Controllers/Admin/ParticipantController.php` | MODIFY | Tambah 2-3 method baru |
-| `routes/web.php` | MODIFY | Tambah 2-3 route baru |
+| No | File | Aksi | Keterangan |
+|----|------|------|------------|
+| 1 | `app/Http/Controllers/Admin/QuestionBankController.php` | **EDIT** | Tambah method `uploadImage()` |
+| 2 | `routes/web.php` | **EDIT** | Tambah route `POST /admin/questions/upload-image` |
+| 3 | `resources/views/admin/questions/_modal_scripts.blade.php` | **EDIT** | Update 2 konfigurasi TinyMCE (tambah plugin & handler) |
+| 4 | `resources/views/participant/review_category.blade.php` | **EDIT** | Tambah CSS untuk `img` di konten soal (jika belum ada) |
+| 5 | `resources/views/exam/main.blade.php` | **EDIT** | Tambah CSS untuk `img` di `#questionText` |
+| 6 | `resources/views/admin/sub_categories/show.blade.php` | **EDIT** | Tambah CSS untuk `img` di preview modal |
 
-**TIDAK perlu** membuat migration baru karena tabel `report_cards` yang sudah ada mendukung fitur ini sepenuhnya (1 record per user per generate).
+**File yang TIDAK perlu diubah:**
+- ❌ Migration — tidak perlu kolom baru
+- ❌ Model `QuestionBank` — `$fillable` sudah mencakup `question_text` dan `explanation`
+- ❌ Service & Repository — tidak ada logika yang perlu berubah
+- ❌ `config/filesystems.php` — konfigurasi storage sudah benar
 
 ---
 
-## Tips untuk Implementor
+## ⚠️ Catatan Penting
 
-1. **Mulai dari backend dulu** (route + controller method), test pakai Postman/curl
-2. **Lalu buat UI** (tombol + modal HTML) 
-3. **Terakhir JavaScript** (interaksi modal)
-4. Selalu lihat **pola kode yang sudah ada** di file yang sama — jangan buat pola baru
-5. Gunakan `showToast()` untuk notifikasi (sudah ada di layout admin)
-6. Gunakan `customConfirm()` untuk konfirmasi (sudah ada di layout admin)
-7. Semua fetch request harus kirim header `'X-CSRF-TOKEN'` dan `'Accept': 'application/json'`
-8. Endpoint polling status (`/admin/report-cards/{id}/status`) sudah ada, **jangan buat baru**
+1. **CSRF Token:** TinyMCE upload handler HARUS menyertakan CSRF token di header. Tanpa ini, Laravel akan return 419 (Session Expired).
+
+2. **Urutan Route:** Route `upload-image` HARUS sebelum `Route::resource('questions')`. Ini karena resource route punya wildcard `{question}` yang akan menangkap `upload-image` sebagai ID.
+
+3. **Max File Size:** Selain validasi di Laravel (5MB), pastikan `php.ini` mengizinkan upload besar:
+   - `upload_max_filesize = 10M`
+   - `post_max_size = 12M`
+
+4. **Storage Link:** Sudah aktif (`php artisan storage:link`), jadi gambar yang diupload langsung bisa diakses via URL.
+
+5. **Keamanan:** Gambar di-serve langsung sebagai static file via symlink. Tidak ada masalah keamanan selama validasi tipe file (`mimes:jpeg,png,jpg,gif,webp`) diterapkan di backend.

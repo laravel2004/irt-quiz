@@ -65,6 +65,7 @@ Route::middleware(AdminMiddleware::class)->group(function () {
         Route::resource('/admin/categories', CategoryController::class)->names('admin.categories');
         Route::resource('/admin/sub-categories', \App\Http\Controllers\Admin\SubCategoryController::class)->names('admin.sub-categories');
         Route::get('/admin/questions/kode-soal', [\App\Http\Controllers\Admin\QuestionBankController::class, 'kodeSoalOptions'])->name('admin.questions.kode-soal');
+        Route::post('/admin/questions/upload-image', [\App\Http\Controllers\Admin\QuestionBankController::class, 'uploadImage'])->name('admin.questions.upload-image');
         Route::resource('/admin/questions', \App\Http\Controllers\Admin\QuestionBankController::class)->names('admin.questions');
         
         // Admin Management of Participants (Users)

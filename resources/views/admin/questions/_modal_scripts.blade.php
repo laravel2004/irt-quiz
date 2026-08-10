@@ -26,8 +26,45 @@
             menubar: false,
             skin: 'oxide',
             content_css: false,
-            plugins: 'lists link code table charmap',
-            toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | charmap code | mathBtn',
+            plugins: 'lists link code table charmap image',
+            toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | image | charmap code | mathBtn',
+            // Konfigurasi upload gambar
+            automatic_uploads: true,
+            images_reuse_filename: false,
+            file_picker_types: 'image',
+            images_upload_handler: function(blobInfo) {
+                return new Promise(function(resolve, reject) {
+                    var formData = new FormData();
+                    formData.append('file', blobInfo.blob(), blobInfo.filename());
+
+                    fetch('{{ route("admin.questions.upload-image") }}', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            return response.json().then(function(json) {
+                                reject('Upload gagal: ' + (json.error || response.statusText));
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(function(json) {
+                        if (json && json.location) {
+                            resolve(json.location);
+                        } else {
+                            reject('Response tidak valid dari server');
+                        }
+                    })
+                    .catch(function(error) {
+                        reject('Upload error: ' + error.message);
+                    });
+                });
+            },
             content_style: `
                 body { 
                     font-family: 'Inter', sans-serif; 
@@ -37,6 +74,7 @@
                     padding: 12px;
                 }
                 p { margin: 0 0 10px; }
+                img { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; }
             `,
             setup: function(editor) {
                 questionEditor = editor;
@@ -57,8 +95,45 @@
             menubar: false,
             skin: 'oxide',
             content_css: false,
-            plugins: 'lists link code table charmap',
-            toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | charmap code | mathBtn',
+            plugins: 'lists link code table charmap image',
+            toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | image | charmap code | mathBtn',
+            // Konfigurasi upload gambar
+            automatic_uploads: true,
+            images_reuse_filename: false,
+            file_picker_types: 'image',
+            images_upload_handler: function(blobInfo) {
+                return new Promise(function(resolve, reject) {
+                    var formData = new FormData();
+                    formData.append('file', blobInfo.blob(), blobInfo.filename());
+
+                    fetch('{{ route("admin.questions.upload-image") }}', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            return response.json().then(function(json) {
+                                reject('Upload gagal: ' + (json.error || response.statusText));
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(function(json) {
+                        if (json && json.location) {
+                            resolve(json.location);
+                        } else {
+                            reject('Response tidak valid dari server');
+                        }
+                    })
+                    .catch(function(error) {
+                        reject('Upload error: ' + error.message);
+                    });
+                });
+            },
             content_style: `
                 body { 
                     font-family: 'Inter', sans-serif; 
@@ -68,6 +143,7 @@
                     padding: 12px;
                 }
                 p { margin: 0 0 10px; }
+                img { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; }
             `,
             setup: function(editor) {
                 explanationEditor = editor;
