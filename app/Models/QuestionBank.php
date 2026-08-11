@@ -40,4 +40,18 @@ class QuestionBank extends Model
     {
         return $value ? str_replace('\\', '/', $value) : $value;
     }
+
+    public function getQuestionTextAttribute($value)
+    {
+        if (!$value) return $value;
+        $appUrl = rtrim(config('app.url'), '/');
+        return str_replace('src="/storage/', 'src="' . $appUrl . '/storage/', $value);
+    }
+
+    public function getExplanationAttribute($value)
+    {
+        if (!$value) return $value;
+        $appUrl = rtrim(config('app.url'), '/');
+        return str_replace('src="/storage/', 'src="' . $appUrl . '/storage/', $value);
+    }
 }

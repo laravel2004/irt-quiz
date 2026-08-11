@@ -182,7 +182,7 @@ class QuestionBankController extends Controller
         $path = $request->file('file')->store('questions/inline', 'public');
 
         return response()->json([
-            'location' => '/storage/' . $path
+            'location' => asset('storage/' . $path)
         ]);
     }
 }
