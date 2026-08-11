@@ -32,6 +32,7 @@
             <thead>
                 <tr>
                     <th style="width: 60px;">ID</th>
+                    <th>KODE SOAL</th>
                     <th>TIPE SOAL</th>
                     <th>KONTEN SOAL</th>
                     <th style="width: 100px; text-align: center;">AKSI</th>
@@ -41,6 +42,9 @@
                 @forelse($subCategory->questions as $question)
                 <tr>
                     <td>#{{ $question->id }}</td>
+                    <td>
+                        <span style="font-family: 'Courier New', monospace; font-weight: 600; color: var(--accent); background: rgba(59,130,246,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(59,130,246,0.2);">{{ $question->kode_soal ?? '-' }}</span>
+                    </td>
                     <td>
                         @if($question->type === 'pilihan_ganda') Pilihan Ganda
                         @elseif($question->type === 'benar_salah') Benar / Salah
