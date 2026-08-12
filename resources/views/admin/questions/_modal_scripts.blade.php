@@ -29,6 +29,9 @@
             plugins: 'lists link code table charmap image',
             toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | image | charmap code | mathBtn',
             // Konfigurasi upload gambar
+            relative_urls: false,
+            remove_script_host: false,
+            convert_urls: false,
             automatic_uploads: true,
             images_reuse_filename: false,
             file_picker_types: 'image',
@@ -98,6 +101,9 @@
             plugins: 'lists link code table charmap image',
             toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | image | charmap code | mathBtn',
             // Konfigurasi upload gambar
+            relative_urls: false,
+            remove_script_host: false,
+            convert_urls: false,
             automatic_uploads: true,
             images_reuse_filename: false,
             file_picker_types: 'image',
