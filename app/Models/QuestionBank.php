@@ -44,14 +44,14 @@ class QuestionBank extends Model
     public function getQuestionTextAttribute($value)
     {
         if (!$value) return $value;
-        $appUrl = rtrim(config('app.url'), '/');
+        $appUrl = rtrim(url('/'), '/');
         return str_replace('src="/storage/', 'src="' . $appUrl . '/storage/', $value);
     }
 
     public function getExplanationAttribute($value)
     {
         if (!$value) return $value;
-        $appUrl = rtrim(config('app.url'), '/');
+        $appUrl = rtrim(url('/'), '/');
         return str_replace('src="/storage/', 'src="' . $appUrl . '/storage/', $value);
     }
 }
