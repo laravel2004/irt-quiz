@@ -37,6 +37,7 @@
         }
         .main-content {
             flex: 1;
+            min-height: 0;
             padding: 24px;
             display: flex;
             overflow: hidden;
@@ -46,6 +47,7 @@
             background: #ffffff;
             border-radius: 12px;
             flex: 1;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             border: 1px solid #e2e8f0;
@@ -60,6 +62,7 @@
         }
         .exam-body {
             flex: 1;
+            min-height: 0;
             display: flex;
             overflow: hidden;
             min-width: 0;
@@ -96,6 +99,7 @@
             z-index: 6;
         }
         .exam-footer {
+            flex-shrink: 0;
             padding: 20px 30px;
             display: flex;
             justify-content: space-between;
@@ -118,7 +122,7 @@
             transition: opacity 0.2s;
         }
         .btn-pill:hover { opacity: 0.9; }
-        .btn-pill:disabled { opacity: 0.5; cursor: not-allowed; visibility: hidden; }
+        .btn-pill:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-blue { background: #2563eb; }
         .btn-red { background: #ef4444; }
         .btn-yellow { background: #eab308; color: #000; }
@@ -783,4 +787,3 @@
     </script>
 </body>
 </html>
-
