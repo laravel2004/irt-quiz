@@ -450,7 +450,7 @@
 
             if (q.type === 'pilihan_ganda' || q.type === 'benar_salah') {
                 optionsHtml = options.map((opt, i) => {
-                    const isSelected = selectedVal === i.toString() || selectedVal === opt;
+                    const isSelected = selectedVal === i.toString();
                     return `
                     <div class="option-row" data-question-id="${q.id}" data-option-index="${i}" data-option-type="single" role="button" tabindex="0">
                         <div class="radio-btn ${isSelected ? 'selected' : ''}"></div>
@@ -460,7 +460,7 @@
             } else if (q.type === 'multiple_choice') {
                 const currentAnswers = Array.isArray(selectedVal) ? selectedVal : [];
                 optionsHtml = options.map((opt, i) => {
-                    const isSelected = currentAnswers.includes(i.toString()) || currentAnswers.includes(opt);
+                    const isSelected = currentAnswers.includes(i.toString());
                     return `
                     <div class="option-row" data-question-id="${q.id}" data-option-index="${i}" data-option-type="multi" role="button" tabindex="0">
                         <div class="check-btn ${isSelected ? 'selected' : ''}">
@@ -783,5 +783,4 @@
     </script>
 </body>
 </html>
-
 
