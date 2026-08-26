@@ -569,8 +569,13 @@
             btn.style.width = '34px';
             btn.style.height = '34px';
             btn.style.borderRadius = '8px';
-            btn.style.background = currentPage === i ? 'var(--accent)' : '#ffffff';
-            btn.style.color = 'white';
+            if (currentPage === i) {
+                btn.style.setProperty('background', 'var(--accent)', 'important');
+                btn.style.setProperty('color', 'white', 'important');
+            } else {
+                btn.style.setProperty('background', '#ffffff', 'important');
+                btn.style.setProperty('color', 'var(--text-secondary)', 'important');
+            }
             btn.onclick = () => { currentPage = i; renderParticipants(); };
             container.appendChild(btn);
         }
@@ -698,8 +703,13 @@
             btn.className = `btn-icon ${irtCurrentPage === i ? 'active' : ''}`;
             btn.innerText = i;
             btn.style.width = '34px'; btn.style.height = '34px'; btn.style.borderRadius = '8px';
-            btn.style.background = irtCurrentPage === i ? 'var(--accent)' : '#ffffff';
-            btn.style.color = 'white';
+            if (irtCurrentPage === i) {
+                btn.style.setProperty('background', 'var(--accent)', 'important');
+                btn.style.setProperty('color', 'white', 'important');
+            } else {
+                btn.style.setProperty('background', '#ffffff', 'important');
+                btn.style.setProperty('color', 'var(--text-secondary)', 'important');
+            }
             btn.onclick = () => { irtCurrentPage = i; renderIRTResults(); };
             container.appendChild(btn);
         }
