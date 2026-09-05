@@ -265,6 +265,14 @@
                             <input type="time" name="end_time" id="sEndTime" class="form-input" required>
                         </div>
                     </div>
+
+                    <div class="form-group" style="margin: 16px 0 0;">
+                        <label for="sIsLockQuiz" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="sIsLockQuiz" style="width: 16px; height: 16px;">
+                            <span>Kunci soal untuk sesi ini</span>
+                        </label>
+                        <small style="display: block; margin-top: 4px; color: var(--text-secondary);">Soal terkunci tidak dapat digunakan oleh sesi ujian berikutnya sampai dibuka kembali.</small>
+                    </div>
                 </div>
 
                 <!-- Subject Configurations -->
@@ -301,14 +309,26 @@
     let categoryIndexCounter = 0;
 
     const allCategories = @json($categories);
+    let availabilityCounts = initialAvailabilityCounts();
+
+    function initialAvailabilityCounts() {
+        return Object.fromEntries(allCategories.flatMap(category =>
+            (category.sub_categories || []).map(subCategory => [
+                subCategory.id,
+                Number(subCategory.available_questions_count || 0)
+            ])
+        ));
+    }
 
     function openSessionModal(m) {
         mode = m;
         document.getElementById('modalTitle').innerText = m === 'create' ? 'Tambah Sesi Baru' : 'Edit Sesi';
         document.getElementById('sessionId').value = '';
         sessionForm.reset();
+        document.getElementById('sIsLockQuiz').checked = false;
         categoriesList.innerHTML = '';
         categoryIndexCounter = 0;
+        availabilityCounts = initialAvailabilityCounts();
         
         if (m === 'create') {
             addCategoryRow();
@@ -325,8 +345,12 @@
         if (!cat || !cat.sub_categories) return '';
         
         return cat.sub_categories.map(s => 
-            `<option value="${s.id}" ${s.id == selectedSubId ? 'selected' : ''}>${s.name}</option>`
+            `<option value="${s.id}" ${s.id == selectedSubId ? 'selected' : ''}>${s.name} (${availableQuestionCount(s.id)} soal tersedia)</option>`
         ).join('');
+    }
+
+    function availableQuestionCount(subCategoryId) {
+        return Number(availabilityCounts[subCategoryId] || 0);
     }
 
     function updateSubCategoryDropdowns(selectElement, catIndex) {
@@ -356,6 +380,8 @@
             container.style.display = 'none';
             list.innerHTML = '';
         }
+
+        updateSubEstimates(catIndex);
     }
 
     function addCategoryRow(data = null) {
@@ -396,7 +422,7 @@
                 </div>
                 <div>
                     <label style="font-size: 0.8rem;">Jml Soal</label>
-                    <input type="number" class="form-input cat-questions" value="${tq}" required min="1">
+                    <input type="number" class="form-input cat-questions" value="${tq}" required min="1" oninput="updateSubEstimates(${idx})">
                 </div>
                 <div>
                     <label style="font-size: 0.8rem;">Skor Raw</label>
@@ -444,24 +470,27 @@
         if (!categoryId) return;
 
         const div = document.createElement('div');
-        div.style.display = 'flex';
+        div.className = 'subcat-row';
+        div.style.display = 'grid';
+        div.style.gridTemplateColumns = 'minmax(0, 2fr) minmax(150px, 1fr) auto';
         div.style.gap = '8px';
         div.style.alignItems = 'center';
 
         const options = getSubCategoriesOptions(categoryId, subCatId);
 
         div.innerHTML = `
-            <select class="form-input subcat-select" style="margin-bottom: 0; flex: 2; padding: 6px; font-size: 0.85rem;" required>
+            <select class="form-input subcat-select" style="margin-bottom: 0; padding: 6px; font-size: 0.85rem;" onchange="updateSubEstimates(${catIndex})" required>
                 <option value="">Pilih Sub Pelajaran</option>
                 ${options}
             </select>
-            <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+            <div style="display: flex; align-items: center; gap: 4px;">
                 <input type="number" class="form-input subcat-percentage" value="${percentage}" placeholder="%" style="margin-bottom: 0; padding: 6px; font-size: 0.85rem; text-align: center;" min="1" max="100" oninput="updateSubTotal(${catIndex})" required>
                 <span style="color: var(--text-secondary); font-size: 0.85rem;">%</span>
             </div>
             <button type="button" class="btn-icon delete" onclick="this.parentElement.remove(); updateSubTotal(${catIndex});" style="border:none; background:none; padding: 4px;">
                 <i class="fas fa-times" style="font-size: 0.85rem;"></i>
             </button>
+            <small class="subcat-estimate" style="grid-column: 1 / -1; color: var(--text-secondary);"></small>
         `;
         list.appendChild(div);
         updateSubTotal(catIndex);
@@ -482,7 +511,49 @@
             display.innerText = total + '%';
             display.style.color = total === 100 ? '#10b981' : '#ef4444';
         }
+        updateSubEstimates(catIndex);
         return total;
+    }
+
+    function updateSubEstimates(catIndex) {
+        const row = document.querySelector(`.category-row[data-index="${catIndex}"]`);
+        if (!row) return;
+
+        const totalQuestions = Number(row.querySelector('.cat-questions').value || 0);
+        const subRows = [...document.querySelectorAll(`#subCategoryList_${catIndex} .subcat-row`)];
+        const percentages = subRows.map((subRow, index) => ({
+            index,
+            percentage: Number(subRow.querySelector('.subcat-percentage').value || 0),
+        }));
+        const totalPercentage = percentages.reduce((total, item) => total + item.percentage, 0);
+
+        if (totalQuestions < 1 || totalPercentage !== 100) {
+            subRows.forEach(subRow => {
+                subRow.querySelector('.subcat-estimate').innerText = 'Masukkan total persentase 100% untuk menghitung jumlah soal.';
+            });
+            return;
+        }
+
+        const allocations = percentages.map(item => {
+            const raw = (item.percentage / 100) * totalQuestions;
+            return { ...item, count: Math.floor(raw), remainder: raw - Math.floor(raw) };
+        });
+        let remaining = totalQuestions - allocations.reduce((total, item) => total + item.count, 0);
+        [...allocations]
+            .sort((left, right) => right.remainder - left.remainder || left.index - right.index)
+            .slice(0, remaining)
+            .forEach(item => allocations[item.index].count++);
+
+        subRows.forEach((subRow, index) => {
+            const subCategoryId = subRow.querySelector('.subcat-select').value;
+            const available = availableQuestionCount(subCategoryId);
+            const required = allocations[index].count;
+            const estimate = subRow.querySelector('.subcat-estimate');
+            estimate.innerText = `Total soal yang akan dipakai: ${required} dari ${available} soal tersedia.`;
+            estimate.style.color = subCategoryId && required > available ? '#ef4444' : 'var(--text-secondary)';
+            estimate.dataset.required = required;
+            estimate.dataset.available = available;
+        });
     }
 
     function validateAllTotals() {
@@ -508,6 +579,14 @@
             return;
         }
 
+        const shortage = [...document.querySelectorAll('.subcat-estimate')].find(estimate =>
+            Number(estimate.dataset.required) > Number(estimate.dataset.available)
+        );
+        if (shortage) {
+            showToast(shortage.innerText, 'error');
+            return;
+        }
+
         const id = document.getElementById('sessionId').value;
         const url = mode === 'create' ? "{{ route('admin.sessions.store') }}" : `/admin/sessions/${id}`;
         
@@ -526,7 +605,7 @@
 
             const subContainer = document.getElementById(`subCategoryContainer_${idx}`);
             if (subContainer.style.display !== 'none') {
-                document.getElementById(`subCategoryList_${idx}`).querySelectorAll('div[style*="display: flex"]').forEach(subRow => {
+                document.getElementById(`subCategoryList_${idx}`).querySelectorAll('.subcat-row').forEach(subRow => {
                     const subSelect = subRow.querySelector('.subcat-select');
                     const subPercent = subRow.querySelector('.subcat-percentage');
                     if (subSelect && subPercent) {
@@ -552,6 +631,7 @@
             end_date: document.getElementById('sEndDate').value,
             start_time: document.getElementById('sStartTime').value,
             end_time: document.getElementById('sEndTime').value,
+            is_lock_quiz: document.getElementById('sIsLockQuiz').checked,
             categories: categories
         };
 
@@ -566,7 +646,11 @@
                 'Content-Type': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(async response => {
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Gagal menyimpan sesi');
+            return result;
+        })
         .then(data => {
             if (data.status === 'success') {
                 showToast(data.message);
@@ -574,7 +658,8 @@
             } else {
                 showToast(data.message || 'Gagal menyimpan sesi', 'error');
             }
-        });
+        })
+        .catch(error => showToast(error.message || 'Gagal menyimpan sesi', 'error'));
     });
 
     function deleteSession(id) {
@@ -637,6 +722,8 @@
             // Format time to HH:mm for time input
             document.getElementById('sStartTime').value = s.start_time ? s.start_time.substring(0, 5) : '';
             document.getElementById('sEndTime').value = s.end_time ? s.end_time.substring(0, 5) : '';
+            document.getElementById('sIsLockQuiz').checked = Boolean(s.is_lock_quiz);
+            availabilityCounts = data.data.availabilityCounts || initialAvailabilityCounts();
             
             categoriesList.innerHTML = '';
             // Handle both camelCase and snake_case relationship names

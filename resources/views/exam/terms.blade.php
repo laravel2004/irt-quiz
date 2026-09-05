@@ -72,6 +72,12 @@
             <p style="color: #475569;">Sesi: <strong style="color: #0f172a;">{{ $session->name }}</strong></p>
         </div>
 
+        @if($errors->has('exam'))
+            <p role="alert" style="margin: 0 0 16px; padding: 12px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+                {{ $errors->first('exam') }}
+            </p>
+        @endif
+
         <div class="terms-content">
             <h4>1. Sistem Ujian Per Mata Pelajaran</h4>
             <p>Ujian ini menggunakan sistem modular (per mata pelajaran). Anda akan dihadapkan pada daftar mata pelajaran yang diujikan.</p>

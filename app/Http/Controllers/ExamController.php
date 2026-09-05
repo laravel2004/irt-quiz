@@ -7,6 +7,7 @@ use App\Models\ExamSessionParticipant;
 use App\Models\QuestionBank;
 use App\Models\UserAnswer;
 use App\Services\ExamSessionService;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -183,7 +184,11 @@ class ExamController extends Controller
 
         // Generate questions if not exist
         if ($session->questions()->count() == 0) {
-            $this->sessionService->generateSessionQuestions($session->id);
+            try {
+                $this->sessionService->generateSessionQuestions($session->id);
+            } catch (DomainException $exception) {
+                return back()->withErrors(['exam' => $exception->getMessage()]);
+            }
         }
 
         if ($participant->questions()->count() == 0) {
@@ -556,5 +561,4 @@ class ExamController extends Controller
         ]);
     }
 }
-
 

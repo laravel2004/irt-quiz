@@ -12,8 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add new enum value 'multiple_benar_salah' to type column
-        DB::statement("ALTER TABLE question_banks MODIFY COLUMN type ENUM('pilihan_ganda', 'benar_salah', 'multiple_choice', 'multiple_benar_salah') NOT NULL");
+        // SQLite has no ALTER COLUMN support; its original enum is not enforced in tests.
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE question_banks MODIFY COLUMN type ENUM('pilihan_ganda', 'benar_salah', 'multiple_choice', 'multiple_benar_salah') NOT NULL");
+        }
 
         Schema::table('question_banks', function (Blueprint $table) {
             $table->text('explanation')->nullable()->after('correct_answer');
@@ -29,6 +31,8 @@ return new class extends Migration
             $table->dropColumn('explanation');
         });
 
-        DB::statement("ALTER TABLE question_banks MODIFY COLUMN type ENUM('pilihan_ganda', 'benar_salah', 'multiple_choice') NOT NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE question_banks MODIFY COLUMN type ENUM('pilihan_ganda', 'benar_salah', 'multiple_choice') NOT NULL");
+        }
     }
 };

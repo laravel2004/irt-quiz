@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Repositories\ExamSessionRepository;
+use App\Models\ExamSession;
 use App\Models\QuestionBank;
+use App\Models\SubCategory;
+use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -16,162 +19,147 @@ class ExamSessionService extends BaseService
 
     public function createWithCategories(array $data)
     {
+        $data['is_lock_quiz'] ??= false;
+        $this->validateCategoryData($data['categories']);
+
         return DB::transaction(function () use ($data) {
             $session = $this->repository->create($data);
-            
-            foreach ($data['categories'] as $cat) {
-                $sessionCat = \App\Models\ExamSessionCategory::create([
-                    'exam_session_id' => $session->id,
-                    'category_id' => $cat['id'],
-                    'duration' => $cat['duration'],
-                    'total_questions' => $cat['total_questions'],
-                    'max_score_raw' => $cat['max_score_raw'] ?? 100,
-                    'max_score_irt' => $cat['max_score_irt'] ?? 1000
-                ]);
-
-                if (isset($cat['sub_categories'])) {
-                    foreach ($cat['sub_categories'] as $sub) {
-                        \App\Models\ExamSessionSubCategory::create([
-                            'exam_session_category_id' => $sessionCat->id,
-                            'sub_category_id' => $sub['id'],
-                            'percentage' => $sub['percentage']
-                        ]);
-                    }
-                }
-            }
+            $this->createCategories($session->id, $data['categories']);
             $this->generateSessionQuestions($session->id);
             
             return $session;
-        });
+        }, 3);
     }
 
     public function updateWithCategories(int $id, array $data)
     {
+        $data['is_lock_quiz'] ??= false;
+        $this->validateCategoryData($data['categories']);
+
         return DB::transaction(function () use ($id, $data) {
-            $session = $this->repository->update($id, $data);
-            
-            \App\Models\ExamSessionCategory::where('exam_session_id', $id)->delete();
-            
-            foreach ($data['categories'] as $cat) {
-                $sessionCat = \App\Models\ExamSessionCategory::create([
-                    'exam_session_id' => $id,
-                    'category_id' => $cat['id'],
-                    'duration' => $cat['duration'],
-                    'total_questions' => $cat['total_questions'],
-                    'max_score_raw' => $cat['max_score_raw'] ?? 100,
-                    'max_score_irt' => $cat['max_score_irt'] ?? 1000
-                ]);
+            $session = ExamSession::with('sessionCategories.subCategories')
+                ->lockForUpdate()
+                ->findOrFail($id);
+            $allocationChanged = $this->allocationSignature($session) !== $this->allocationSignature($data);
+            $mustRegenerate = $allocationChanged || (!$session->is_lock_quiz && $data['is_lock_quiz']);
 
-                if (isset($cat['sub_categories'])) {
-                    foreach ($cat['sub_categories'] as $sub) {
-                        \App\Models\ExamSessionSubCategory::create([
-                            'exam_session_category_id' => $sessionCat->id,
-                            'sub_category_id' => $sub['id'],
-                            'percentage' => $sub['percentage']
-                        ]);
-                    }
-                }
+            if ($mustRegenerate && $session->participants()->whereNotNull('started_at')->exists()) {
+                throw new DomainException('Sesi yang sudah mulai dikerjakan tidak dapat mengubah kumpulan soal atau mengunci soal.');
             }
-            
-            return $session;
-        });
-    }
 
-    public function enrollQuestions(int $sessionId, array $questionIds)
-    {
-        $session = $this->repository->find($sessionId);
-        if (!$session) return false;
-        
-        $session->questions()->sync($questionIds);
-        return true;
+            $wasLocked = $session->is_lock_quiz;
+            $session->update(collect($data)->except('categories')->all());
+
+            if ($allocationChanged) {
+                \App\Models\ExamSessionCategory::where('exam_session_id', $id)->delete();
+                $this->createCategories($id, $data['categories']);
+            } else {
+                $this->updateCategoryMetadata($session, $data['categories']);
+            }
+            if ($mustRegenerate) {
+                $this->generateSessionQuestions($session->id);
+            } elseif ($wasLocked && !$session->is_lock_quiz) {
+                QuestionBank::where('locked_by_exam_session_id', $session->id)
+                    ->update(['locked_by_exam_session_id' => null]);
+            }
+
+            return $session;
+        }, 3);
     }
 
     public function generateSessionQuestions(int $sessionId)
     {
-        $session = $this->repository->find($sessionId);
-        if (!$session) return;
-        
-        $session->load('sessionCategories.subCategories');
+        return DB::transaction(function () use ($sessionId) {
+            $session = ExamSession::query()
+                ->with('sessionCategories.category', 'sessionCategories.subCategories.subCategory')
+                ->lockForUpdate()
+                ->findOrFail($sessionId);
 
-        $allSelectedIds = [];
+            $this->validateSessionConfiguration($session);
 
-        foreach ($session->sessionCategories as $sc) {
-            $catQuestionIds = [];
+            if ($session->participants()->whereNotNull('started_at')->exists()) {
+                throw new DomainException('Sesi yang sudah mulai dikerjakan tidak dapat generate ulang soal.');
+            }
 
-            foreach ($sc->subCategories as $subCat) {
-                $count = (int) round(($subCat->percentage / 100) * $sc->total_questions);
-                if ($count <= 0) {
+            $selectedIds = [];
+
+            foreach ($session->sessionCategories->sortBy('category_id') as $sessionCategory) {
+                $subCategories = $sessionCategory->subCategories->values();
+
+                if ($subCategories->isEmpty()) {
+                    $selectedIds = array_merge($selectedIds, $this->pickQuestions(
+                        $this->availableQuestions($session, $sessionCategory->category_id, null, $selectedIds),
+                        $sessionCategory->total_questions,
+                        $sessionCategory->category->name ?? 'mata pelajaran'
+                    ));
                     continue;
                 }
 
-                $questionIds = $this->pickQuestionsForSubCategory(
-                    $sc->category_id,
-                    $subCat->sub_category_id,
-                    $count,
-                    $catQuestionIds
-                );
-
-                $catQuestionIds = array_merge($catQuestionIds, $questionIds);
-            }
-
-            if (count($catQuestionIds) < $sc->total_questions) {
-                $missingCount = $sc->total_questions - count($catQuestionIds);
-
-                $missingQuestionIds = QuestionBank::where('category_id', $sc->category_id)
-                    ->whereNotIn('id', $catQuestionIds)
-                    ->inRandomOrder()
-                    ->limit($missingCount)
-                    ->pluck('id')
-                    ->toArray();
-
-                $catQuestionIds = array_merge($catQuestionIds, $missingQuestionIds);
-            }
-
-            if (count($catQuestionIds) < $sc->total_questions) {
-                $missingCount = $sc->total_questions - count($catQuestionIds);
-                $allCatQuestions = QuestionBank::where('category_id', $sc->category_id)
-                    ->pluck('id')
-                    ->toArray();
-
-                if (!empty($allCatQuestions)) {
-                    for ($i = 0; $i < $missingCount; $i++) {
-                        $catQuestionIds[] = $allCatQuestions[array_rand($allCatQuestions)];
+                foreach ($this->allocateQuestionCounts($subCategories, $sessionCategory->total_questions) as $index => $count) {
+                    if ($count === 0) {
+                        continue;
                     }
+
+                    $subCategory = $subCategories[$index];
+                    $selectedIds = array_merge($selectedIds, $this->pickQuestions(
+                        $this->availableQuestions($session, $sessionCategory->category_id, $subCategory->sub_category_id, $selectedIds),
+                        $count,
+                        $subCategory->subCategory->name ?? 'sub mata pelajaran'
+                    ));
                 }
             }
 
-            $allSelectedIds = array_merge($allSelectedIds, $catQuestionIds);
-        }
-
-        DB::table('session_questions')->where('exam_session_id', $session->id)->delete();
-
-        $insertData = [];
-        $now = now();
-        foreach ($allSelectedIds as $qId) {
-            $insertData[] = [
-                'exam_session_id' => $session->id,
-                'question_bank_id' => $qId,
-                'created_at' => $now,
-                'updated_at' => $now
-            ];
-        }
-        
-        if (!empty($insertData)) {
-            foreach (array_chunk($insertData, 500) as $chunk) {
-                DB::table('session_questions')->insert($chunk);
-            }
-        }
+            $selectedIds = array_values(array_unique($selectedIds));
+            $this->syncGeneratedQuestions($session, $selectedIds);
+        }, 3);
     }
 
-    private function pickQuestionsForSubCategory(int $categoryId, int $subCategoryId, int $requiredCount, array $excludedIds = []): array
+    private function availableQuestions(ExamSession $session, int $categoryId, ?int $subCategoryId, array $excludedIds): Collection
     {
-        $questions = QuestionBank::where('category_id', $categoryId)
-            ->where('sub_category_id', $subCategoryId)
-            ->whereNotIn('id', $excludedIds)
-            ->get();
+        $query = QuestionBank::query()
+            ->availableForSession($session->id)
+            ->where('category_id', $categoryId)
+            ->whereNotIn('id', $excludedIds);
 
-        if ($questions->isEmpty()) {
-            return [];
+        if ($subCategoryId !== null) {
+            $query->where('sub_category_id', $subCategoryId);
+        } else {
+            $query->whereNull('sub_category_id');
+        }
+
+        // ponytail: locks all eligible candidates in a category; use narrower reservations if banks become very large.
+        return $query->orderBy('id')->lockForUpdate()->get();
+    }
+
+    private function allocateQuestionCounts(Collection $subCategories, int $totalQuestions): array
+    {
+        $allocations = $subCategories->values()->map(function ($subCategory, $index) use ($totalQuestions) {
+            $rawCount = ($subCategory->percentage / 100) * $totalQuestions;
+            $baseCount = (int) floor($rawCount);
+
+            return [
+                'index' => $index,
+                'count' => $baseCount,
+                'remainder' => $rawCount - $baseCount,
+            ];
+        })->all();
+
+        $remaining = $totalQuestions - array_sum(array_column($allocations, 'count'));
+        usort($allocations, fn ($left, $right) => $right['remainder'] <=> $left['remainder'] ?: $left['index'] <=> $right['index']);
+
+        for ($index = 0; $index < $remaining; $index++) {
+            $allocations[$index]['count']++;
+        }
+
+        usort($allocations, fn ($left, $right) => $left['index'] <=> $right['index']);
+
+        return array_column($allocations, 'count');
+    }
+
+    private function pickQuestions(Collection $questions, int $requiredCount, string $label): array
+    {
+        if ($questions->count() < $requiredCount) {
+            throw new DomainException("Soal tersedia untuk {$label} hanya {$questions->count()}, sedangkan sesi membutuhkan {$requiredCount} soal.");
         }
 
         $codedQuestions = $questions->filter(fn ($question) => filled($question->kode_soal));
@@ -216,14 +204,141 @@ class ExamSessionService extends BaseService
             $selectedIds = array_merge($selectedIds, $remainingUniqueIds);
         }
 
-        if (count($selectedIds) < $requiredCount) {
-            $allQuestionIds = $questions->pluck('id')->values()->all();
-            while (count($selectedIds) < $requiredCount && !empty($allQuestionIds)) {
-                $selectedIds[] = $allQuestionIds[array_rand($allQuestionIds)];
+        return array_values($selectedIds);
+    }
+
+    private function syncGeneratedQuestions(ExamSession $session, array $questionIds): void
+    {
+        if ($session->is_lock_quiz) {
+            QuestionBank::where('locked_by_exam_session_id', $session->id)
+                ->when($questionIds, fn ($query) => $query->whereNotIn('id', $questionIds))
+                ->update(['locked_by_exam_session_id' => null]);
+
+            QuestionBank::whereIn('id', $questionIds)
+                ->whereNull('locked_by_exam_session_id')
+                ->update(['locked_by_exam_session_id' => $session->id]);
+
+            if (QuestionBank::whereIn('id', $questionIds)
+                ->where('locked_by_exam_session_id', $session->id)
+                ->count() !== count($questionIds)) {
+                throw new DomainException('Sebagian soal baru saja dikunci oleh sesi lain. Silakan coba generate ulang.');
             }
+        } else {
+            QuestionBank::where('locked_by_exam_session_id', $session->id)
+                ->update(['locked_by_exam_session_id' => null]);
         }
 
-        return array_values($selectedIds);
+        DB::table('session_questions')->where('exam_session_id', $session->id)->delete();
+
+        $now = now();
+        $rows = array_map(fn ($questionId) => [
+            'exam_session_id' => $session->id,
+            'question_bank_id' => $questionId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $questionIds);
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            DB::table('session_questions')->insert($chunk);
+        }
+    }
+
+    private function allocationSignature(ExamSession|array $source): string
+    {
+        if ($source instanceof ExamSession) {
+            $categories = $source->sessionCategories->sortBy('category_id')->map(fn ($category) => [
+                'id' => $category->category_id,
+                'total_questions' => $category->total_questions,
+                'sub_categories' => $category->subCategories->map(fn ($subCategory) => [
+                    'id' => $subCategory->sub_category_id,
+                    'percentage' => $subCategory->percentage,
+                ])->values()->all(),
+            ])->values()->all();
+        } else {
+            $categories = collect($source['categories'])->sortBy('id')->map(fn ($category) => [
+                'id' => (int) $category['id'],
+                'total_questions' => (int) $category['total_questions'],
+                'sub_categories' => collect($category['sub_categories'] ?? [])->map(fn ($subCategory) => [
+                    'id' => (int) $subCategory['id'],
+                    'percentage' => (int) $subCategory['percentage'],
+                ])->values()->all(),
+            ])->values()->all();
+        }
+
+        return json_encode($categories, JSON_THROW_ON_ERROR);
+    }
+
+    private function createCategories(int $sessionId, array $categories): void
+    {
+        foreach ($categories as $category) {
+            $sessionCategory = \App\Models\ExamSessionCategory::create([
+                'exam_session_id' => $sessionId,
+                'category_id' => $category['id'],
+                'duration' => $category['duration'],
+                'total_questions' => $category['total_questions'],
+                'max_score_raw' => $category['max_score_raw'] ?? 100,
+                'max_score_irt' => $category['max_score_irt'] ?? 1000,
+            ]);
+
+            foreach ($category['sub_categories'] ?? [] as $subCategory) {
+                \App\Models\ExamSessionSubCategory::create([
+                    'exam_session_category_id' => $sessionCategory->id,
+                    'sub_category_id' => $subCategory['id'],
+                    'percentage' => $subCategory['percentage'],
+                ]);
+            }
+        }
+    }
+
+    private function updateCategoryMetadata(ExamSession $session, array $categories): void
+    {
+        $sessionCategories = $session->sessionCategories->keyBy('category_id');
+
+        foreach ($categories as $category) {
+            $sessionCategories[$category['id']]->update([
+                'duration' => $category['duration'],
+                'max_score_raw' => $category['max_score_raw'] ?? 100,
+                'max_score_irt' => $category['max_score_irt'] ?? 1000,
+            ]);
+        }
+    }
+
+    private function validateCategoryData(array $categories): void
+    {
+        if (count($categories) !== collect($categories)->pluck('id')->unique()->count()) {
+            throw new DomainException('Mata pelajaran tidak boleh dipilih lebih dari satu kali.');
+        }
+
+        foreach ($categories as $category) {
+            $subCategories = $category['sub_categories'] ?? [];
+            $subCategoryIds = collect($subCategories)->pluck('id');
+
+            if ($subCategoryIds->isEmpty()) {
+                if (SubCategory::where('category_id', $category['id'])->exists()) {
+                    throw new DomainException('Pilih sub mata pelajaran untuk setiap mata pelajaran yang memilikinya.');
+                }
+                continue;
+            }
+
+            if ($subCategoryIds->count() !== $subCategoryIds->unique()->count()
+                || collect($subCategories)->sum('percentage') !== 100
+                || SubCategory::whereIn('id', $subCategoryIds)->where('category_id', $category['id'])->count() !== $subCategoryIds->count()) {
+                throw new DomainException('Konfigurasi sub mata pelajaran tidak valid.');
+            }
+        }
+    }
+
+    private function validateSessionConfiguration(ExamSession $session): void
+    {
+        $categories = $session->sessionCategories->map(fn ($category) => [
+            'id' => $category->category_id,
+            'sub_categories' => $category->subCategories->map(fn ($subCategory) => [
+                'id' => $subCategory->sub_category_id,
+                'percentage' => $subCategory->percentage,
+            ])->all(),
+        ])->all();
+
+        $this->validateCategoryData($categories);
     }
 
     private function pickFromKodeGroups(array $kodeGroups, int $requiredCount): array

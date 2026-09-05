@@ -18,6 +18,7 @@ class ExamSession extends Model
         'start_time',
         'end_time',
         'is_active',
+        'is_lock_quiz',
         'discussion_pdf'
     ];
 
@@ -27,7 +28,8 @@ class ExamSession extends Model
     }
     
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'is_lock_quiz' => 'boolean',
     ];
 
     public function sessionCategories()
@@ -48,6 +50,11 @@ class ExamSession extends Model
     public function questions()
     {
         return $this->belongsToMany(QuestionBank::class, 'session_questions', 'exam_session_id', 'question_bank_id')->withPivot('difficulty');
+    }
+
+    public function lockedQuestions()
+    {
+        return $this->hasMany(QuestionBank::class, 'locked_by_exam_session_id');
     }
 
     public function getDiscussionPdfAttribute($value)

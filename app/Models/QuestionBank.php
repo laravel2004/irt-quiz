@@ -36,6 +36,22 @@ class QuestionBank extends Model
         return $this->belongsTo(SubCategory::class);
     }
 
+    public function lockedBySession()
+    {
+        return $this->belongsTo(ExamSession::class, 'locked_by_exam_session_id');
+    }
+
+    public function scopeAvailableForSession($query, ?int $sessionId = null)
+    {
+        return $query->where(function ($query) use ($sessionId) {
+            $query->whereNull('locked_by_exam_session_id');
+
+            if ($sessionId !== null) {
+                $query->orWhere('locked_by_exam_session_id', $sessionId);
+            }
+        });
+    }
+
     public function getQuestionImageAttribute($value)
     {
         return $value ? str_replace('\\', '/', $value) : $value;
