@@ -2,16 +2,15 @@
 
 namespace App\Services;
 
-use App\Models\ExamSession;
-use App\Models\ExamSessionParticipant;
-use App\Models\UserAnswer;
-use App\Models\ExamResult;
 use App\Models\ExamCategoryResult;
+use App\Models\ExamResult;
+use App\Models\ExamSession;
+use App\Models\UserAnswer;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class AssessmentService
 {
-
     private function normalizeAnswerValue($value): string
     {
         if (is_array($value)) {
@@ -21,7 +20,7 @@ class AssessmentService
         return strtolower(trim(preg_replace('/\s+/', ' ', strip_tags((string) $value))));
     }
 
-        private function resolveCorrectIndices(array $correctAnswers, array $options): array
+    private function resolveCorrectIndices(array $correctAnswers, array $options): array
     {
         $indices = [];
         foreach ($correctAnswers as $correctAnswer) {
@@ -31,6 +30,7 @@ class AssessmentService
                 $index = ord($upperKey) - 65;
                 if (array_key_exists($index, $options)) {
                     $indices[] = (string) $index;
+
                     continue;
                 }
             }
@@ -38,6 +38,7 @@ class AssessmentService
                 $indices[] = (string) $key;
             }
         }
+
         return array_values(array_unique($indices));
     }
 
@@ -52,6 +53,7 @@ class AssessmentService
 
             if (array_key_exists($key, $options)) {
                 $values[] = $options[$key];
+
                 continue;
             }
 
@@ -59,6 +61,7 @@ class AssessmentService
                 $index = ord($upperKey) - 65;
                 if (array_key_exists($index, $options)) {
                     $values[] = $options[$index];
+
                     continue;
                 }
             }
@@ -78,15 +81,9 @@ class AssessmentService
     public function calculateIRT(int $sessionId)
     {
         return DB::transaction(function () use ($sessionId) {
-            $session = ExamSession::with(['participants', 'sessionCategories.category'])->findOrFail($sessionId);
+            $session = ExamSession::with(['participants', 'sessionCategories.category', 'questions'])->findOrFail($sessionId);
             $participants = $session->participants()->whereNotNull('finished_at')->get();
-            
-            // Get all unique questions that were actually answered in this session
-            $usedQuestionIds = UserAnswer::where('exam_session_id', $sessionId)
-                ->pluck('question_bank_id')
-                ->unique();
-            
-            $questions = \App\Models\QuestionBank::whereIn('id', $usedQuestionIds)->get();
+            $questions = $session->questions;
 
             if ($participants->isEmpty()) {
                 return ['status' => 'error', 'message' => 'Tidak ada peserta yang menyelesaikan ujian.'];
@@ -96,20 +93,22 @@ class AssessmentService
             $allAnswers = UserAnswer::where('exam_session_id', $sessionId)->get();
             foreach ($allAnswers as $ans) {
                 $question = $questions->firstWhere('id', $ans->question_bank_id);
-                if (!$question) continue;
-                
+                if (! $question) {
+                    continue;
+                }
+
                 $correctArr = (array) $question->correct_answer;
                 $options = (array) $question->options;
                 $isCorrect = false;
 
                 $answer = is_array($ans->answer) ? $ans->answer : (json_decode($ans->answer, true) ?? $ans->answer);
-                
-                                if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
+
+                if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
                     $correctIndex = $this->resolveCorrectIndices($correctArr, $options)[0] ?? null;
                     $isCorrect = false;
 
-                    if (is_numeric($answer) && array_key_exists((int)$answer, $options)) {
-                        $isCorrect = ($correctIndex !== null && (string)$answer === $correctIndex);
+                    if (is_numeric($answer) && array_key_exists((int) $answer, $options)) {
+                        $isCorrect = ($correctIndex !== null && (string) $answer === $correctIndex);
                     } else {
                         $correctValue = $this->resolveCorrectValues($correctArr, $options)[0] ?? null;
                         $isCorrect = ($correctValue !== null && $this->answersMatch($correctValue, $answer));
@@ -118,26 +117,26 @@ class AssessmentService
                 } elseif ($question->type === 'multiple_choice') {
                     $correctIndices = $this->resolveCorrectIndices($correctArr, $options);
                     $isCorrect = false;
-                    
+
                     if (is_array($answer)) {
                         $userIndices = [];
                         foreach ($answer as $val) {
-                            if (is_numeric($val) && array_key_exists((int)$val, $options)) {
+                            if (is_numeric($val) && array_key_exists((int) $val, $options)) {
                                 $userIndices[] = (string) $val;
                             }
                         }
 
                         $totalCorrectAvailable = count($correctIndices);
                         $correctSelected = count(array_intersect($userIndices, $correctIndices));
-                        
+
                         $netCorrect = $correctSelected;
                         $percentage = $totalCorrectAvailable > 0 ? ($netCorrect / $totalCorrectAvailable) : 0;
-                        
+
                         $score = round($percentage * ($question->score_correct ?? 1), 2);
-                        
+
                         if ($netCorrect === $totalCorrectAvailable) {
                             $isCorrect = true;
-                        } else if ($percentage == 0) {
+                        } elseif ($percentage == 0) {
                             $score = $question->score_incorrect ?? 0;
                         }
                     } else {
@@ -148,22 +147,22 @@ class AssessmentService
                     if (is_array($answer)) {
                         $totalStatements = count($options);
                         $correctCount = 0;
-                        
+
                         foreach ($options as $idx => $optText) {
                             $userAnswer = $answer[strval($idx)] ?? null;
                             $shouldBeBenar = in_array(strval($idx), $correctArr);
-                            
-                            if (($shouldBeBenar && $userAnswer === 'benar') || (!$shouldBeBenar && $userAnswer === 'salah')) {
+
+                            if (($shouldBeBenar && $userAnswer === 'benar') || (! $shouldBeBenar && $userAnswer === 'salah')) {
                                 $correctCount++;
                             }
                         }
-                        
+
                         $percentage = $totalStatements > 0 ? ($correctCount / $totalStatements) : 0;
                         $score = round($percentage * ($question->score_correct ?? 1), 2);
-                        
+
                         if ($correctCount === $totalStatements) {
                             $isCorrect = true;
-                        } else if ($percentage == 0) {
+                        } elseif ($percentage == 0) {
                             $score = $question->score_incorrect ?? 0;
                         }
                     } else {
@@ -180,12 +179,12 @@ class AssessmentService
                 $avgScore = UserAnswer::where('exam_session_id', $sessionId)
                     ->where('question_bank_id', $question->id)
                     ->avg('score') ?? 0;
-                
+
                 $maxScore = max(0.001, $question->score_correct ?? 1);
                 $difficulty = 1 - ($avgScore / $maxScore);
                 $difficulty = max(0.1, min(1, $difficulty)); // Ensure difficulty is between 0.1 and 1
                 $itemWeights[$question->id] = $difficulty;
-                
+
                 // Update the question difficulty in the session pivot table
                 DB::table('session_questions')
                     ->where('exam_session_id', $sessionId)
@@ -199,7 +198,7 @@ class AssessmentService
             foreach ($session->sessionCategories as $sessionCategory) {
                 $catId = $sessionCategory->category_id;
                 $catQuestions = $questions->where('category_id', $catId);
-                
+
                 $categoryMaxRaw[$catId] = $catQuestions->sum('score_correct');
                 $catMaxIRT = 0;
                 foreach ($catQuestions as $q) {
@@ -220,8 +219,9 @@ class AssessmentService
 
                 foreach ($session->sessionCategories as $sessionCategory) {
                     $catId = $sessionCategory->category_id;
-                    $catAnswers = $answers->filter(function($ans) use ($questions, $catId) {
+                    $catAnswers = $answers->filter(function ($ans) use ($questions, $catId) {
                         $q = $questions->firstWhere('id', $ans->question_bank_id);
+
                         return $q && $q->category_id == $catId;
                     });
 
@@ -232,17 +232,19 @@ class AssessmentService
 
                     foreach ($catAnswers as $ans) {
                         $question = $questions->firstWhere('id', $ans->question_bank_id);
-                        if (!$question) continue;
-                        
+                        if (! $question) {
+                            continue;
+                        }
+
                         if ($ans->is_correct) {
                             $catCorrect++;
                         } else {
                             $catIncorrect++;
                         }
-                        
+
                         $maxScore = max(0.001, $question->score_correct ?? 1);
                         $percentageScore = min(1, max(0, $ans->score / $maxScore));
-                        
+
                         $catRawIRT += ($itemWeights[$ans->question_bank_id] ?? 0) * $percentageScore;
                         $catRawPoints += $ans->score;
                     }
@@ -254,8 +256,15 @@ class AssessmentService
 
                     // Ratio scaling for IRT Score
                     $maxPossibleIRT = $categoryMaxIRT[$catId] ?? 0;
-                    $finalIRTScore = ($maxPossibleIRT > 0) ? ($catRawIRT / $maxPossibleIRT) * $sessionCategory->max_score_irt : 0;
-                    $finalIRTScore = max(0, min($finalIRTScore, $sessionCategory->max_score_irt));
+                    if ($maxPossibleIRT <= 0) {
+                        throw new DomainException('Konfigurasi sesi tidak valid karena bobot maksimum IRT bernilai nol.');
+                    }
+
+                    $minIRT = (float) $sessionCategory->min_score_irt;
+                    $maxIRT = (float) $sessionCategory->max_score_irt;
+                    $performanceRatio = min(1, max(0, $catRawIRT / $maxPossibleIRT));
+                    $finalIRTScore = round($minIRT + ($performanceRatio * ($maxIRT - $minIRT)), 2);
+                    $finalIRTScore = max($minIRT, min($finalIRTScore, $maxIRT));
 
                     // Accumulate totals
                     $totalCorrectAll += $catCorrect;
@@ -266,13 +275,13 @@ class AssessmentService
                     // Save category result
                     $examResult = ExamResult::firstOrCreate([
                         'participant_id' => $participant->id,
-                        'exam_session_id' => $sessionId
+                        'exam_session_id' => $sessionId,
                     ], [
                         'total_correct' => 0,
                         'total_incorrect' => 0,
                         'total_blank' => 0,
                         'score' => 0,
-                        'irt_score' => 0
+                        'irt_score' => 0,
                     ]);
 
                     $catTotalBlank = $catQuestions->count() - $catAnswers->count();
@@ -280,14 +289,14 @@ class AssessmentService
                     ExamCategoryResult::updateOrCreate(
                         [
                             'exam_result_id' => $examResult->id,
-                            'category_id' => $catId
+                            'category_id' => $catId,
                         ],
                         [
                             'total_correct' => $catCorrect,
                             'total_incorrect' => $catIncorrect,
                             'total_blank' => $catTotalBlank,
                             'score' => $finalRawScore,
-                            'irt_score' => $finalIRTScore
+                            'irt_score' => $finalIRTScore,
                         ]
                     );
                 }
@@ -296,14 +305,14 @@ class AssessmentService
                 ExamResult::updateOrCreate(
                     [
                         'participant_id' => $participant->id,
-                        'exam_session_id' => $sessionId
+                        'exam_session_id' => $sessionId,
                     ],
                     [
                         'total_correct' => $totalCorrectAll,
                         'total_incorrect' => $totalIncorrectAll,
                         'total_blank' => $totalBlankAll,
                         'score' => $totalRawAll,
-                        'irt_score' => $totalIRTAll
+                        'irt_score' => round($totalIRTAll, 2),
                     ]
                 );
             }
@@ -311,7 +320,7 @@ class AssessmentService
             return [
                 'status' => 'success',
                 'message' => 'Penilaian IRT berhasil digenerate.',
-                'total_participants' => $participants->count()
+                'total_participants' => $participants->count(),
             ];
         });
     }

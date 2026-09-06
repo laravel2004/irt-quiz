@@ -20,32 +20,17 @@
         $totalCorrect = $registration->userAnswers->where('is_correct', true)->count();
         $totalIncorrect = $totalAnswered - $totalCorrect;
         $totalBlank = $totalQuestions - $totalAnswered;
-        
-        // Calculate ratio scaled raw score
-        $rawScore = 0;
-        foreach ($registration->examSession->sessionCategories as $sessionCategory) {
-            $catId = $sessionCategory->category_id;
-            $catQuestions = $registration->questions->where('category_id', $catId);
-            $maxPossiblePoints = $catQuestions->sum('score_correct');
-            
-            $participantPoints = $registration->userAnswers->filter(function($ans) use ($catQuestions) {
-                return $catQuestions->pluck('id')->contains($ans->question_bank_id);
-            })->sum('score');
-            
-            if ($maxPossiblePoints > 0) {
-                $scaledScore = ($participantPoints / $maxPossiblePoints) * $sessionCategory->max_score_raw;
-                $rawScore += max(0, min($scaledScore, $sessionCategory->max_score_raw));
-            }
-        }
-        $rawScore = number_format($rawScore, 2);
+        $irtScore = (float) $registration->result->irt_score;
+        $predicate = $registration->examSession->predicateForIrtScore($irtScore);
     @endphp
 
     <!-- SCORE OVERVIEW -->
     <div class="glass animate-fade-in" style="padding: 32px; border-radius: 24px; text-align: center; margin-bottom: 32px; display: flex; flex-direction: column; align-items: center;">
-        <div style="font-size: 0.85rem; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Total Skor Mentah (Raw Score)</div>
+        <div style="font-size: 0.85rem; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Total Skor IRT</div>
         <div style="font-size: 3.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #0f172a; line-height: 1;">
-            {{ $rawScore }}
+            {{ number_format($irtScore, 2) }}
         </div>
+        <span class="badge" style="margin-top: 12px; background: #dcfce7; color: #166534;">Predikat {{ $predicate }}</span>
         
         <div style="display: flex; gap: 24px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--glass-border); width: 100%; justify-content: center;">
             <div style="text-align: center;">
@@ -78,23 +63,18 @@
                     $catName = $catResult->category->name ?? 'Tidak Diketahui';
                     $sessionCat = $registration->examSession->sessionCategories
                         ->where('category_id', $catResult->category_id)->first();
-                    $maxRawCat = $sessionCat->max_score_raw ?? 0;
+                    $minIrtCat = $sessionCat->min_score_irt ?? 0;
                     $maxIrtCat = $sessionCat->max_score_irt ?? 0;
                 @endphp
                 <div style="padding: 20px; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0;">
                     <div style="margin-bottom: 12px;">
                         <span style="font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1rem; color: #0f172a;">{{ $catName }}</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">
-                        <div style="background: #ffffff; padding: 12px; border-radius: 10px; text-align: center;">
-                            <div style="font-size: 0.7rem; color: #475569; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor Raw</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: #0f172a;">{{ number_format($catResult->score, 1) }}</div>
-                            <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxRawCat }}</div>
-                        </div>
+                    <div style="margin-bottom: 12px;">
                         <div style="background: rgba(var(--accent-rgb), 0.05); padding: 12px; border-radius: 10px; text-align: center;">
                             <div style="font-size: 0.7rem; color: var(--accent); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor IRT</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--accent);">{{ round($catResult->irt_score) }}</div>
-                            <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxIrtCat }}</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--accent);">{{ number_format($catResult->irt_score, 2) }}</div>
+                            <div style="font-size: 0.7rem; color: #94a3b8;">Rentang {{ number_format($minIrtCat, 2) }}–{{ number_format($maxIrtCat, 2) }}</div>
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
@@ -201,14 +181,13 @@
                     $catTotal = $categoryQuestions->count();
                     
                     $catCorrect = 0;
-                    $catScore = 0;
                     foreach ($categoryQuestions as $q) {
                         $ans = $registration->userAnswers->where('question_bank_id', $q->id)->first();
                         if ($ans && $ans->is_correct) {
                             $catCorrect++;
-                            $catScore += $ans->score;
                         }
                     }
+                    $catIrtScore = $registration->result->categoryResults->firstWhere('category_id', $categoryId)?->irt_score;
                     $catAnswered = 0;
                     foreach ($categoryQuestions as $q) {
                         if ($registration->userAnswers->where('question_bank_id', $q->id)->first()) {
@@ -221,7 +200,7 @@
                 <a href="{{ route('participant.review.category', [$registration->id, $categoryId]) }}" class="btn-primary" style="background: #f8fafc; color: #0f172a; border: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; transition: all 0.3s ease; text-decoration: none; border-radius: 16px; height: auto;">
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <span style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 600;">{{ $categoryName }}</span>
-                        <span style="font-size: 1.2rem; font-weight: 700; color: var(--accent); font-family: 'Outfit', sans-serif;">{{ $catScore }}</span>
+                        <span style="font-size: 1.2rem; font-weight: 700; color: var(--accent); font-family: 'Outfit', sans-serif;">IRT {{ number_format((float) $catIrtScore, 2) }}</span>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%;">

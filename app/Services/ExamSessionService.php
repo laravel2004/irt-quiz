@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
-use App\Repositories\ExamSessionRepository;
 use App\Models\ExamSession;
+use App\Models\ExamSessionCategory;
+use App\Models\ExamSessionSubCategory;
 use App\Models\QuestionBank;
 use App\Models\SubCategory;
+use App\Repositories\ExamSessionRepository;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -20,13 +22,15 @@ class ExamSessionService extends BaseService
     public function createWithCategories(array $data)
     {
         $data['is_lock_quiz'] ??= false;
+        $data = $this->withScoringDefaults($data);
         $this->validateCategoryData($data['categories']);
+        $this->validateScoringData($data);
 
         return DB::transaction(function () use ($data) {
             $session = $this->repository->create($data);
             $this->createCategories($session->id, $data['categories']);
             $this->generateSessionQuestions($session->id);
-            
+
             return $session;
         }, 3);
     }
@@ -34,31 +38,38 @@ class ExamSessionService extends BaseService
     public function updateWithCategories(int $id, array $data)
     {
         $data['is_lock_quiz'] ??= false;
+        $data = $this->withScoringDefaults($data);
         $this->validateCategoryData($data['categories']);
+        $this->validateScoringData($data);
 
         return DB::transaction(function () use ($id, $data) {
             $session = ExamSession::with('sessionCategories.subCategories')
                 ->lockForUpdate()
                 ->findOrFail($id);
             $allocationChanged = $this->allocationSignature($session) !== $this->allocationSignature($data);
-            $mustRegenerate = $allocationChanged || (!$session->is_lock_quiz && $data['is_lock_quiz']);
+            $scoringChanged = $this->scoringSignature($session) !== $this->scoringSignature($data);
+            $mustRegenerate = $allocationChanged || (! $session->is_lock_quiz && $data['is_lock_quiz']);
 
             if ($mustRegenerate && $session->participants()->whereNotNull('started_at')->exists()) {
                 throw new DomainException('Sesi yang sudah mulai dikerjakan tidak dapat mengubah kumpulan soal atau mengunci soal.');
+            }
+
+            if ($scoringChanged && $session->participants()->whereNotNull('started_at')->exists()) {
+                throw new DomainException('Konfigurasi nilai tidak dapat diubah karena sesi sudah mulai dikerjakan.');
             }
 
             $wasLocked = $session->is_lock_quiz;
             $session->update(collect($data)->except('categories')->all());
 
             if ($allocationChanged) {
-                \App\Models\ExamSessionCategory::where('exam_session_id', $id)->delete();
+                ExamSessionCategory::where('exam_session_id', $id)->delete();
                 $this->createCategories($id, $data['categories']);
             } else {
                 $this->updateCategoryMetadata($session, $data['categories']);
             }
             if ($mustRegenerate) {
                 $this->generateSessionQuestions($session->id);
-            } elseif ($wasLocked && !$session->is_lock_quiz) {
+            } elseif ($wasLocked && ! $session->is_lock_quiz) {
                 QuestionBank::where('locked_by_exam_session_id', $session->id)
                     ->update(['locked_by_exam_session_id' => null]);
             }
@@ -92,6 +103,7 @@ class ExamSessionService extends BaseService
                         $sessionCategory->total_questions,
                         $sessionCategory->category->name ?? 'mata pelajaran'
                     ));
+
                     continue;
                 }
 
@@ -271,17 +283,18 @@ class ExamSessionService extends BaseService
     private function createCategories(int $sessionId, array $categories): void
     {
         foreach ($categories as $category) {
-            $sessionCategory = \App\Models\ExamSessionCategory::create([
+            $sessionCategory = ExamSessionCategory::create([
                 'exam_session_id' => $sessionId,
                 'category_id' => $category['id'],
                 'duration' => $category['duration'],
                 'total_questions' => $category['total_questions'],
                 'max_score_raw' => $category['max_score_raw'] ?? 100,
+                'min_score_irt' => $category['min_score_irt'] ?? 0,
                 'max_score_irt' => $category['max_score_irt'] ?? 1000,
             ]);
 
             foreach ($category['sub_categories'] ?? [] as $subCategory) {
-                \App\Models\ExamSessionSubCategory::create([
+                ExamSessionSubCategory::create([
                     'exam_session_category_id' => $sessionCategory->id,
                     'sub_category_id' => $subCategory['id'],
                     'percentage' => $subCategory['percentage'],
@@ -298,9 +311,98 @@ class ExamSessionService extends BaseService
             $sessionCategories[$category['id']]->update([
                 'duration' => $category['duration'],
                 'max_score_raw' => $category['max_score_raw'] ?? 100,
+                'min_score_irt' => $category['min_score_irt'] ?? 0,
                 'max_score_irt' => $category['max_score_irt'] ?? 1000,
             ]);
         }
+    }
+
+    private function withScoringDefaults(array $data): array
+    {
+        foreach ($data['categories'] as &$category) {
+            $category['min_score_irt'] ??= 0;
+        }
+        unset($category);
+
+        $totalMin = (float) collect($data['categories'])->sum('min_score_irt');
+        $totalMax = (float) collect($data['categories'])->sum('max_score_irt');
+        $range = $totalMax - $totalMin;
+
+        $data['predicate_kurang_min'] ??= $totalMin;
+        $data['predicate_memadai_min'] ??= round($totalMin + ($range * 0.50), 2);
+        $data['predicate_baik_min'] ??= round($totalMin + ($range * 0.70), 2);
+        $data['predicate_istimewa_min'] ??= round($totalMin + ($range * 0.85), 2);
+
+        return $data;
+    }
+
+    private function validateScoringData(array $data): void
+    {
+        foreach ($data['categories'] as $category) {
+            if (! is_numeric($category['min_score_irt'])
+                || ! is_numeric($category['max_score_irt'])
+                || (float) $category['min_score_irt'] < 0
+                || (float) $category['max_score_irt'] <= (float) $category['min_score_irt']) {
+                throw new DomainException('Batas atas IRT harus lebih besar dari batas bawah IRT.');
+            }
+        }
+
+        $totalMin = round((float) collect($data['categories'])->sum('min_score_irt'), 2);
+        $totalMax = round((float) collect($data['categories'])->sum('max_score_irt'), 2);
+        $thresholds = collect([
+            $data['predicate_kurang_min'],
+            $data['predicate_memadai_min'],
+            $data['predicate_baik_min'],
+            $data['predicate_istimewa_min'],
+        ])->map(fn ($value) => round((float) $value, 2))->all();
+
+        if ($thresholds[0] !== $totalMin) {
+            throw new DomainException("Nilai minimum predikat Kurang harus sama dengan total batas bawah IRT, yaitu {$totalMin}.");
+        }
+
+        if (! ($thresholds[0] < $thresholds[1]
+            && $thresholds[1] < $thresholds[2]
+            && $thresholds[2] < $thresholds[3])) {
+            throw new DomainException('Urutan ambang predikat harus Kurang < Memadai < Baik < Istimewa.');
+        }
+
+        if ($thresholds[3] > $totalMax) {
+            throw new DomainException("Ambang Istimewa tidak boleh melebihi total batas atas IRT, yaitu {$totalMax}.");
+        }
+    }
+
+    private function scoringSignature(ExamSession|array $source): string
+    {
+        if ($source instanceof ExamSession) {
+            $categories = $source->sessionCategories->sortBy('category_id')->map(fn ($category) => [
+                'id' => $category->category_id,
+                'min' => number_format((float) $category->min_score_irt, 2, '.', ''),
+                'max' => number_format((float) $category->max_score_irt, 2, '.', ''),
+            ])->values()->all();
+            $thresholds = collect([
+                $source->predicate_kurang_min,
+                $source->predicate_memadai_min,
+                $source->predicate_baik_min,
+                $source->predicate_istimewa_min,
+            ]);
+        } else {
+            $categories = collect($source['categories'])->sortBy('id')->map(fn ($category) => [
+                'id' => (int) $category['id'],
+                'min' => number_format((float) $category['min_score_irt'], 2, '.', ''),
+                'max' => number_format((float) $category['max_score_irt'], 2, '.', ''),
+            ])->values()->all();
+            $thresholds = collect([
+                $source['predicate_kurang_min'],
+                $source['predicate_memadai_min'],
+                $source['predicate_baik_min'],
+                $source['predicate_istimewa_min'],
+            ]);
+        }
+
+        return json_encode([
+            'categories' => $categories,
+            'thresholds' => $thresholds->map(fn ($value) => number_format((float) $value, 2, '.', ''))->all(),
+        ], JSON_THROW_ON_ERROR);
     }
 
     private function validateCategoryData(array $categories): void
@@ -317,6 +419,7 @@ class ExamSessionService extends BaseService
                 if (SubCategory::where('category_id', $category['id'])->exists()) {
                     throw new DomainException('Pilih sub mata pelajaran untuk setiap mata pelajaran yang memilikinya.');
                 }
+
                 continue;
             }
 
@@ -364,7 +467,7 @@ class ExamSessionService extends BaseService
                 $pickedInThisRound = true;
             }
 
-            if (!$pickedInThisRound) {
+            if (! $pickedInThisRound) {
                 break;
             }
         }

@@ -19,18 +19,43 @@ class ExamSession extends Model
         'end_time',
         'is_active',
         'is_lock_quiz',
-        'discussion_pdf'
+        'discussion_pdf',
+        'predicate_kurang_min',
+        'predicate_memadai_min',
+        'predicate_baik_min',
+        'predicate_istimewa_min',
     ];
 
     public function admin()
     {
         return $this->belongsTo(User::class, 'admin_id');
     }
-    
+
     protected $casts = [
         'is_active' => 'boolean',
         'is_lock_quiz' => 'boolean',
+        'predicate_kurang_min' => 'decimal:2',
+        'predicate_memadai_min' => 'decimal:2',
+        'predicate_baik_min' => 'decimal:2',
+        'predicate_istimewa_min' => 'decimal:2',
     ];
+
+    public function predicateForIrtScore(float $score): string
+    {
+        if ($score >= (float) $this->predicate_istimewa_min) {
+            return 'Istimewa';
+        }
+
+        if ($score >= (float) $this->predicate_baik_min) {
+            return 'Baik';
+        }
+
+        if ($score >= (float) $this->predicate_memadai_min) {
+            return 'Memadai';
+        }
+
+        return 'Kurang';
+    }
 
     public function sessionCategories()
     {

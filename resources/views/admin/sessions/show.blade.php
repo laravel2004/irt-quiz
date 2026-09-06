@@ -82,7 +82,26 @@
             <div class="stat-card glass" style="padding: 16px;">
                 <div class="label"><i class="fas fa-trophy"></i> Total Skor Maksimal</div>
                 <div style="font-size: 1rem; margin-top: 8px;">Raw: {{ $session->sessionCategories->sum('max_score_raw') }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">IRT: {{ $session->sessionCategories->sum('max_score_irt') }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    Batas IRT: {{ number_format($session->sessionCategories->sum('min_score_irt'), 2) }}–{{ number_format($session->sessionCategories->sum('max_score_irt'), 2) }}
+                </div>
+            </div>
+        </div>
+
+        <div class="session-detail-soft-panel" style="border-radius: 12px; padding: 20px; margin-top: 24px;">
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: 1rem; margin-bottom: 12px;">Ambang Predikat IRT</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                @foreach([
+                    'Kurang' => $session->predicate_kurang_min,
+                    'Memadai' => $session->predicate_memadai_min,
+                    'Baik' => $session->predicate_baik_min,
+                    'Istimewa' => $session->predicate_istimewa_min,
+                ] as $predicate => $threshold)
+                    <div class="session-detail-light-panel" style="border-radius: 8px; padding: 12px;">
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ $predicate }}</div>
+                        <div style="font-weight: 700; margin-top: 4px;">≥ {{ number_format($threshold, 2) }}</div>
+                    </div>
+                @endforeach
             </div>
         </div>
     </div>
@@ -99,7 +118,7 @@
                         <div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; gap: 16px;">
                             <span><i class="fas fa-hourglass-half"></i> {{ $sc->duration }} Menit</span>
                             <span><i class="fas fa-list-ol"></i> {{ $sc->total_questions }} Soal</span>
-                            <span><i class="fas fa-bullseye"></i> Raw: {{ $sc->max_score_raw }} | IRT: {{ $sc->max_score_irt }}</span>
+                            <span><i class="fas fa-bullseye"></i> Raw: {{ $sc->max_score_raw }} | Batas IRT: {{ number_format($sc->min_score_irt, 2) }}–{{ number_format($sc->max_score_irt, 2) }}</span>
                         </div>
                     </div>
                 </div>

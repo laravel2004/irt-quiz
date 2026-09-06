@@ -288,6 +288,33 @@
                         <!-- Dynamic Category Rows -->
                     </div>
                 </div>
+
+                <div style="background: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <h4 style="margin-bottom: 8px; font-family: 'Outfit', sans-serif; color: var(--accent);"><i class="fas fa-award"></i> Ambang Predikat IRT</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">Masukkan nilai minimum setiap predikat berdasarkan total skor IRT sesi.</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="predicateKurangMin">Minimum Kurang</label>
+                            <input type="number" id="predicateKurangMin" class="form-input" required min="0" step="0.01" oninput="predicateThresholdsTouched = true">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="predicateMemadaiMin">Minimum Memadai</label>
+                            <input type="number" id="predicateMemadaiMin" class="form-input" required min="0" step="0.01" oninput="predicateThresholdsTouched = true">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="predicateBaikMin">Minimum Baik</label>
+                            <input type="number" id="predicateBaikMin" class="form-input" required min="0" step="0.01" oninput="predicateThresholdsTouched = true">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="predicateIstimewaMin">Minimum Istimewa</label>
+                            <input type="number" id="predicateIstimewaMin" class="form-input" required min="0" step="0.01" oninput="predicateThresholdsTouched = true">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 14px; color: var(--text-secondary); font-size: 0.85rem;">
+                        <span>Total batas bawah: <strong id="totalMinIrt" style="color: #0f172a;">0.00</strong></span>
+                        <span>Total batas atas: <strong id="totalMaxIrt" style="color: #0f172a;">0.00</strong></span>
+                    </div>
+                </div>
             </div>
 
             <div class="flex-stack-mobile" style="display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end;">
@@ -307,6 +334,7 @@
     const categoriesList = document.getElementById('sessionCategoriesList');
     let mode = 'create';
     let categoryIndexCounter = 0;
+    let predicateThresholdsTouched = false;
 
     const allCategories = @json($categories);
     let availabilityCounts = initialAvailabilityCounts();
@@ -328,6 +356,7 @@
         document.getElementById('sIsLockQuiz').checked = false;
         categoriesList.innerHTML = '';
         categoryIndexCounter = 0;
+        predicateThresholdsTouched = false;
         availabilityCounts = initialAvailabilityCounts();
         
         if (m === 'create') {
@@ -399,12 +428,13 @@
         const dur = data ? data.duration : '';
         const tq = data ? data.total_questions : '';
         const msr = data ? data.max_score_raw : 100;
+        const minIrt = data ? data.min_score_irt : 0;
         const msi = data ? data.max_score_irt : 1000;
 
         let options = allCategories.map(c => `<option value="${c.id}" ${c.id == catId ? 'selected' : ''}>${c.name}</option>`).join('');
 
         div.innerHTML = `
-            <button type="button" class="btn-icon delete" onclick="this.parentElement.remove();" style="position: absolute; right: 10px; top: 10px; border:none; background:none;">
+            <button type="button" class="btn-icon delete" aria-label="Hapus mata pelajaran" onclick="this.parentElement.remove(); updateIrtTotals();" style="position: absolute; right: 10px; top: 10px; border:none; background:none;">
                 <i class="fas fa-times"></i>
             </button>
             <div class="form-group" style="margin-bottom: 12px; margin-right: 30px;">
@@ -426,11 +456,15 @@
                 </div>
                 <div>
                     <label style="font-size: 0.8rem;">Skor Raw</label>
-                    <input type="number" class="form-input cat-raw" value="${msr}" required min="1">
+                    <input type="number" class="form-input cat-raw" aria-label="Skor raw maksimum" value="${msr}" required min="1">
                 </div>
                 <div>
-                    <label style="font-size: 0.8rem;">Skor IRT</label>
-                    <input type="number" class="form-input cat-irt" value="${msi}" required min="1">
+                    <label style="font-size: 0.8rem;">Batas Bawah IRT</label>
+                    <input type="number" class="form-input cat-irt-min" aria-label="Batas bawah IRT" value="${minIrt}" required min="0" step="0.01" oninput="updateIrtTotals()">
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem;">Batas Atas IRT</label>
+                    <input type="number" class="form-input cat-irt" aria-label="Batas atas IRT" value="${msi}" required min="1" step="1" oninput="updateIrtTotals()">
                 </div>
             </div>
 
@@ -450,6 +484,7 @@
             </div>
         `;
         categoriesList.appendChild(div);
+        updateIrtTotals();
 
         // Load existing sub categories if editing
         if (data && data.sub_categories && data.sub_categories.length > 0) {
@@ -571,11 +606,67 @@
         return isValid;
     }
 
+    function updateIrtTotals() {
+        const rows = [...document.querySelectorAll('.category-row')];
+        const totalMin = rows.reduce((total, row) => total + Number(row.querySelector('.cat-irt-min')?.value || 0), 0);
+        const totalMax = rows.reduce((total, row) => total + Number(row.querySelector('.cat-irt')?.value || 0), 0);
+        const range = totalMax - totalMin;
+
+        document.getElementById('totalMinIrt').innerText = totalMin.toFixed(2);
+        document.getElementById('totalMaxIrt').innerText = totalMax.toFixed(2);
+
+        if (!predicateThresholdsTouched && range > 0) {
+            document.getElementById('predicateKurangMin').value = totalMin.toFixed(2);
+            document.getElementById('predicateMemadaiMin').value = (totalMin + (range * 0.50)).toFixed(2);
+            document.getElementById('predicateBaikMin').value = (totalMin + (range * 0.70)).toFixed(2);
+            document.getElementById('predicateIstimewaMin').value = (totalMin + (range * 0.85)).toFixed(2);
+        }
+
+        return { totalMin, totalMax };
+    }
+
+    function validateIrtConfiguration() {
+        const invalidBounds = [...document.querySelectorAll('.category-row')].some(row =>
+            Number(row.querySelector('.cat-irt').value) <= Number(row.querySelector('.cat-irt-min').value)
+        );
+        if (invalidBounds) {
+            showToast('Batas atas IRT harus lebih besar dari batas bawah IRT.', 'error');
+            return false;
+        }
+
+        const { totalMin, totalMax } = updateIrtTotals();
+        const thresholds = [
+            Number(document.getElementById('predicateKurangMin').value),
+            Number(document.getElementById('predicateMemadaiMin').value),
+            Number(document.getElementById('predicateBaikMin').value),
+            Number(document.getElementById('predicateIstimewaMin').value),
+        ];
+
+        if (Math.abs(thresholds[0] - totalMin) > 0.001) {
+            showToast(`Minimum Kurang harus sama dengan total batas bawah IRT (${totalMin.toFixed(2)}).`, 'error');
+            return false;
+        }
+        if (!(thresholds[0] < thresholds[1] && thresholds[1] < thresholds[2] && thresholds[2] < thresholds[3])) {
+            showToast('Urutan ambang harus Kurang < Memadai < Baik < Istimewa.', 'error');
+            return false;
+        }
+        if (thresholds[3] > totalMax) {
+            showToast(`Minimum Istimewa tidak boleh melebihi total batas atas IRT (${totalMax.toFixed(2)}).`, 'error');
+            return false;
+        }
+
+        return true;
+    }
+
     sessionForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
         if (!validateAllTotals()) {
             showToast('Setiap Mata Pelajaran harus memiliki total persentase Sub Pelajaran 100%!', 'error');
+            return;
+        }
+
+        if (!validateIrtConfiguration()) {
             return;
         }
 
@@ -599,6 +690,7 @@
                 duration: row.querySelector('.cat-duration').value,
                 total_questions: row.querySelector('.cat-questions').value,
                 max_score_raw: row.querySelector('.cat-raw').value,
+                min_score_irt: row.querySelector('.cat-irt-min').value,
                 max_score_irt: row.querySelector('.cat-irt').value,
                 sub_categories: []
             };
@@ -632,6 +724,10 @@
             start_time: document.getElementById('sStartTime').value,
             end_time: document.getElementById('sEndTime').value,
             is_lock_quiz: document.getElementById('sIsLockQuiz').checked,
+            predicate_kurang_min: document.getElementById('predicateKurangMin').value,
+            predicate_memadai_min: document.getElementById('predicateMemadaiMin').value,
+            predicate_baik_min: document.getElementById('predicateBaikMin').value,
+            predicate_istimewa_min: document.getElementById('predicateIstimewaMin').value,
             categories: categories
         };
 
@@ -723,6 +819,11 @@
             document.getElementById('sStartTime').value = s.start_time ? s.start_time.substring(0, 5) : '';
             document.getElementById('sEndTime').value = s.end_time ? s.end_time.substring(0, 5) : '';
             document.getElementById('sIsLockQuiz').checked = Boolean(s.is_lock_quiz);
+            document.getElementById('predicateKurangMin').value = s.predicate_kurang_min;
+            document.getElementById('predicateMemadaiMin').value = s.predicate_memadai_min;
+            document.getElementById('predicateBaikMin').value = s.predicate_baik_min;
+            document.getElementById('predicateIstimewaMin').value = s.predicate_istimewa_min;
+            predicateThresholdsTouched = true;
             availabilityCounts = data.data.availabilityCounts || initialAvailabilityCounts();
             
             categoriesList.innerHTML = '';
@@ -735,6 +836,7 @@
                         duration: sc.duration,
                         total_questions: sc.total_questions,
                         max_score_raw: sc.max_score_raw,
+                        min_score_irt: sc.min_score_irt,
                         max_score_irt: sc.max_score_irt,
                         sub_categories: sc.sub_categories || sc.subCategories || []
                     };
@@ -743,6 +845,7 @@
             } else {
                 addCategoryRow();
             }
+            updateIrtTotals();
         })
         .catch(err => {
             console.error(err);

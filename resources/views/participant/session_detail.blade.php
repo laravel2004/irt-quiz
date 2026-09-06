@@ -95,7 +95,7 @@
         @endphp
 
         @php
-            $finishedAttempts = $registrations->filter(fn($reg) => $reg->finished_at && $reg->result);
+            $finishedAttempts = $registrations->filter(fn($reg) => $reg->finished_at && $reg->result?->irt_score !== null);
             $showAttemptScoreChart = $latestRegistration->privilege === 'premium' && $finishedAttempts->count() >= 2;
         @endphp
 
@@ -130,6 +130,9 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                             @if($reg->finished_at)
+                                @if($reg->result?->irt_score !== null)
+                                    <span class="badge" style="background: #dcfce7; color: #166534;">IRT {{ number_format($reg->result->irt_score, 2) }} · {{ $session->predicateForIrtScore((float) $reg->result->irt_score) }}</span>
+                                @endif
                                 {{-- <a href="{{ route('participant.result', $reg->id) }}" class="btn-primary" style="background: #eff6ff; color: #0f172a; border: 1px solid rgba(255,255,255,0.08); height: 40px; display: inline-flex; align-items: center; text-decoration: none;">
                                     <i class="fas fa-chart-bar" style="margin-right: 8px;"></i> Hasil
                                 </a> --}}
@@ -184,7 +187,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const labels = {!! json_encode($finishedAttempts->values()->map(fn($reg, $index) => 'Percobaan ' . ($index + 1))->all()) !!};
-    const rawScores = {!! json_encode($finishedAttempts->values()->map(fn($reg) => round((float) $reg->result->score, 2))->all()) !!};
     const irtScores = {!! json_encode($finishedAttempts->values()->map(fn($reg) => round((float) $reg->result->irt_score, 2))->all()) !!};
 
     new Chart(chartCanvas, {
@@ -192,16 +194,6 @@ document.addEventListener('DOMContentLoaded', function () {
         data: {
             labels,
             datasets: [
-                {
-                    label: 'Skor Raw',
-                    data: rawScores,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.18)',
-                    tension: 0.35,
-                    fill: true,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                },
                 {
                     label: 'Skor IRT',
                     data: irtScores,

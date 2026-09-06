@@ -21,22 +21,22 @@
 
         <div class="score-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px;">
             @php
-                $maxRaw = $registration->examSession->sessionCategories->sum('max_score_raw');
+                $minIrt = $registration->examSession->sessionCategories->sum('min_score_irt');
                 $maxIrt = $registration->examSession->sessionCategories->sum('max_score_irt');
+                $predicate = $registration->examSession->predicateForIrtScore((float) $registration->result->irt_score);
             @endphp
-            <div class="glass" style="padding: 32px; border-radius: 20px; background: #f8fafc;">
-                <div style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Skor Raw</div>
-                <div class="score-value" style="font-size: 3rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #0f172a;">
-                    {{ number_format($registration->result->score, 1) }}
-                </div>
-                <div style="font-size: 0.8rem; color: #475569; margin-top: 8px;">Maksimal: {{ $maxRaw }}</div>
-            </div>
             <div class="glass" style="padding: 32px; border-radius: 20px; background: rgba(var(--accent-rgb), 0.05); border-color: rgba(var(--accent-rgb), 0.2);">
                 <div style="font-size: 0.85rem; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Skor IRT</div>
                 <div class="score-value" style="font-size: 3.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: var(--accent);">
-                    {{ round($registration->result->irt_score) }}
+                    {{ number_format($registration->result->irt_score, 2) }}
                 </div>
-                <div style="font-size: 0.8rem; color: #475569; margin-top: 8px;">Maksimal: {{ $maxIrt }}</div>
+                <div style="font-size: 0.8rem; color: #475569; margin-top: 8px;">Rentang: {{ number_format($minIrt, 2) }}–{{ number_format($maxIrt, 2) }}</div>
+            </div>
+            <div class="glass" style="padding: 32px; border-radius: 20px; background: #f8fafc;">
+                <div style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Predikat</div>
+                <div class="score-value" style="font-size: 2.25rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #0f172a;">
+                    {{ $predicate }}
+                </div>
             </div>
         </div>
 
@@ -70,23 +70,18 @@
                         $catName = $catResult->category->name ?? 'Tidak Diketahui';
                         $sessionCat = $registration->examSession->sessionCategories
                             ->where('category_id', $catResult->category_id)->first();
-                        $maxRawCat = $sessionCat->max_score_raw ?? 0;
+                        $minIrtCat = $sessionCat->min_score_irt ?? 0;
                         $maxIrtCat = $sessionCat->max_score_irt ?? 0;
                     @endphp
                     <div class="glass" style="padding: 20px; border-radius: 16px; background: #f8fafc;">
                         <div style="margin-bottom: 12px;">
                             <span style="font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1rem; color: #0f172a;">{{ $catName }}</span>
                         </div>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">
-                            <div style="background: #ffffff; padding: 12px; border-radius: 10px; text-align: center;">
-                                <div style="font-size: 0.7rem; color: #475569; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor Raw</div>
-                                <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: #0f172a;">{{ number_format($catResult->score, 1) }}</div>
-                                <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxRawCat }}</div>
-                            </div>
+                        <div style="margin-bottom: 12px;">
                             <div style="background: rgba(var(--accent-rgb), 0.05); padding: 12px; border-radius: 10px; text-align: center;">
                                 <div style="font-size: 0.7rem; color: var(--accent); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor IRT</div>
-                                <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--accent);">{{ round($catResult->irt_score) }}</div>
-                                <div style="font-size: 0.7rem; color: #94a3b8;">/ {{ $maxIrtCat }}</div>
+                                <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--accent);">{{ number_format($catResult->irt_score, 2) }}</div>
+                                <div style="font-size: 0.7rem; color: #94a3b8;">Rentang {{ number_format($minIrtCat, 2) }}–{{ number_format($maxIrtCat, 2) }}</div>
                             </div>
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">

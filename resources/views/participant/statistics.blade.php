@@ -261,7 +261,7 @@
     @if(!$isClosed)
         <div class="lb-info-box temporary animate-fade-in">
             <i class="fas fa-info-circle lb-info-icon"></i>
-            <div>Ini adalah <strong>Statistik Sementara</strong> yang diurutkan berdasarkan <strong>Skor Mentah (Raw Score)</strong>. Sesi ujian masih berlangsung sehingga peringkat masih bisa berubah sewaktu-waktu.</div>
+            <div>Ini adalah <strong>Statistik Sementara</strong> berdasarkan <strong>Skor IRT</strong>. Nilai dan peringkat masih dapat berubah ketika peserta lain menyelesaikan ujian.</div>
         </div>
     @else
         <div class="lb-info-box final animate-fade-in">
@@ -306,17 +306,11 @@
                 </div>
 
                 <div class="lb-scores">
-                    <div class="lb-score-block">
-                        <div class="lb-score-label">Skor Mentah</div>
-                        <div class="lb-score-value">{{ number_format($res->score, 2) }}</div>
-                    </div>
-                    
-                    @if($isClosed)
                     <div class="lb-score-block primary">
                         <div class="lb-score-label" style="color: inherit;">Skor IRT</div>
-                        <div class="lb-score-value">{{ $res->irt_score > 0 ? number_format($res->irt_score, 2) : '-' }}</div>
+                        <div class="lb-score-value">{{ number_format($res->irt_score, 2) }}</div>
+                        <div class="lb-score-label" style="color: inherit;">{{ $session->predicateForIrtScore((float) $res->irt_score) }}</div>
                     </div>
-                    @endif
                 </div>
             </div>
         @empty

@@ -168,8 +168,8 @@
                 <div class="score-label" style="color: #059669;">Total Skor IRT</div>
             </div>
             <div class="score-item">
-                <div class="score-value">{{ $rawScore }}</div>
-                <div class="score-label">Total Skor Mentah</div>
+                <div class="score-value">{{ $predicate }}</div>
+                <div class="score-label">Predikat</div>
             </div>
         </div>
 
@@ -192,9 +192,6 @@
                         <div style="text-align: right;">
                             <div style="font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 700; color: #059669;">
                                 IRT: {{ $cs['irt_score'] }}
-                            </div>
-                            <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">
-                                Mentah: {{ $cs['score'] }}
                             </div>
                         </div>
                     </div>

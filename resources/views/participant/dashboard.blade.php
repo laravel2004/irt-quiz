@@ -50,7 +50,7 @@
             <span class="badge active" style="font-size: 0.75rem; white-space: nowrap;">Riwayat Nilai</span>
         </div>
 
-        @if(!empty($scoreChartData['scores']))
+        @if(!empty($scoreChartData['irt_scores']))
             <div style="height: 320px; position: relative;">
                 <canvas id="scoreChart" aria-label="Grafik nilai sesi ujian" role="img"></canvas>
             </div>
@@ -162,7 +162,7 @@
 <script>
 const scoreChartData = @json($scoreChartData);
 
-if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && scoreChartData.scores.length) {
+if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && scoreChartData.irt_scores.length) {
     const chartContext = document.getElementById('scoreChart');
     const isMobileChart = window.matchMedia('(max-width: 768px)').matches;
 
@@ -171,8 +171,8 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
         data: {
             labels: scoreChartData.labels,
             datasets: [{
-                label: 'Nilai',
-                data: scoreChartData.scores,
+                label: 'Skor IRT',
+                data: scoreChartData.irt_scores,
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.18)',
                 pointBackgroundColor: '#60a5fa',
@@ -198,6 +198,9 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
                     callbacks: {
                         title: function(context) {
                             return context[0].label;
+                        },
+                        afterLabel: function(context) {
+                            return `Predikat: ${scoreChartData.predicates[context.dataIndex]}`;
                         }
                     }
                 }
@@ -220,7 +223,6 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
                 },
                 y: {
                     beginAtZero: true,
-                    suggestedMax: 100,
                     ticks: {
                         color: '#475569',
                         maxTicksLimit: isMobileChart ? 5 : 8
@@ -311,7 +313,6 @@ document.querySelectorAll('.retake-form').forEach(form => {
 </script>
 
 @endsection
-
 
 
 

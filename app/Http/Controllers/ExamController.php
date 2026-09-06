@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\CalculateIRTJob;
+use App\Models\ExamResult;
 use App\Models\ExamSession;
+use App\Models\ExamSessionCategory;
 use App\Models\ExamSessionParticipant;
+use App\Models\ParticipantCategoryStatus;
 use App\Models\QuestionBank;
 use App\Models\UserAnswer;
 use App\Services\ExamSessionService;
+use Carbon\Carbon;
 use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -21,7 +26,6 @@ class ExamController extends Controller
         $this->sessionService = $sessionService;
     }
 
-
     private function normalizeAnswerValue($value): string
     {
         if (is_array($value)) {
@@ -30,7 +34,7 @@ class ExamController extends Controller
 
         $strValue = (string) $value;
         $stripped = trim(preg_replace('/\s+/', ' ', strip_tags($strValue)));
-        
+
         if ($stripped === '' && trim($strValue) !== '') {
             $stripped = trim(preg_replace('/\s+/', ' ', $strValue));
         }
@@ -44,10 +48,11 @@ class ExamController extends Controller
         foreach ($correctAnswers as $correctAnswer) {
             $key = (string) $correctAnswer;
             $upperKey = strtoupper(trim($key));
-            if (preg_match("/^[A-Z]$/", $upperKey)) {
+            if (preg_match('/^[A-Z]$/', $upperKey)) {
                 $index = ord($upperKey) - 65;
                 if (array_key_exists($index, $options)) {
                     $indices[] = (string) $index;
+
                     continue;
                 }
             }
@@ -55,6 +60,7 @@ class ExamController extends Controller
                 $indices[] = (string) $key;
             }
         }
+
         return array_values(array_unique($indices));
     }
 
@@ -68,6 +74,7 @@ class ExamController extends Controller
 
             if (array_key_exists($key, $options)) {
                 $values[] = $options[$key];
+
                 continue;
             }
 
@@ -75,6 +82,7 @@ class ExamController extends Controller
                 $index = ord($upperKey) - 65;
                 if (array_key_exists($index, $options)) {
                     $values[] = $options[$index];
+
                     continue;
                 }
             }
@@ -95,7 +103,7 @@ class ExamController extends Controller
     {
         $userId = auth()->id();
         $session = ExamSession::where('code', $code)->firstOrFail();
-        
+
         $participant = ExamSessionParticipant::where('exam_session_id', $session->id)
             ->where('user_id', $userId)
             ->latest('id')
@@ -106,18 +114,18 @@ class ExamController extends Controller
 
     private function countActiveParticipants(): int
     {
-        return \App\Models\ExamSessionParticipant::activeInExam()->count();
+        return ExamSessionParticipant::activeInExam()->count();
     }
 
     public function checkCapacity()
     {
         $limit = config('exam.concurrent_limit', 30);
         $activeCount = $this->countActiveParticipants();
-        
+
         return response()->json([
             'is_full' => $activeCount >= $limit,
             'active_count' => $activeCount,
-            'limit' => $limit
+            'limit' => $limit,
         ]);
     }
 
@@ -125,7 +133,7 @@ class ExamController extends Controller
     {
         $participant = $this->getParticipant($code);
 
-        if (!$participant) {
+        if (! $participant) {
             return redirect()->route('participant.dashboard')->with('error', 'Anda belum terdaftar di sesi ujian ini.');
         }
 
@@ -133,15 +141,16 @@ class ExamController extends Controller
 
         // Validasi waktu aktif
         $now = now();
-        $start = \Carbon\Carbon::parse($session->start_date . ' ' . $session->start_time);
-        $end = \Carbon\Carbon::parse($session->end_date . ' ' . $session->end_time);
+        $start = Carbon::parse($session->start_date.' '.$session->start_time);
+        $end = Carbon::parse($session->end_date.' '.$session->end_time);
 
-        if (!$session->is_active) {
+        if (! $session->is_active) {
             return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian sedang ditutup oleh administrator.');
         }
 
         if ($now->lt($start)) {
             $formattedStart = $start->translatedFormat('d F Y, H:i');
+
             return redirect()->route('participant.dashboard')->with('error', "Ujian belum dimulai. Silakan masuk kembali pada $formattedStart WIB.");
         }
 
@@ -167,13 +176,15 @@ class ExamController extends Controller
         ]);
 
         $participant = $this->getParticipant($code);
-        if (!$participant) return redirect()->route('participant.dashboard');
+        if (! $participant) {
+            return redirect()->route('participant.dashboard');
+        }
 
         $session = $participant->examSession;
 
         // Cek limit hanya untuk peserta yang BELUM pernah started
         // (Peserta yang lanjut dari sesi sebelumnya tidak kena limit)
-        if (!$participant->started_at) {
+        if (! $participant->started_at) {
             $limit = config('exam.concurrent_limit', 30);
             $activeCount = $this->countActiveParticipants();
 
@@ -196,7 +207,7 @@ class ExamController extends Controller
         }
 
         // Mark started if not already
-        if (!$participant->started_at) {
+        if (! $participant->started_at) {
             $participant->update(['started_at' => now()]);
         }
 
@@ -206,15 +217,17 @@ class ExamController extends Controller
     public function categories($code)
     {
         $participant = $this->getParticipant($code);
-        if (!$participant) return redirect()->route('participant.dashboard');
+        if (! $participant) {
+            return redirect()->route('participant.dashboard');
+        }
 
         $session = $participant->examSession;
-        if (!$session->is_active) {
+        if (! $session->is_active) {
             return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian telah ditutup oleh administrator.');
         }
-        
+
         // Cek status mapel
-        $categoryStatuses = \App\Models\ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
+        $categoryStatuses = ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
             ->get()->keyBy('exam_session_category_id');
 
         return view('exam.categories', compact('session', 'participant', 'categoryStatuses'));
@@ -223,23 +236,25 @@ class ExamController extends Controller
     public function startCategory(Request $request, $code, $categoryId)
     {
         $participant = $this->getParticipant($code);
-        if (!$participant) return redirect()->route('participant.dashboard');
+        if (! $participant) {
+            return redirect()->route('participant.dashboard');
+        }
 
-        if (!$participant->examSession->is_active) {
+        if (! $participant->examSession->is_active) {
             return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian telah ditutup oleh administrator.');
         }
 
-        $sessionCategory = \App\Models\ExamSessionCategory::where('exam_session_id', $participant->exam_session_id)
+        $sessionCategory = ExamSessionCategory::where('exam_session_id', $participant->exam_session_id)
             ->where('id', $categoryId)
             ->firstOrFail();
 
-        $status = \App\Models\ParticipantCategoryStatus::firstOrCreate(
+        $status = ParticipantCategoryStatus::firstOrCreate(
             [
                 'exam_session_participant_id' => $participant->id,
-                'exam_session_category_id' => $sessionCategory->id
+                'exam_session_category_id' => $sessionCategory->id,
             ],
             [
-                'started_at' => now()
+                'started_at' => now(),
             ]
         );
 
@@ -249,20 +264,22 @@ class ExamController extends Controller
     public function main($code, $categoryId)
     {
         $participant = $this->getParticipant($code);
-        if (!$participant) return redirect()->route('participant.dashboard');
+        if (! $participant) {
+            return redirect()->route('participant.dashboard');
+        }
 
         $session = $participant->examSession;
-        if (!$session->is_active) {
+        if (! $session->is_active) {
             return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian telah ditutup oleh administrator.');
         }
 
-        $sessionCategory = \App\Models\ExamSessionCategory::with('category')->findOrFail($categoryId);
+        $sessionCategory = ExamSessionCategory::with('category')->findOrFail($categoryId);
 
-        $status = \App\Models\ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
+        $status = ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
             ->where('exam_session_category_id', $categoryId)
             ->first();
 
-        if (!$status || !$status->started_at) {
+        if (! $status || ! $status->started_at) {
             return redirect()->route('exam.categories', $code)->with('error', 'Silakan mulai mata pelajaran terlebih dahulu.');
         }
 
@@ -274,15 +291,16 @@ class ExamController extends Controller
             ->where('category_id', $sessionCategory->category_id)
             ->with('category')
             ->get();
-        
+
         // Calculate remaining time for this category
-        $startTime = \Carbon\Carbon::parse($status->started_at);
+        $startTime = Carbon::parse($status->started_at);
         $endTime = $startTime->copy()->addMinutes((int) $sessionCategory->duration);
         $remainingSeconds = max(0, now()->diffInSeconds($endTime, false));
 
         if ($remainingSeconds <= 0) {
             // Auto submit
             $status->update(['finished_at' => now()]);
+
             return redirect()->route('exam.categories', $code)->with('error', 'Waktu mata pelajaran ini sudah habis.');
         }
 
@@ -292,44 +310,50 @@ class ExamController extends Controller
     public function submitCategory(Request $request, $code, $categoryId)
     {
         $participant = $this->getParticipant($code);
-        if (!$participant) return response()->json(['status' => 'error', 'message' => 'Not found'], 404);
+        if (! $participant) {
+            return response()->json(['status' => 'error', 'message' => 'Not found'], 404);
+        }
 
         $answers = $request->input('answers', []);
-        
+
         DB::transaction(function () use ($participant, $answers, $categoryId, $request) {
             $questionIds = array_keys($answers);
-            if (empty($questionIds)) return;
-            
-            $questions = \App\Models\QuestionBank::whereIn('id', $questionIds)->get()->keyBy('id');
-            $existingAnswers = \App\Models\UserAnswer::where('participant_id', $participant->id)
+            if (empty($questionIds)) {
+                return;
+            }
+
+            $questions = QuestionBank::whereIn('id', $questionIds)->get()->keyBy('id');
+            $existingAnswers = UserAnswer::where('participant_id', $participant->id)
                 ->whereIn('question_bank_id', $questionIds)
                 ->get()
                 ->keyBy('question_bank_id');
-                
+
             $insertData = [];
             $now = now();
 
             foreach ($answers as $questionId => $answerData) {
                 $question = $questions->get($questionId);
-                if (!$question) continue;
+                if (! $question) {
+                    continue;
+                }
 
                 $answer = is_array($answerData) && isset($answerData['answer']) ? $answerData['answer'] : $answerData;
                 $isDoubtful = is_array($answerData) && isset($answerData['is_doubtful']) ? $answerData['is_doubtful'] : false;
 
                 $isCorrect = false;
                 $score = 0;
-                
+
                 // Check correctness based on question type
                 $correctArr = (array) $question->correct_answer;
                 $options = (array) $question->options;
-                
+
                 if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
                     $correctIndex = $this->resolveCorrectIndices($correctArr, $options)[0] ?? null;
                     $isCorrect = false;
 
-                    if (is_numeric($answer) && array_key_exists((int)$answer, $options)) {
+                    if (is_numeric($answer) && array_key_exists((int) $answer, $options)) {
                         // Compare by index if frontend sends an index
-                        $isCorrect = ($correctIndex !== null && (string)$answer === $correctIndex);
+                        $isCorrect = ($correctIndex !== null && (string) $answer === $correctIndex);
                     } else {
                         // Fallback: compare by value (legacy)
                         $correctValue = $this->resolveCorrectValues($correctArr, $options)[0] ?? null;
@@ -340,11 +364,11 @@ class ExamController extends Controller
                 } elseif ($question->type === 'multiple_choice') {
                     $correctIndices = $this->resolveCorrectIndices($correctArr, $options);
                     $isCorrect = false;
-                    
+
                     if (is_array($answer)) {
                         $userIndices = [];
                         foreach ($answer as $val) {
-                            if (is_numeric($val) && array_key_exists((int)$val, $options)) {
+                            if (is_numeric($val) && array_key_exists((int) $val, $options)) {
                                 $userIndices[] = (string) $val;
                             }
                         }
@@ -352,16 +376,16 @@ class ExamController extends Controller
                         $totalCorrectAvailable = count($correctIndices);
                         $correctSelected = count(array_intersect($userIndices, $correctIndices));
                         $wrongSelected = count(array_diff($userIndices, $correctIndices));
-                        
+
                         if ($correctSelected === $totalCorrectAvailable && $wrongSelected === 0) {
                             $isCorrect = true;
                         } else {
                             $isCorrect = false;
                         }
-                        
+
                         $netCorrect = max(0, $correctSelected - $wrongSelected);
                         $percentage = $totalCorrectAvailable > 0 ? ($netCorrect / $totalCorrectAvailable) : 0;
-                        
+
                         if ($percentage == 0) {
                             $score = $question->score_incorrect ?? 0;
                         } else {
@@ -375,24 +399,24 @@ class ExamController extends Controller
                     if (is_array($answer)) {
                         $totalStatements = count($options);
                         $correctCount = 0;
-                        
+
                         foreach ($options as $idx => $optText) {
                             $userAnswer = $answer[strval($idx)] ?? null;
                             $shouldBeBenar = in_array(strval($idx), $correctArr);
-                            
-                            if (($shouldBeBenar && $userAnswer === 'benar') || (!$shouldBeBenar && $userAnswer === 'salah')) {
+
+                            if (($shouldBeBenar && $userAnswer === 'benar') || (! $shouldBeBenar && $userAnswer === 'salah')) {
                                 $correctCount++;
                             }
                         }
-                        
+
                         $percentage = $totalStatements > 0 ? ($correctCount / $totalStatements) : 0;
-                        
+
                         if ($correctCount === $totalStatements) {
                             $isCorrect = true;
                         } else {
                             $isCorrect = false;
                         }
-                        
+
                         if ($percentage == 0) {
                             $score = $question->score_incorrect ?? 0;
                         } else {
@@ -408,7 +432,7 @@ class ExamController extends Controller
                     $existing->update([
                         'answer' => $answer,
                         'is_correct' => $isCorrect,
-                        'score' => $score
+                        'score' => $score,
                     ]);
                 } else {
                     $insertData[] = [
@@ -419,19 +443,19 @@ class ExamController extends Controller
                         'is_correct' => $isCorrect,
                         'score' => $score,
                         'created_at' => $now,
-                        'updated_at' => $now
+                        'updated_at' => $now,
                     ];
                 }
             }
-            
-            if (!empty($insertData)) {
+
+            if (! empty($insertData)) {
                 foreach (array_chunk($insertData, 500) as $chunk) {
-                    \App\Models\UserAnswer::insert($chunk);
+                    UserAnswer::insert($chunk);
                 }
             }
 
             if ($request->has('finish_category') && $request->finish_category) {
-                \App\Models\ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
+                ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
                     ->where('exam_session_category_id', $categoryId)
                     ->update(['finished_at' => now()]);
             }
@@ -443,15 +467,15 @@ class ExamController extends Controller
     private function generateParticipantQuestions(ExamSessionParticipant $participant)
     {
         $session = $participant->examSession;
-        
+
         // Fetch raw IDs from pivot to guarantee duplicates are included
         $questionIds = DB::table('session_questions')
             ->where('exam_session_id', $session->id)
             ->pluck('question_bank_id')
             ->toArray();
-            
+
         shuffle($questionIds);
-        
+
         DB::table('participant_questions')->where('participant_id', $participant->id)->delete();
         $insertData = [];
         $now = now();
@@ -461,11 +485,11 @@ class ExamController extends Controller
                 'question_bank_id' => $id,
                 'order' => $index + 1,
                 'created_at' => $now,
-                'updated_at' => $now
+                'updated_at' => $now,
             ];
         }
-        
-        if (!empty($insertData)) {
+
+        if (! empty($insertData)) {
             foreach (array_chunk($insertData, 500) as $chunk) {
                 DB::table('participant_questions')->insert($chunk);
             }
@@ -475,13 +499,15 @@ class ExamController extends Controller
     public function finishSession(Request $request, $code)
     {
         $participant = $this->getParticipant($code);
-        if (!$participant) return response()->json(['status' => 'error'], 404);
+        if (! $participant) {
+            return response()->json(['status' => 'error'], 404);
+        }
 
         $participant->update(['finished_at' => now()]);
         session()->forget('participant_id');
 
         // Dispatch IRT calculation to Queue
-        \App\Jobs\CalculateIRTJob::dispatch($participant->exam_session_id);
+        CalculateIRTJob::dispatch($participant->exam_session_id);
 
         // Invalidate dashboard cache
         Cache::forget("dashboard_registrations_v6_user_{$participant->user_id}");
@@ -492,11 +518,11 @@ class ExamController extends Controller
     public function checkStatus($code)
     {
         $participant = $this->getParticipant($code);
-        if (!$participant) {
+        if (! $participant) {
             return response()->json(['status' => 'error'], 404);
         }
 
-        $result = \App\Models\ExamResult::where('participant_id', $participant->id)->first();
+        $result = ExamResult::where('participant_id', $participant->id)->first();
         if ($result && $result->irt_score !== null) {
             return response()->json(['status' => 'done']);
         }
@@ -507,44 +533,43 @@ class ExamController extends Controller
     public function success($code)
     {
         $participant = $this->getParticipant($code);
-        if (!$participant) {
+        if (! $participant) {
             return redirect()->route('participant.dashboard');
         }
 
         $session = $participant->examSession;
-        $result = \App\Models\ExamResult::with('categoryResults.category')->where('participant_id', $participant->id)->first();
+        $result = ExamResult::with('categoryResults.category')->where('participant_id', $participant->id)->first();
 
         // If background job hasn't finished calculating
-        if (!$result || $result->irt_score === null) {
+        if (! $result || $result->irt_score === null) {
             return view('exam.success', [
                 'isCalculating' => true,
                 'session' => $session,
-                'code' => $code
+                'code' => $code,
             ]);
         }
 
-        $rawScore = number_format($result->score, 2);
         $irtScore = number_format($result->irt_score, 2);
-        
-        $answeredQuestions = \App\Models\UserAnswer::where('participant_id', $participant->id)->count();
+        $predicate = $session->predicateForIrtScore((float) $result->irt_score);
+
+        $answeredQuestions = UserAnswer::where('participant_id', $participant->id)->count();
         $totalQuestions = $session->questions()->count();
 
         $categoryScores = [];
         foreach ($result->categoryResults as $cr) {
             $catId = $cr->category_id;
             $sc = $session->sessionCategories->where('category_id', $catId)->first();
-            
-            $catAnswersCount = \App\Models\UserAnswer::where('participant_id', $participant->id)
-                ->whereHas('question', function($q) use ($catId) {
+
+            $catAnswersCount = UserAnswer::where('participant_id', $participant->id)
+                ->whereHas('question', function ($q) use ($catId) {
                     $q->where('category_id', $catId);
                 })->count();
 
             $categoryScores[] = [
                 'name' => $cr->category->name,
-                'score' => number_format($cr->score, 2),
                 'irt_score' => number_format($cr->irt_score, 2),
                 'answered' => $catAnswersCount,
-                'total' => $sc ? $sc->total_questions : 0
+                'total' => $sc ? $sc->total_questions : 0,
             ];
         }
 
@@ -552,13 +577,12 @@ class ExamController extends Controller
             'isCalculating' => false,
             'session' => $session,
             'participant' => $participant,
-            'rawScore' => $rawScore,
             'irtScore' => $irtScore,
+            'predicate' => $predicate,
             'answeredQuestions' => $answeredQuestions,
             'totalQuestions' => $totalQuestions,
             'categoryScores' => $categoryScores,
-            'code' => $code
+            'code' => $code,
         ]);
     }
 }
-

@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Log;
 class AIService
 {
     protected string $apiKey;
+
     protected string $model;
+
     protected string $baseUrl;
 
     public function __construct()
@@ -24,9 +26,9 @@ class AIService
             $prompt = $this->buildPrompt($resultData);
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Authorization' => 'Bearer '.$this->apiKey,
                 'Content-Type' => 'application/json',
-            ])->post($this->baseUrl . '/chat/completions', [
+            ])->post($this->baseUrl.'/chat/completions', [
                 'model' => $this->model,
                 'messages' => [
                     ['role' => 'system', 'content' => 'Anda adalah Konsultan Pendidikan Senior (Senior Educational Consultant) yang ahli dalam psikometri dan strategi ujian. Tugas Anda adalah memberikan analisis strategis, motivatif, dan sangat spesifik berdasarkan data tryout siswa. Gunakan bahasa yang profesional namun tetap mendukung. Output harus dalam format JSON murni dengan key: kelebihan, kekurangan, dan rekomendasi.'],
@@ -44,7 +46,7 @@ class AIService
                 if (is_array($decoded)) {
                     foreach (['kelebihan', 'kekurangan', 'rekomendasi'] as $key) {
                         if (isset($decoded[$key]) && is_array($decoded[$key])) {
-                            $decoded[$key] = implode(' ', array_map(fn($v) => is_array($v) ? json_encode($v) : (string)$v, $decoded[$key]));
+                            $decoded[$key] = implode(' ', array_map(fn ($v) => is_array($v) ? json_encode($v) : (string) $v, $decoded[$key]));
                         }
                     }
                 }
@@ -52,10 +54,12 @@ class AIService
                 return $decoded;
             }
 
-            Log::error('OpenAI Error: ' . $response->body());
+            Log::error('OpenAI Error: '.$response->body());
+
             return null;
         } catch (\Exception $e) {
-            Log::error('AI Service Error: ' . $e->getMessage());
+            Log::error('AI Service Error: '.$e->getMessage());
+
             return null;
         }
     }
@@ -70,7 +74,7 @@ class AIService
         $totalScore = $data['total_score'] ?? 'Belum tersedia';
         $categoryStats = $data['category_stats'];
 
-        $categoryLines = "";
+        $categoryLines = '';
         foreach ($categoryStats as $nameCat => $stat) {
             $categoryLines .= "- $nameCat: {$stat['correct']} benar dari {$stat['total']} soal\n";
         }
@@ -85,7 +89,7 @@ class AIService
         - Total Jawaban Benar: $correct
         - Total Jawaban Salah: $incorrect
         - Total Jawaban Kosong: $blank
-        - Skor Total: $totalScore
+        - Skor IRT dan Predikat: $totalScore
         
         Instruksi Analisis:
         1. **Kelebihan**: Identifikasi bidang/pelajaran mana yang paling dikuasai.
@@ -101,9 +105,9 @@ class AIService
             $prompt = $this->buildAggregatePrompt($data);
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Authorization' => 'Bearer '.$this->apiKey,
                 'Content-Type' => 'application/json',
-            ])->post($this->baseUrl . '/chat/completions', [
+            ])->post($this->baseUrl.'/chat/completions', [
                 'model' => $this->model,
                 'messages' => [
                     ['role' => 'system', 'content' => 'Anda adalah Konsultan Pendidikan Senior yang ahli membaca tren tryout, psikometri dasar, dan strategi belajar. Berikan analisis yang spesifik, berbasis data, tidak generik, hangat, dan actionable. Output wajib JSON murni dengan key: analisis_progres, pola_kekurangan, strategi_lanjutan. Setiap value berupa 2-3 paragraf pendek yang enak dibaca.'],
@@ -115,13 +119,16 @@ class AIService
             if ($response->successful()) {
                 $content = $response->json()['choices'][0]['message']['content'];
                 $content = str_replace(['```json', '```'], '', $content);
+
                 return json_decode(trim($content), true);
             }
 
-            Log::error('OpenAI Error: ' . $response->body());
+            Log::error('OpenAI Error: '.$response->body());
+
             return null;
         } catch (\Exception $e) {
-            Log::error('AI Service Error: ' . $e->getMessage());
+            Log::error('AI Service Error: '.$e->getMessage());
+
             return null;
         }
     }
@@ -132,9 +139,9 @@ class AIService
         $session = $data['session_name'];
         $attempts = $data['attempts'];
 
-        $attemptsStr = "";
+        $attemptsStr = '';
         foreach ($attempts as $a) {
-            $attemptsStr .= "Percobaan ke-{$a['attempt_number']}: Benar {$a['total_correct']}, Salah {$a['total_incorrect']}, Kosong {$a['total_blank']}, Skor Mentah {$a['raw_score']}, Skor IRT {$a['irt_score']}\n";
+            $attemptsStr .= "Percobaan ke-{$a['attempt_number']}: Benar {$a['total_correct']}, Salah {$a['total_incorrect']}, Kosong {$a['total_blank']}, Skor IRT {$a['irt_score']}, Predikat {$a['predicate']}\n";
         }
 
         return "Analisis perkembangan siswa bernama $name pada sesi ujian: $session.
@@ -143,7 +150,7 @@ class AIService
         $attemptsStr
 
         Instruksi kualitas analisis:
-        1. analisis_progres: Jelaskan tren dari percobaan awal sampai terakhir menggunakan angka yang tersedia. Bandingkan skor raw, skor IRT, jumlah benar, salah, dan kosong. Sebutkan apakah progresnya kuat, stabil, naik tipis, turun, atau fluktuatif.
+        1. analisis_progres: Jelaskan tren dari percobaan awal sampai terakhir menggunakan skor IRT, predikat, jumlah benar, salah, dan kosong. Sebutkan apakah progresnya kuat, stabil, naik tipis, turun, atau fluktuatif.
         2. pola_kekurangan: Identifikasi pola masalah yang masih terlihat dari data. Bedakan antara masalah pemahaman materi (banyak salah), manajemen waktu/keberanian menjawab (banyak kosong), dan konsistensi performa.
         3. strategi_lanjutan: Berikan 3-5 arahan belajar yang taktis, konkret, dan bisa dilakukan sebelum percobaan berikutnya. Sertakan prioritas latihan, cara evaluasi, dan target perilaku saat ujian.
 
@@ -159,8 +166,8 @@ class AIService
     /**
      * Analisis raport peserta berdasarkan data report_data.
      *
-     * @param array $data  Berisi: participant_name, report_data (array kategori & sub-kategori)
-     * @return array|null  Berisi: ringkasan, kelebihan, kekurangan, rekomendasi
+     * @param  array  $data  Berisi: participant_name, report_data (array kategori & sub-kategori)
+     * @return array|null Berisi: ringkasan, kelebihan, kekurangan, rekomendasi
      */
     public function generateReportCardAnalysis(array $data): ?array
     {
@@ -169,17 +176,17 @@ class AIService
 
             $response = Http::timeout((int) env('OPENAI_TIMEOUT', 60))
                 ->withHeaders([
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                    'Content-Type'  => 'application/json',
-                ])->post($this->baseUrl . '/chat/completions', [
-                    'model'    => $this->model,
+                    'Authorization' => 'Bearer '.$this->apiKey,
+                    'Content-Type' => 'application/json',
+                ])->post($this->baseUrl.'/chat/completions', [
+                    'model' => $this->model,
                     'messages' => [
                         [
-                            'role'    => 'system',
+                            'role' => 'system',
                             'content' => 'Anda adalah Konsultan Pendidikan Senior yang ahli dalam analisis hasil belajar siswa. Tugas Anda adalah memberikan analisis raport yang mendalam, spesifik, dan actionable berdasarkan data per mata pelajaran dan sub mata pelajaran. Gunakan bahasa Indonesia yang profesional namun mudah dipahami. Output wajib dalam format JSON murni (tanpa markdown) dengan keys: ringkasan, kelebihan, kekurangan, rekomendasi. Setiap value berupa string berisi 2-3 paragraf.',
                         ],
                         [
-                            'role'    => 'user',
+                            'role' => 'user',
                             'content' => $prompt,
                         ],
                     ],
@@ -196,7 +203,7 @@ class AIService
                     foreach (['ringkasan', 'kelebihan', 'kekurangan', 'rekomendasi'] as $key) {
                         if (isset($decoded[$key]) && is_array($decoded[$key])) {
                             $decoded[$key] = implode("\n\n", array_map(
-                                fn($v) => is_array($v) ? json_encode($v) : (string) $v,
+                                fn ($v) => is_array($v) ? json_encode($v) : (string) $v,
                                 $decoded[$key]
                             ));
                         }
@@ -206,11 +213,13 @@ class AIService
                 return $decoded;
             }
 
-            Log::error('OpenAI ReportCard Analysis Error: ' . $response->body());
+            Log::error('OpenAI ReportCard Analysis Error: '.$response->body());
+
             return null;
 
         } catch (\Exception $e) {
-            Log::error('AI ReportCard Analysis Error: ' . $e->getMessage());
+            Log::error('AI ReportCard Analysis Error: '.$e->getMessage());
+
             return null;
         }
     }
@@ -224,26 +233,26 @@ class AIService
         $reportData = $data['report_data'];
 
         // Bangun ringkasan per mata pelajaran
-        $categoryLines = "";
+        $categoryLines = '';
         $totalSoalAll = 0;
         $totalBenarAll = 0;
         $totalSalahAll = 0;
 
         foreach ($reportData as $category) {
             $categoryName = $category['category_name'];
-            $totalSoal    = $category['total_soal'];
-            $totalBenar   = $category['total_benar'];
-            $totalSalah   = $category['total_salah'];
-            $persen       = $totalSoal > 0 ? round(($totalBenar / $totalSoal) * 100) : 0;
+            $totalSoal = $category['total_soal'];
+            $totalBenar = $category['total_benar'];
+            $totalSalah = $category['total_salah'];
+            $persen = $totalSoal > 0 ? round(($totalBenar / $totalSoal) * 100) : 0;
 
-            $totalSoalAll  += $totalSoal;
+            $totalSoalAll += $totalSoal;
             $totalBenarAll += $totalBenar;
             $totalSalahAll += $totalSalah;
 
             $categoryLines .= "\n📚 $categoryName: $totalBenar benar dari $totalSoal soal ($persen%)\n";
 
             // Detail sub-kategori
-            if (!empty($category['sub_categories'])) {
+            if (! empty($category['sub_categories'])) {
                 foreach ($category['sub_categories'] as $sub) {
                     $subPersen = $sub['total_soal'] > 0
                         ? round(($sub['total_benar'] / $sub['total_soal']) * 100)
@@ -275,4 +284,3 @@ Instruksi Analisis:
 Berikan jawaban dalam format JSON murni (tanpa markdown wrapper) dengan keys: ringkasan, kelebihan, kekurangan, rekomendasi. Setiap value berupa narasi 2-3 paragraf.";
     }
 }
-

@@ -15,7 +15,12 @@ class ExamSessionCategory extends Model
         'duration',
         'total_questions',
         'max_score_raw',
-        'max_score_irt'
+        'min_score_irt',
+        'max_score_irt',
+    ];
+
+    protected $casts = [
+        'min_score_irt' => 'decimal:2',
     ];
 
     public function examSession()
