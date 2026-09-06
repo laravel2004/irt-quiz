@@ -17,7 +17,8 @@ class SuperAdminMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
-            return redirect()->route('login')->with('error', 'Please login to access this page.');
+            return redirect()->guest(route('login'))
+                ->with('error', 'Sesi Anda telah berakhir. Silakan login kembali.');
         }
 
         if (Auth::user()->role !== 'superadmin') {

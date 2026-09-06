@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') - JagoBelajar Tryout</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     <!-- Fonts -->
@@ -209,5 +210,47 @@
             }
         }
     </script>
+    
+    @auth
+    <!-- Session Expiry Warning Modal -->
+    <div id="session-warning-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; align-items:center; justify-content:center;">
+        <div style="background:white; padding:30px; border-radius:12px; max-width:400px; text-align:center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+            <h3 style="color:#e53e3e; margin-bottom:10px;">⚠️ Sesi Hampir Berakhir</h3>
+            <p style="color:#4a5568; margin-bottom:20px;">Sesi Anda akan segera berakhir. Klik "Lanjutkan" untuk tetap login.</p>
+            <button onclick="document.getElementById('session-warning-modal').style.display='none'; window.pingServer();" style="background:#3182ce; color:white; border:none; padding:10px 24px; border-radius:6px; cursor:pointer; margin-right:10px;">Lanjutkan</button>
+            <button onclick="window.location.href='/'" style="background:#e53e3e; color:white; border:none; padding:10px 24px; border-radius:6px; cursor:pointer;">Logout</button>
+        </div>
+    </div>
+    
+    <script>
+    (function() {
+        var KEEP_ALIVE_INTERVAL_MS = 10 * 60 * 1000; // 10 menit
+        
+        window.pingServer = function() {
+            fetch('{{ route("keep-alive") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : ''
+                },
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                if (response.status === 401 || response.redirected) {
+                    document.getElementById('session-warning-modal').style.display = 'flex';
+                }
+            })
+            .catch(function(err) {
+                console.warn('[KeepAlive] Ping failed:', err);
+            });
+        };
+        
+        var keepAliveTimer = setInterval(window.pingServer, KEEP_ALIVE_INTERVAL_MS);
+        window.addEventListener('beforeunload', function() {
+            clearInterval(keepAliveTimer);
+        });
+    })();
+    </script>
+    @endauth
 </body>
 </html>

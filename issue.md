@@ -1,452 +1,499 @@
-# ISSUE: Lock Soal Saat Membuat Sesi Ujian
+# 🐛 Issue: User Tiba-tiba Logout Saat Sedang Mengerjakan Soal / Admin Input Soal
 
-## Ringkasan
+**Severity:** High  
+**Type:** Bug  
+**Module:** Authentication / Session Management  
+**Reporter:** Project Owner  
+**Assignee:** Junior Developer / AI Model  
 
-Tambahkan opsi `is_lock_quiz` pada form tambah/edit sesi ujian. Jika opsi ini aktif, soal yang terpilih saat generate menjadi milik lock sesi tersebut dan tidak boleh dipilih oleh sesi lain. Lock dapat dilepas kembali dengan mengedit sesi dan mematikan opsi tersebut.
+---
 
-Pemilihan soal tetap acak berdasarkan mata pelajaran, sub mata pelajaran, dan persentase. Form harus menampilkan jumlah soal yang masih tersedia pada setiap sub mata pelajaran serta perkiraan jumlah soal yang akan dipakai dari persentase yang diinput.
+## 📋 Deskripsi Masalah
 
-Pada setiap baris input sub mata pelajaran, jumlah soal yang akan dipakai wajib ditampilkan secara langsung. Contoh: jika total kategori 20 soal dan persentase sub mata pelajaran 25%, tampilkan `Total soal yang akan dipakai: 5`.
+User (peserta ujian) atau admin yang sedang aktif menggunakan aplikasi tiba-tiba ter-logout setelah beberapa saat tidak melakukan request langsung ke server. Ini terjadi dalam dua skenario:
 
-> **PENTING - DATABASE PRODUCTION:** Fitur ini akan dipasang pada aplikasi yang sudah production dan sudah memiliki data. Implementasi dilarang menjalankan `php artisan migrate:fresh`, `php artisan migrate:refresh`, `php artisan db:wipe`, menghapus tabel, atau mengedit migration lama yang sudah pernah dijalankan. Perubahan schema harus memakai migration incremental baru dan dijalankan dengan `php artisan migrate --force` setelah backup database.
+1. **Skenario 1 – Peserta ujian:** User login → masuk ke halaman ujian → sedang mengerjakan soal → setelah beberapa menit tiba-tiba di-redirect ke halaman login.
+2. **Skenario 2 – Admin:** Admin login → membuka form input/edit soal → mengisi soal dengan perlahan → setelah agak lama klik submit, tapi sudah ter-redirect ke login.
 
-## Tujuan Bisnis
+Ini sangat merugikan karena progress ujian atau input soal bisa hilang.
 
-- Admin dapat menentukan apakah soal pada suatu sesi bersifat eksklusif.
-- Soal yang dikunci tidak muncul dalam hasil generate sesi berikutnya.
-- Admin dapat membuka lock tanpa menghapus sesi atau soal.
-- Admin mengetahui kapasitas soal sebelum menyimpan sesi.
-- Jumlah soal hasil generate tepat sesuai total dan pembagian persentase.
-- Jika stok tidak cukup, penyimpanan gagal dengan pesan yang jelas dan tidak meninggalkan data setengah jadi.
+---
 
-## Kondisi Codebase Saat Ini
+## 🔍 Root Cause Analysis (Dugaan Awal)
 
-Alur yang sudah ada:
+Berdasarkan investigasi awal terhadap kode dan konfigurasi:
 
-1. Form tambah/edit sesi berada di `resources/views/admin/sessions/index.blade.php`.
-2. Payload form dikirim sebagai JSON ke `ExamSessionController::store()` atau `ExamSessionController::update()`.
-3. Validasi sesi berada di `app/Http/Controllers/Admin/ExamSessionController.php`.
-4. `ExamSessionService::createWithCategories()` membuat sesi, konfigurasi mata pelajaran, konfigurasi sub mata pelajaran, lalu langsung memanggil `generateSessionQuestions()` di dalam transaksi.
-5. `generateSessionQuestions()` memilih soal dan memasukkannya ke tabel pivot `session_questions`.
-6. Generate ulang juga dapat dipanggil dari:
-   - `ExamSessionController::previewQuestions()`
-   - `ExamSessionController::previewQuestionsOnly()`
-   - `ExamController::agreeTerms()` jika sesi belum memiliki soal
-7. Edit sesi saat ini mengganti konfigurasi mata pelajaran/sub mata pelajaran, tetapi tidak meregenerate soal.
-8. Pemilihan soal per sub mata pelajaran sudah mengacak soal dan mencoba meratakan pemilihan berdasarkan `kode_soal`.
-9. Fallback saat stok kurang saat ini dapat mengambil soal dari sub mata pelajaran yang tidak dipilih dan bahkan menduplikasi soal. Perilaku ini harus dihapus karena bertentangan dengan fitur lock dan persentase.
-10. Belum ada test khusus untuk generate soal atau CRUD sesi.
+### 1. Session Berbasis Redis dengan Lifetime Pendek
+- File: `config/session.php` dan `.env`
+- `SESSION_DRIVER=redis` dan `SESSION_LIFETIME=120` (2 menit)
+- Ini berarti session akan **expire setelah 120 menit** tapi ada juga kemungkinan masalah **idle timeout** jika Redis evict key lebih cepat.
 
-## Keputusan Desain Wajib
+### 2. Tidak Ada Mekanisme "Keep-Alive" / Refresh Session di Frontend
+- Tidak ditemukan kode di sisi frontend (Blade views) yang secara aktif mem-"ping" server saat user idle (misal: sedang membaca soal tanpa klik apapun).
+- Laravel session akan expire jika tidak ada request masuk dalam durasi `SESSION_LIFETIME`.
 
-### 1. Simpan opsi lock pada sesi
+### 3. Auth Guard Hanya Berbasis Session (Tidak Ada Refresh Token)
+- File: `config/auth.php` — guard yang digunakan adalah `web` dengan driver `session`.
+- Tidak ada implementasi token-based auth (Sanctum/Passport), sehingga tidak ada mekanisme "refresh token" seperti di API.
+- Saat session Redis expire → `Auth::check()` di middleware mengembalikan `false` → redirect ke login.
 
-Tambahkan kolom berikut ke `exam_sessions`:
+### 4. Middleware Langsung Redirect Tanpa Feedback yang Baik
+- File: `app/Http/Middleware/AdminMiddleware.php`
+- Saat session habis, middleware langsung redirect tanpa menyimpan intended URL, sehingga user harus login ulang dan kembali navigasi manual.
 
-```text
-is_lock_quiz BOOLEAN NOT NULL DEFAULT FALSE
+---
+
+## 🎯 Tujuan Implementasi
+
+1. **Investigasi** dan pastikan root cause yang sebenarnya.
+2. **Implementasi session keep-alive** agar session tidak expire selama user masih aktif di halaman.
+3. **Perpanjang SESSION_LIFETIME** ke nilai yang lebih masuk akal untuk konteks ujian.
+4. **Perbaiki UX saat session expire** — user mendapat peringatan sebelum di-logout, bukan langsung di-redirect.
+5. **(Opsional)** Simpan `intended URL` agar setelah re-login user kembali ke halaman yang sama.
+
+---
+
+## 📁 File yang Perlu Diinvestigasi
+
+| File | Tujuan Investigasi |
+|------|-------------------|
+| `.env` | Cek `SESSION_LIFETIME`, `SESSION_DRIVER` |
+| `config/session.php` | Cek konfigurasi session |
+| `config/auth.php` | Cek auth guard yang digunakan |
+| `app/Services/AuthService.php` | Cek apakah ada logout logic yang tidak terduga |
+| `app/Http/Middleware/AdminMiddleware.php` | Cek behavior redirect saat auth gagal |
+| `app/Http/Middleware/SuperAdminMiddleware.php` | Sama seperti di atas |
+| `routes/web.php` | Cek middleware yang diterapkan ke setiap route |
+| `app/Http/Controllers/ExamController.php` | Cek apakah ada manual session invalidation |
+| `resources/views/` | Cek apakah ada JS polling / keep-alive di view ujian |
+
+---
+
+## 🛠️ Tahapan Implementasi (Step by Step)
+
+---
+
+### TAHAP 1 – INVESTIGASI & AUDIT KONFIGURASI
+
+> **Estimasi waktu:** 30–60 menit  
+> **Tujuan:** Pahami kondisi saat ini sebelum mengubah apapun.
+
+#### Step 1.1 — Cek Nilai SESSION_LIFETIME di `.env`
+
+Buka file `.env` dan catat:
+```
+SESSION_DRIVER=redis
+SESSION_LIFETIME=120   ← ini dalam satuan MENIT
 ```
 
-Default `false` menjaga perilaku sesi lama setelah migration dijalankan.
+**Apa artinya?** Session akan invalid setelah 120 menit sejak **request terakhir**. Jika user sedang membaca soal panjang tanpa interaksi lebih dari 120 menit, mereka akan ter-logout.
 
-### 2. Simpan pemilik lock pada soal, bukan hanya boolean
+**Pertanyaan yang perlu dijawab:**
+- Apakah 120 menit sudah cukup? (Biasanya ujian bisa 2–3 jam)
+- Apakah ada kemungkinan Redis memory penuh sehingga session dibuang lebih cepat? (Redis eviction policy)
 
-Tambahkan kolom berikut ke `question_banks`:
+#### Step 1.2 — Cek Redis Eviction Policy
 
-```text
-locked_by_exam_session_id BIGINT UNSIGNED NULL
-FOREIGN KEY -> exam_sessions.id, ON DELETE SET NULL
-```
-
-Jangan menambah `question_banks.is_locked`. Boolean saja tidak dapat menjawab sesi mana yang memiliki lock dan berisiko membuat satu sesi membuka lock milik sesi lain.
-
-Definisi status soal:
-
-- Available: `locked_by_exam_session_id IS NULL`.
-- Locked oleh sesi saat ini: `locked_by_exam_session_id = session.id`.
-- Tidak boleh dipakai sesi saat ini: `locked_by_exam_session_id` berisi ID sesi lain.
-
-`ON DELETE SET NULL` memastikan soal otomatis available bila sesi pemilik lock dihapus.
-
-### 3. Semua jalur generate memakai aturan yang sama
-
-Filter lock harus berada di `ExamSessionService::generateSessionQuestions()` dan helper query yang dipakai method tersebut. Jangan hanya menambah filter di controller create karena preview, regenerate, dan mulai ujian juga dapat memanggil generator.
-
-Saat regenerate sesi yang sudah mengunci soal, soal milik sesi itu sendiri tetap boleh menjadi kandidat. Soal milik sesi terkunci lain tetap harus dikecualikan.
-
-### 4. Kekurangan stok adalah error, bukan alasan menduplikasi soal
-
-Generator harus menghasilkan tepat `total_questions` soal unik. Jika jumlah available pada salah satu alokasi tidak cukup, batalkan seluruh transaksi dan tampilkan pesan, misalnya:
-
-```text
-Soal tersedia untuk Aljabar hanya 3, sedangkan sesi membutuhkan 5 soal.
-```
-
-Jangan mengisi kekurangan dengan:
-
-- soal locked;
-- soal dari sub mata pelajaran yang tidak dipilih;
-- ID soal yang sama lebih dari sekali.
-
-### 5. Gunakan satu aturan pembulatan di backend dan frontend
-
-Persentase dapat menghasilkan pecahan. Gunakan metode largest remainder agar total alokasi selalu sama dengan `total_questions`:
-
-1. Hitung nilai mentah: `percentage / 100 * total_questions`.
-2. Ambil `floor()` untuk setiap sub mata pelajaran.
-3. Hitung sisa: `total_questions - jumlah seluruh floor`.
-4. Bagikan sisa satu per satu kepada nilai dengan pecahan terbesar.
-5. Jika nilai pecahan sama, gunakan urutan baris sub mata pelajaran sebagai tie-breaker agar hasil backend dan frontend konsisten.
-
-Contoh: total 10 soal dengan persentase 33%, 33%, 34% harus menghasilkan 3, 3, dan 4 soal, bukan 3, 3, dan fallback 1 soal dari sub mata pelajaran lain.
-
-## Aturan Perilaku
-
-### Membuat sesi dengan `is_lock_quiz = false`
-
-- Generator hanya mengambil soal available.
-- Soal yang terpilih disimpan ke `session_questions`.
-- `locked_by_exam_session_id` tetap `NULL`, sehingga soal boleh dipakai lagi oleh sesi lain.
-
-### Membuat sesi dengan `is_lock_quiz = true`
-
-- Generator hanya mengambil soal available.
-- Setelah seluruh alokasi tervalidasi, simpan `session_questions`.
-- Set `locked_by_exam_session_id` setiap soal terpilih ke ID sesi baru.
-- Pembuatan sesi, pemilihan soal, dan penguncian harus berada dalam satu transaksi.
-
-### Edit dari locked menjadi unlocked
-
-- Pertahankan isi `session_questions` jika konfigurasi alokasi tidak berubah.
-- Set semua `question_banks.locked_by_exam_session_id` milik sesi itu menjadi `NULL`.
-- Jangan membuka soal yang dikunci sesi lain.
-
-### Edit dari unlocked menjadi locked
-
-- Generate ulang agar sesi hanya memperoleh soal yang dapat dikunci saat transaksi berjalan.
-- Setelah berhasil, tandai semua soal hasil generate sebagai milik lock sesi tersebut.
-- Jika stok tidak cukup, batalkan update dan pertahankan data sesi sebelum edit.
-
-### Edit konfigurasi alokasi
-
-Konfigurasi alokasi berarti kategori, sub kategori, persentase, atau `total_questions` berubah.
-
-- Generate ulang menggunakan konfigurasi baru.
-- Jika sesi tetap locked, soal lama milik sesi itu boleh dipilih kembali.
-- Lepas lock soal lama yang tidak lagi terpilih.
-- Kunci soal baru yang terpilih jika `is_lock_quiz = true`.
-- Jika hanya nama, tanggal, waktu, durasi, atau skor yang berubah, jangan acak ulang soal.
-
-### Sesi sudah mulai dikerjakan
-
-Jika ada peserta dengan `started_at` terisi:
-
-- Tolak perubahan kategori, sub kategori, persentase, jumlah soal, atau perubahan `is_lock_quiz` dari false menjadi true karena perubahan tersebut dapat mengganti soal peserta.
-- Tetap izinkan perubahan dari true menjadi false karena tindakan ini hanya melepas reservasi dan tidak mengubah soal peserta.
-- Tetap izinkan edit metadata yang tidak mengubah kumpulan soal.
-- Tolak regenerate dari halaman preview.
-
-### Menghapus sesi
-
-- Relasi `session_questions` terhapus melalui cascade yang sudah ada.
-- `locked_by_exam_session_id` otomatis menjadi `NULL` melalui foreign key baru.
-- Tidak perlu menulis loop unlock manual pada controller delete.
-
-## Tahapan Implementasi
-
-## Tahap 1: Tambahkan Schema Lock
-
-**File baru:** migration baru di `database/migrations/`.
-
-Langkah:
-
-1. Buat migration incremental baru. Jangan mengubah migration lama yang sudah pernah dijalankan di production.
-2. Tambahkan `is_lock_quiz` boolean default `false` pada `exam_sessions`.
-3. Tambahkan `locked_by_exam_session_id` nullable pada `question_banks`.
-4. Buat foreign key ke `exam_sessions.id` dengan `nullOnDelete()`.
-5. Pastikan method `down()` menghapus foreign key/kolom `locked_by_exam_session_id`, lalu menghapus `is_lock_quiz`.
-6. Uji migration menggunakan salinan database production atau staging yang memiliki data. Pastikan data sesi, soal, peserta, jawaban, dan hasil ujian lama tidak berubah.
-7. Sebelum deployment, buat backup database dan pastikan backup dapat direstore.
-8. Di production, jalankan hanya `php artisan migrate --force`.
-9. Dilarang menjalankan `migrate:fresh`, `migrate:refresh`, `db:wipe`, `DROP TABLE`, atau perintah reset database lainnya pada production.
-
-**Acceptance criteria:**
-
-- [ ] `php artisan migrate` berhasil pada database yang sudah memiliki data.
-- [ ] Semua sesi lama memiliki nilai lock `false`.
-- [ ] Seluruh data lama tetap ada dan jumlah record tabel utama tidak berubah setelah migration.
-- [ ] Menghapus sesi pemilik lock membuat kolom lock pada soal menjadi `NULL`.
-- [ ] `php artisan migrate:rollback` untuk migration baru berhasil.
-- [ ] Deployment production tidak menggunakan perintah reset database.
-
-## Tahap 2: Perbarui Model dan Query Availability
-
-**File:**
-
-- `app/Models/ExamSession.php`
-- `app/Models/QuestionBank.php`
-
-Langkah:
-
-1. Tambahkan `is_lock_quiz` ke `$fillable` dan `$casts` sebagai boolean pada `ExamSession`.
-2. Tambahkan relasi `lockedQuestions()` dari `ExamSession` ke `QuestionBank` menggunakan foreign key `locked_by_exam_session_id`.
-3. Tambahkan relasi `lockedBySession()` pada `QuestionBank`.
-4. Jangan masukkan `locked_by_exam_session_id` ke `$fillable`; status lock hanya boleh diubah oleh service, bukan payload CRUD soal.
-5. Tambahkan local scope pada `QuestionBank`, misalnya `scopeAvailableForSession($query, ?int $sessionId = null)`:
-   - create: hanya `locked_by_exam_session_id IS NULL`;
-   - regenerate/edit: `NULL` atau lock dimiliki `$sessionId`.
-6. Gunakan scope tersebut untuk semua query kandidat, termasuk fallback kategori tanpa konfigurasi sub mata pelajaran.
-
-**Acceptance criteria:**
-
-- [ ] Scope create tidak mengembalikan soal locked.
-- [ ] Scope edit mengembalikan soal available dan soal milik sesi itu sendiri.
-- [ ] Scope edit tidak mengembalikan soal milik sesi lain.
-
-## Tahap 3: Buat Perhitungan Alokasi yang Deterministik
-
-**File:** `app/Services/ExamSessionService.php`.
-
-Langkah:
-
-1. Buat satu private method kecil untuk menerima total soal dan daftar persentase, lalu mengembalikan jumlah soal per baris menggunakan largest remainder.
-2. Pertahankan urutan konfigurasi `exam_session_sub_categories` sebagai tie-breaker.
-3. Ganti penggunaan `round()` per sub mata pelajaran di `generateSessionQuestions()` dengan hasil method ini.
-4. Jika sebuah kategori tidak memiliki konfigurasi sub mata pelajaran, ambil acak dari seluruh soal available dalam kategori tersebut untuk menjaga kompatibilitas sesi lama.
-5. Jika kategori memiliki konfigurasi sub mata pelajaran, jangan mengambil soal dari sub mata pelajaran di luar daftar untuk menutup kekurangan.
-6. Pertahankan logika pemerataan `kode_soal` yang sudah ada, tetapi jalankan hanya terhadap kumpulan soal available.
-7. Hapus fallback yang menambahkan ID acak berulang kali saat stok unik kurang.
-
-**Acceptance criteria:**
-
-- [ ] Jumlah alokasi selalu sama dengan `total_questions` jika total persentase 100%.
-- [ ] Kasus 10 soal dengan 33/33/34 menghasilkan 3/3/4.
-- [ ] Semua soal hasil generate unik.
-- [ ] Soal selalu berasal dari kategori dan sub mata pelajaran yang sesuai.
-
-## Tahap 4: Jadikan Generate dan Lock Sebagai Operasi Atomik
-
-**File:** `app/Services/ExamSessionService.php`.
-
-Langkah:
-
-1. Pastikan seluruh isi `generateSessionQuestions()` berjalan dalam `DB::transaction()`. Nested transaction dari `createWithCategories()` diperbolehkan oleh Laravel.
-2. Ambil record sesi untuk update dan muat konfigurasi terbaru.
-3. Ambil kandidat melalui `availableForSession($sessionId)` dan kunci row kandidat menggunakan `lockForUpdate()` sebelum finalisasi pilihan. Tujuannya mencegah dua request locked memilih soal yang sama secara bersamaan.
-4. Hitung dan pilih semua soal terlebih dahulu. Jangan menghapus pivot lama sebelum semua alokasi lulus validasi stok.
-5. Jika stok kurang, lempar exception yang berisi nama sub mata pelajaran, jumlah tersedia, dan jumlah dibutuhkan. Transaction harus rollback.
-6. Setelah semua pilihan valid:
-   - ganti isi `session_questions` dengan ID unik yang baru;
-   - jika sesi locked, lepas lock lama milik sesi yang tidak terpilih dan klaim semua soal terpilih;
-   - jika sesi unlocked, lepas seluruh lock yang masih dimiliki sesi tersebut.
-7. Saat mengklaim lock, update hanya row yang `locked_by_exam_session_id IS NULL` atau sudah dimiliki sesi yang sama. Verifikasi jumlah row yang berhasil diklaim. Bila tidak sesuai, lempar exception dan rollback.
-8. Jangan membuat service/factory baru; logika ini sudah menjadi tanggung jawab `ExamSessionService`.
-
-**Catatan concurrency:** `lockForUpdate()` hanya efektif di dalam transaction. Jangan memindahkannya ke luar callback transaction.
-
-**Acceptance criteria:**
-
-- [ ] Kegagalan generate tidak menghapus soal lama sesi.
-- [ ] Tidak ada sesi locked berbeda yang memiliki soal dengan ID sama.
-- [ ] Regenerate sesi locked boleh mempertahankan soal yang sebelumnya dikunci sesi itu.
-- [ ] Lock dan pivot tidak pernah tersimpan setengah jadi.
-
-## Tahap 5: Validasi Request dan Aturan Update
-
-**File:** `app/Http/Controllers/Admin/ExamSessionController.php` dan `app/Services/ExamSessionService.php`.
-
-Langkah:
-
-1. Tambahkan rule `is_lock_quiz => required|boolean` pada `store()` dan `update()`.
-2. Tambahkan `distinct` untuk ID kategori dan ID sub kategori agar satu konfigurasi tidak dimasukkan dua kali.
-3. Validasi bahwa setiap sub kategori benar-benar merupakan anak dari kategori pada baris yang sama. Rule `exists:sub_categories,id` saja belum menjamin hubungan ini.
-4. Tetap validasi total persentase tepat 100 untuk kategori yang memiliki sub kategori.
-5. Sebelum update, simpan snapshot konfigurasi lama dan nilai `is_lock_quiz` lama.
-6. Bandingkan hanya field yang memengaruhi alokasi: kategori, sub kategori, persentase, dan `total_questions`.
-7. Jalankan aturan edit berikut di dalam satu transaction:
-   - alokasi berubah: simpan konfigurasi lalu generate ulang;
-   - false menjadi true: generate ulang lalu lock;
-   - true menjadi false tanpa perubahan alokasi: simpan sesi lalu release lock tanpa regenerate;
-   - tidak ada perubahan alokasi/lock: jangan generate ulang.
-8. Tambahkan pengecekan `participants.started_at` sebelum operasi yang dapat meregenerate soal.
-9. Ubah kegagalan stok menjadi response HTTP 422 dengan pesan yang dapat ditampilkan langsung oleh form.
-10. Gunakan data tervalidasi untuk update; jangan percaya field lock dari payload lain.
-
-**Acceptance criteria:**
-
-- [ ] Nilai `is_lock_quiz` tersimpan saat create dan edit.
-- [ ] Edit metadata tidak mengubah `session_questions`.
-- [ ] Unlock melepas hanya soal milik sesi yang diedit.
-- [ ] Perubahan alokasi meregenerate soal sebelum ada peserta yang mulai.
-- [ ] Perubahan berbahaya ditolak setelah peserta mulai.
-- [ ] Payload sub kategori milik kategori lain ditolak dengan 422.
-
-## Tahap 6: Tampilkan Jumlah Soal Available di Form
-
-**File:** `app/Http/Controllers/Admin/ExamSessionController.php`.
-
-Saat memuat halaman index, ubah query kategori agar setiap `subCategory` memiliki atribut:
-
-```text
-available_questions_count
-```
-
-Nilainya adalah jumlah `question_banks` pada sub kategori tersebut dengan `locked_by_exam_session_id IS NULL`.
-
-Gunakan eager loading dan `withCount`; jangan menjalankan query baru dari dalam loop Blade atau JavaScript.
-
-Untuk form create, angka ini adalah stok yang benar-benar dapat dipakai. Pada form edit sesi locked, soal milik sesi tersebut juga dapat dipakai kembali saat regenerate. Agar angka edit tidak menyesatkan, response `show()` perlu mengirim availability untuk sesi tersebut dengan aturan `NULL atau locked_by_exam_session_id = session.id`, atau mengirim count soal milik sesi per sub kategori lalu menambahkannya pada count global. Pilih satu pendekatan dan gunakan hasilnya saat membuka modal edit.
-
-**Acceptance criteria:**
-
-- [ ] Setiap pilihan sub mata pelajaran menampilkan teks seperti `Aljabar (12 soal tersedia)`.
-- [ ] Count tidak memasukkan soal yang dikunci sesi lain.
-- [ ] Pada edit sesi locked, count memasukkan soal yang dikunci oleh sesi itu sendiri.
-- [ ] Halaman tidak menimbulkan query N+1.
-
-## Tahap 7: Tambahkan Toggle dan Estimasi Soal pada UI
-
-**File:** `resources/views/admin/sessions/index.blade.php`.
-
-Langkah:
-
-1. Tambahkan checkbox/toggle berlabel `Kunci soal untuk sesi ini` pada bagian Informasi Dasar Sesi.
-2. Gunakan input checkbox native dengan ID `sIsLockQuiz`; jangan menambah library UI.
-3. Default form create adalah tidak aktif, sesuai default database.
-4. Saat membuka modal edit, isi toggle dari `session.is_lock_quiz`.
-5. Tambahkan `is_lock_quiz: document.getElementById('sIsLockQuiz').checked` ke payload.
-6. Ubah option sub mata pelajaran menjadi format `Nama (N soal tersedia)`.
-7. Di setiap baris sub mata pelajaran, tambahkan elemen teks total pemakaian, misalnya `Total soal yang akan dipakai: 4` dan keterangan stok `12 soal tersedia`. Jangan hanya menampilkan total gabungan di bagian bawah kategori.
-8. Buat satu fungsi JavaScript yang menghitung seluruh estimasi dalam satu kategori menggunakan aturan largest remainder yang sama dengan backend.
-9. Panggil ulang fungsi estimasi ketika:
-   - jumlah soal kategori berubah;
-   - persentase berubah;
-   - sub mata pelajaran dipilih;
-   - baris sub mata pelajaran ditambah atau dihapus;
-   - data edit dimuat.
-10. Jika estimasi kebutuhan melebihi jumlah available, tampilkan teks merah dan cegah submit dengan pesan yang menyebut sub mata pelajaran terkait.
-11. Tetap pertahankan validasi total persentase 100%; backend tetap menjadi sumber validasi utama.
-12. Pastikan teks estimasi dapat turun baris pada layar kecil dan tidak mendorong tombol hapus keluar container.
-
-**Acceptance criteria:**
-
-- [ ] Toggle bekerja pada create dan edit.
-- [ ] Payload selalu mengirim boolean, bukan string `"on"`.
-- [ ] Count available terlihat setelah sub mata pelajaran dipilih.
-- [ ] Setiap baris sub mata pelajaran menampilkan `Total soal yang akan dipakai: N`.
-- [ ] Total pemakaian berubah langsung tanpa reload saat persentase atau jumlah soal kategori diubah.
-- [ ] Jumlah estimasi seluruh sub mata pelajaran sama dengan total soal kategori.
-- [ ] Form memberi peringatan sebelum submit jika stok tidak cukup.
-
-## Tahap 8: Amankan Semua Pemanggil Generate
-
-**File:**
-
-- `app/Http/Controllers/Admin/ExamSessionController.php`
-- `app/Http/Controllers/ExamController.php`
-
-Langkah:
-
-1. Pastikan kedua endpoint preview tetap memanggil method service yang sama.
-2. Jika parameter `regenerate` digunakan, tolak regenerate ketika peserta sudah mulai.
-3. `ExamController::agreeTerms()` boleh menjalankan generator hanya jika pivot benar-benar kosong; error stok harus ditangani dan tidak menghasilkan ujian parsial.
-4. Jangan menduplikasi filter lock di tiga controller. Semua aturan availability tetap berada di service/model scope.
-5. Pastikan pesan error 422 dari create/update tampil di toast form. Tambahkan handler untuk network error agar form tidak gagal diam-diam.
-
-**Acceptance criteria:**
-
-- [ ] Create, preview regenerate, dan fallback saat mulai ujian menggunakan aturan lock identik.
-- [ ] Tidak ada jalur yang dapat memasukkan soal locked milik sesi lain.
-- [ ] Error generate ditampilkan kepada admin dan tidak meninggalkan data parsial.
-
-## Tahap 9: Tambahkan Test Terfokus
-
-**File baru yang disarankan:** `tests/Feature/ExamSessionQuestionLockTest.php`.
-
-Gunakan `RefreshDatabase`. Karena factory domain belum tersedia, buat record kategori, sub kategori, soal, dan sesi langsung dengan model atau query builder. Tidak perlu membuat factory baru hanya untuk test ini.
-
-Minimal test cases:
-
-1. Create sesi unlocked memilih soal available tetapi tidak mengisi `locked_by_exam_session_id`.
-2. Create sesi locked mengisi pivot dan lock owner dengan ID sesi yang benar.
-3. Sesi berikutnya tidak pernah memilih soal milik lock sesi lain.
-4. Unlock membuat seluruh soal milik sesi tersebut available tanpa membuka lock sesi lain.
-5. Hapus sesi locked membuat soal kembali available melalui foreign key.
-6. Regenerate sesi locked boleh memakai soal miliknya sendiri dan tidak memakai lock sesi lain.
-7. Alokasi 10 soal dengan 33/33/34 menghasilkan 3/3/4.
-8. Semua ID hasil generate unik.
-9. Stok sub mata pelajaran kurang menghasilkan 422/exception dan transaction rollback.
-10. Edit metadata tidak mengganti pivot soal.
-11. Edit alokasi sebelum ujian meregenerate soal.
-12. Edit alokasi atau false-to-true setelah peserta mulai ditolak.
-13. True-to-false setelah peserta mulai tetap melepas lock tanpa mengganti pivot.
-14. Validasi menolak sub kategori yang bukan anak kategori terkait.
-15. Count availability tidak menghitung soal locked sesi lain dan, dalam mode edit, menghitung soal milik sesi sendiri.
-
-Perintah verifikasi:
+Jalankan command berikut untuk mengecek konfigurasi Redis:
 
 ```bash
-php artisan test --filter=ExamSessionQuestionLockTest
-php artisan test
-npm run build
+# Masuk ke container Redis (kalau pakai Docker)
+docker exec -it <nama-container-redis> redis-cli
+
+# Atau kalau Redis langsung di host:
+redis-cli
+
+# Lalu jalankan:
+CONFIG GET maxmemory-policy
 ```
 
-## Urutan Pengerjaan yang Disarankan
+**Hasil yang AMAN:** `noeviction` atau `allkeys-lru` (tapi ini bisa hapus session aktif!)
 
-Kerjakan berurutan agar setiap tahap mudah diperiksa:
+**Jika hasilnya `allkeys-lru` atau `volatile-lru`**, ini bisa jadi penyebab user tiba-tiba logout karena Redis membuang session lama/jarang diakses saat memory penuh.
 
-1. Migration dan model.
-2. Test alokasi dan query availability.
-3. Refactor generator untuk alokasi tepat dan stok kurang.
-4. Tambahkan lock/unlock atomik.
-5. Tambahkan validasi serta aturan update.
-6. Tambahkan availability count dari backend.
-7. Tambahkan toggle, label stok, dan estimasi pada Blade/JavaScript.
-8. Amankan preview/regenerate/start exam.
-9. Jalankan test penuh dan build frontend.
+#### Step 1.3 — Trace Semua Middleware di Route Ujian
 
-Catatan deployment production setelah seluruh verifikasi berhasil:
+Buka `routes/web.php` dan perhatikan:
+
+```php
+Route::middleware(['auth'])->group(function() {
+    // Routes peserta ujian
+    Route::get('/exam/{code}/category/{id}', ...)
+    ...
+});
+```
+
+Middleware `auth` adalah bawaan Laravel yang memanggil `Authenticate` middleware. Cek file `vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php` untuk memahami apa yang terjadi saat autentikasi gagal.
+
+#### Step 1.4 — Cek Apakah Ada Auto-Logout di JavaScript
+
+Lakukan pencarian di seluruh folder views:
 
 ```bash
-# Buat dan verifikasi backup database terlebih dahulu.
-php artisan migrate --force
-php artisan optimize:clear
+# Dari root project
+grep -r "logout" resources/views/ --include="*.blade.php" -l
+grep -r "setTimeout" resources/views/ --include="*.blade.php" -l
+grep -r "setInterval" resources/views/ --include="*.blade.php" -l
 ```
 
-Jangan memasukkan perintah `migrate:fresh`, `migrate:refresh`, atau `db:wipe` ke dokumentasi deployment, script CI/CD, maupun instruksi untuk operator production.
+Jika ditemukan `setTimeout` yang memanggil logout, itu bisa jadi penyebabnya.
 
-Commit kecil yang disarankan:
+#### Step 1.5 — Cek Log Laravel
 
-```text
-feat: add exam question lock ownership schema
-feat: exclude locked questions during session generation
-feat: add quiz lock controls and availability estimates
-test: cover exam session question locking
+```bash
+# Lihat log terbaru
+tail -n 100 storage/logs/laravel.log
+
+# Atau kalau banyak, cari error auth
+grep -i "session\|auth\|unauthenticated" storage/logs/laravel.log | tail -50
 ```
 
-## Checklist Akhir
+Perhatikan timestamp error — apakah terjadi persis setelah 120 menit?
 
-- [ ] Migration aman untuk data lama dan dapat di-rollback.
-- [ ] Backup production dibuat dan diverifikasi sebelum migration.
-- [ ] Tidak ada perintah reset database dalam langkah deployment.
-- [ ] `is_lock_quiz` tersedia pada create dan edit.
-- [ ] Soal locked memiliki satu pemilik yang jelas.
-- [ ] Semua generator menghindari lock sesi lain.
-- [ ] Hasil generate unik dan sesuai pembagian sub mata pelajaran.
-- [ ] Kekurangan stok membatalkan transaksi dengan pesan jelas.
-- [ ] Unlock dan delete sesi membuat soal available kembali.
-- [ ] Count available dan estimasi UI memakai aturan yang konsisten dengan backend.
-- [ ] Setiap input sub mata pelajaran menampilkan total soal yang akan dipakai.
-- [ ] Edit metadata tidak mengacak ulang soal.
-- [ ] Sesi yang sudah dikerjakan tidak dapat diregenerate.
-- [ ] Test terfokus, seluruh test, dan build frontend berhasil.
+---
 
-## Di Luar Scope
+### TAHAP 2 – FIX KONFIGURASI SESSION
 
-- Riwayat siapa dan kapan lock/unlock dilakukan.
-- Tombol bulk unlock banyak sesi.
-- Dashboard audit lock.
-- Perubahan desain bank soal selain menampilkan status availability di form sesi.
-- Penambahan package baru.
+> **Estimasi waktu:** 15–30 menit  
+> **File yang diubah:** `.env`, `config/session.php`
 
-Fitur tersebut baru perlu ditambahkan jika ada kebutuhan operasional terpisah.
+#### Step 2.1 — Perpanjang SESSION_LIFETIME di `.env`
+
+Edit file `.env`:
+
+```diff
+- SESSION_LIFETIME=120
++ SESSION_LIFETIME=480
+```
+
+> **Penjelasan:** `480` = 8 jam. Ini lebih masuk akal untuk sesi ujian atau kerja admin seharian. Sesuaikan dengan kebutuhan bisnis.
+
+#### Step 2.2 — Pastikan Session Tidak Expire saat Ditutup Browser
+
+Di `config/session.php`, cek baris ini:
+
+```php
+'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
+```
+
+Pastikan nilainya `false` (sudah benar secara default). Jika `true`, session akan hilang begitu browser ditutup.
+
+#### Step 2.3 — Jalankan Perintah Ini Setelah Mengubah .env
+
+```bash
+php artisan config:clear
+php artisan cache:clear
+```
+
+Jangan lupa restart queue worker jika ada:
+
+```bash
+php artisan queue:restart
+```
+
+---
+
+### TAHAP 3 – IMPLEMENTASI SESSION KEEP-ALIVE DI FRONTEND
+
+> **Estimasi waktu:** 1–2 jam  
+> **File yang dibuat/diubah:** Layout Blade utama (cek `resources/views/layouts/`)
+
+Ini adalah solusi utama. Kita akan menambahkan JavaScript yang secara berkala "ping" ke server agar session tidak expire selama user masih membuka halaman.
+
+#### Step 3.1 — Buat Endpoint Keep-Alive di Routes
+
+Buka `routes/web.php` dan tambahkan route berikut **di dalam** group middleware `auth`:
+
+```php
+// Tambahkan di dalam Route::middleware(['auth'])->group(function() { ... })
+Route::post('/keep-alive', function () {
+    // Cukup touch session agar timestamp diperbarui
+    session()->put('last_activity', now()->timestamp);
+    return response()->json(['status' => 'ok', 'user' => auth()->id()]);
+})->name('keep-alive');
+```
+
+> **Kenapa `POST`?** Karena `POST` memperbarui session di Laravel lebih andal dibanding `GET`, dan juga lebih aman dari CSRF.
+
+#### Step 3.2 — Tambahkan JavaScript Keep-Alive di Layout Blade
+
+Cari file layout utama yang digunakan oleh halaman ujian dan admin. Kemungkinan di:
+- `resources/views/layouts/app.blade.php`
+- `resources/views/layouts/admin.blade.php`
+- `resources/views/layouts/participant.blade.php`
+
+Tambahkan script berikut **sebelum tag `</body>`**:
+
+```blade
+{{-- Keep-Alive Script: Prevents session expiry while user is on the page --}}
+@auth
+<script>
+(function() {
+    // Ping server setiap 10 menit (600.000 ms) untuk menjaga session tetap aktif
+    // Ganti angka ini jika SESSION_LIFETIME diubah (gunakan < setengah SESSION_LIFETIME)
+    var KEEP_ALIVE_INTERVAL_MS = 10 * 60 * 1000; // 10 menit
+
+    function pingServer() {
+        fetch('{{ route("keep-alive") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                    ? document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    : ''
+            },
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            if (response.status === 401 || response.redirected) {
+                // Session sudah expire, tampilkan peringatan
+                showSessionExpiredAlert();
+            }
+        })
+        .catch(function(err) {
+            console.warn('[KeepAlive] Ping failed:', err);
+        });
+    }
+
+    function showSessionExpiredAlert() {
+        if (confirm('Sesi Anda telah berakhir. Klik OK untuk login kembali.')) {
+            window.location.href = '/';
+        }
+    }
+
+    // Mulai interval ping
+    var keepAliveTimer = setInterval(pingServer, KEEP_ALIVE_INTERVAL_MS);
+
+    // Bersihkan timer saat halaman ditutup
+    window.addEventListener('beforeunload', function() {
+        clearInterval(keepAliveTimer);
+    });
+})();
+</script>
+@endauth
+```
+
+> **Catatan penting:** Pastikan di `<head>` layout sudah ada meta CSRF token:
+> ```blade
+> <meta name="csrf-token" content="{{ csrf_token() }}">
+> ```
+
+#### Step 3.3 — Tambahkan Peringatan Visual Sebelum Session Expire (Opsional tapi Direkomendasikan)
+
+Untuk UX yang lebih baik, tambahkan warning modal menggunakan CSS murni (tidak butuh library tambahan). Tambahkan di layout, sebelum `</body>`:
+
+```html
+@auth
+<!-- Session Expiry Warning Modal -->
+<div id="session-warning-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; align-items:center; justify-content:center;">
+    <div style="background:white; padding:30px; border-radius:12px; max-width:400px; text-align:center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <h3 style="color:#e53e3e; margin-bottom:10px;">⚠️ Sesi Hampir Berakhir</h3>
+        <p style="color:#4a5568; margin-bottom:20px;">Sesi Anda akan segera berakhir. Klik "Lanjutkan" untuk tetap login.</p>
+        <button onclick="document.getElementById('session-warning-modal').style.display='none'; pingServer();" style="background:#3182ce; color:white; border:none; padding:10px 24px; border-radius:6px; cursor:pointer; margin-right:10px;">Lanjutkan</button>
+        <button onclick="window.location.href='/'" style="background:#e53e3e; color:white; border:none; padding:10px 24px; border-radius:6px; cursor:pointer;">Logout</button>
+    </div>
+</div>
+@endauth
+```
+
+---
+
+### TAHAP 4 – PERBAIKI UX MIDDLEWARE (SIMPAN INTENDED URL)
+
+> **Estimasi waktu:** 20–30 menit  
+> **File yang diubah:** `app/Http/Middleware/AdminMiddleware.php`, `app/Http/Middleware/SuperAdminMiddleware.php`
+
+Saat ini, saat session expire dan user coba akses halaman yang dilindungi, middleware hanya redirect ke login tanpa menyimpan URL tujuan. Setelah login ulang, user harus navigasi manual.
+
+#### Step 4.1 — Update AdminMiddleware
+
+Buka `app/Http/Middleware/AdminMiddleware.php`.
+
+**Sebelum:**
+```php
+if (!Auth::check()) {
+    return redirect()->route('login')->with('error', 'Please login to access this page.');
+}
+```
+
+**Sesudah (gunakan `redirect()->guest()`):**
+```php
+if (!Auth::check()) {
+    // redirect()->guest() otomatis menyimpan intended URL di session
+    return redirect()->guest(route('login'))
+        ->with('error', 'Sesi Anda telah berakhir. Silakan login kembali.');
+}
+```
+
+> **Penjelasan `redirect()->guest()`:** Helper bawaan Laravel yang secara otomatis menyimpan URL tujuan di session (`url.intended`), sehingga setelah login, user bisa di-redirect ke halaman yang semula ingin diakses.
+
+Lakukan hal yang sama untuk `app/Http/Middleware/SuperAdminMiddleware.php`.
+
+#### Step 4.2 — Update AuthController untuk Menggunakan redirect()->intended()
+
+Buka `app/Http/Controllers/AuthController.php`, method `login`.
+
+**Sebelum:**
+```php
+if ($user->role === 'superadmin') {
+    return redirect()->route('admin.dashboard');
+}
+if ($user->role === 'admin_sesi') {
+    return redirect()->route('admin.sessions.index');
+}
+if ($user->role === 'basic') {
+    return redirect()->route('participant.dashboard');
+}
+```
+
+**Sesudah:**
+```php
+// redirect()->intended() akan redirect ke URL yang disimpan oleh guest(),
+// jika tidak ada, akan fallback ke URL yang diberikan sebagai parameter.
+if ($user->role === 'superadmin') {
+    return redirect()->intended(route('admin.dashboard'));
+}
+if ($user->role === 'admin_sesi') {
+    return redirect()->intended(route('admin.sessions.index'));
+}
+if ($user->role === 'basic') {
+    return redirect()->intended(route('participant.dashboard'));
+}
+```
+
+---
+
+### TAHAP 5 – TESTING & VERIFIKASI
+
+> **Estimasi waktu:** 30–60 menit
+
+#### Step 5.1 — Test Manual: Simulasi Session Expire
+
+Untuk menguji dengan cepat tanpa harus menunggu 120 menit:
+
+1. Ubah `SESSION_LIFETIME` ke `1` (1 menit) di `.env`
+2. Jalankan `php artisan config:clear`
+3. Login sebagai user/admin
+4. Tunggu lebih dari 1 menit tanpa melakukan apa-apa (pastikan keep-alive script dinonaktifkan sementara untuk test ini, atau set interval-nya ke 5 menit agar bisa test expire)
+5. Coba klik link/navigasi — pastikan:
+   - Muncul peringatan (jika sudah diimplementasi di Step 3.3)
+   - TIDAK langsung redirect brutal ke login tanpa pesan
+   - Kalau redirect ke login, ada pesan error yang jelas
+
+#### Step 5.2 — Test Keep-Alive Script
+
+1. Buka browser DevTools → tab **Network**
+2. Login dan buka halaman ujian atau admin
+3. Tunggu 10 menit (atau sesuai interval yang diset di script)
+4. Pastikan ada request `POST /keep-alive` muncul di Network tab secara berkala
+5. Pastikan response-nya `200 OK` dengan body `{"status":"ok"}`
+
+#### Step 5.3 — Test Skenario Admin Input Soal Lama
+
+1. Login sebagai admin
+2. Buka form input soal (`/admin/questions/create`)
+3. Tunggu selama melebihi session lifetime lama (untuk test, set lifetime ke 2 menit)
+4. Isi soal dan klik submit — pastikan soal berhasil tersimpan, BUKAN redirect ke login
+
+#### Step 5.4 — Test Redirect Setelah Re-Login (Intended URL)
+
+1. Logout terlebih dahulu
+2. Buka URL `/admin/questions/create` langsung tanpa login (di browser URL bar)
+3. Sistem harus redirect ke `/login` — ini normal
+4. Login dengan akun admin
+5. Sistem harus redirect otomatis kembali ke `/admin/questions/create`
+
+Jika step 5 berhasil, berarti implementasi `redirect()->guest()` dan `redirect()->intended()` sudah benar.
+
+#### Step 5.5 — Kembalikan SESSION_LIFETIME ke Nilai Normal
+
+Setelah semua test selesai, kembalikan:
+```
+SESSION_LIFETIME=480
+```
+
+Dan jalankan lagi:
+```bash
+php artisan config:clear
+php artisan cache:clear
+```
+
+---
+
+### TAHAP 6 – MONITORING (OPSIONAL)
+
+> **Estimasi waktu:** 30 menit  
+> **Tujuan:** Deteksi dini jika ada masalah session di production.
+
+#### Step 6.1 — Tambahkan Logging di Keep-Alive Endpoint
+
+```php
+Route::post('/keep-alive', function () {
+    \Illuminate\Support\Facades\Log::info('KeepAlive ping', [
+        'user_id'    => auth()->id(),
+        'session_id' => session()->getId(),
+        'ip'         => request()->ip(),
+    ]);
+    session()->put('last_activity', now()->timestamp);
+    return response()->json(['status' => 'ok']);
+})->name('keep-alive');
+```
+
+#### Step 6.2 — Cek Redis Memory & Session Count
+
+```bash
+# Cek memori Redis yang digunakan
+redis-cli INFO memory | grep used_memory_human
+
+# Cek jumlah key session
+redis-cli KEYS "*" | grep -i session | wc -l
+```
+
+Jika memory Redis hampir penuh dan eviction policy adalah `allkeys-lru`, pertimbangkan:
+- Meningkatkan memory Redis
+- Gunakan dedicated Redis instance untuk session (pisah dari cache)
+- Set eviction policy ke `noeviction` khusus untuk Redis session store
+
+---
+
+## ✅ Checklist Implementasi
+
+Gunakan checklist ini untuk memastikan semua sudah dikerjakan:
+
+- [x] **Tahap 1:** Audit selesai — catat temuan root cause yang sebenarnya
+- [x] **Tahap 1.2:** Redis eviction policy sudah dicek dan aman
+- [x] **Tahap 1.5:** Log Laravel sudah direview, tidak ada auto-logout tersembunyi
+- [x] **Tahap 2:** `SESSION_LIFETIME` di `.env` sudah diubah ke `480`
+- [x] **Tahap 2:** `php artisan config:clear && php artisan cache:clear` sudah dijalankan
+- [x] **Tahap 3.1:** Route `/keep-alive` sudah ditambahkan di `routes/web.php` di dalam group `auth`
+- [x] **Tahap 3.2:** Script keep-alive sudah ditambahkan di semua layout Blade yang relevan
+- [x] **Tahap 3.2:** Meta CSRF token ada di `<head>` semua layout
+- [x] **Tahap 4.1:** `AdminMiddleware` sudah menggunakan `redirect()->guest()`
+- [x] **Tahap 4.1:** `SuperAdminMiddleware` sudah menggunakan `redirect()->guest()`
+- [x] **Tahap 4.2:** `AuthController::login()` sudah menggunakan `redirect()->intended()`
+- [ ] **Tahap 5.1:** Test manual session expire sudah dilakukan ✓
+- [ ] **Tahap 5.2:** Test keep-alive di DevTools sudah dilakukan ✓
+- [ ] **Tahap 5.3:** Test skenario admin input soal lama sudah dilakukan ✓
+- [ ] **Tahap 5.4:** Test redirect setelah re-login (intended URL) sudah dilakukan ✓
+- [ ] **Tahap 5.5:** `SESSION_LIFETIME` dikembalikan ke `480` setelah testing ✓
+
+---
+
+## ⚠️ Hal yang Perlu Diperhatikan
+
+1. **Jangan hapus atau reset semua session Redis saat production sedang berjalan** — ini akan menyebabkan semua user ter-logout sekaligus.
+2. **Keep-alive endpoint WAJIB di dalam group middleware `auth`** — jangan jadikan endpoint ini public.
+3. **Interval keep-alive harus lebih kecil dari SESSION_LIFETIME** — jika `SESSION_LIFETIME=480` menit, interval keep-alive `10` menit sudah sangat aman.
+4. **Setelah mengubah `.env`, wajib jalankan `php artisan config:clear`** — tanpa ini Laravel masih pakai konfigurasi lama.
+5. **Jika menggunakan Docker**, restart container Redis setelah mengubah konfigurasi Redis:
+   ```bash
+   docker-compose restart redis
+   ```
+
+---
+
+## 📚 Referensi Dokumentasi
+
+- [Laravel Session Documentation](https://laravel.com/docs/session)
+- [Laravel Authentication Documentation](https://laravel.com/docs/authentication)
+- [Redis Eviction Policies](https://redis.io/docs/reference/eviction/)

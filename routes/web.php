@@ -14,6 +14,11 @@ Route::get('/', function() {
 Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth'])->group(function() {
+    Route::post('/keep-alive', function () {
+        session()->put('last_activity', now()->timestamp);
+        return response()->json(['status' => 'ok', 'user' => auth()->id()]);
+    })->name('keep-alive');
+
     Route::get('/dashboard', [\App\Http\Controllers\Participant\DashboardController::class, 'index'])->name('participant.dashboard');
     Route::post('/dashboard', function () { return redirect()->route('participant.dashboard'); });
     Route::post('/dashboard/join-session', [\App\Http\Controllers\Participant\DashboardController::class, 'joinSession'])->name('participant.join-session');

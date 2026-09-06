@@ -54,15 +54,15 @@ class AuthController extends Controller
             }
 
             if ($user->role === 'superadmin') {
-                return redirect()->route('admin.dashboard');
+                return redirect()->intended(route('admin.dashboard'));
             }
             
             if ($user->role === 'admin_sesi') {
-                return redirect()->route('admin.sessions.index');
+                return redirect()->intended(route('admin.sessions.index'));
             }
             
             if ($user->role === 'basic') {
-                return redirect()->route('participant.dashboard');
+                return redirect()->intended(route('participant.dashboard'));
             }
             
             return redirect('/');

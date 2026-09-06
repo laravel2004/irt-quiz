@@ -3,10 +3,9 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. perhatikan halaman https://exam.jagobelajar.com/admin/participants.
-2. tambahkan action bulk raport di samping tambah peserta.
-3. nanti user bisa memilih user siapa aja yang mau di cetak setelah itu memilih sesi ujian yang ingin di raport kan.
-4. setelah itu baru generate raport sesuai jumlah peserta yang di pilih.
+1. coba check login nya itu apakah refresh token nya berlaku dengan baik.
+2. soal nya ada issue user login terus ngerjain soal(user) atau admin input soal terus agak lama tiba" ke logout 
+3. coba telusuri kenapa itu bisa terjadi, aku engga mau hal itu terjadi ya 
 
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail
