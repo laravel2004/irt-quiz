@@ -467,7 +467,7 @@ class DashboardController extends Controller
 
         $cacheKey = "statistics_session_{$sessionId}";
 
-        $rankings = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($sessionId) {
+        $rankings = collect(Cache::remember($cacheKey, now()->addMinutes(5), function () use ($sessionId) {
             // Get all results for this session
             $allResults = ExamResult::where('exam_session_id', $sessionId)
                 ->whereNotNull('irt_score')
@@ -489,12 +489,13 @@ class DashboardController extends Controller
                 $bestResults->push($bestResult);
             }
 
+            // .all() mengubah Collection ke plain PHP array — aman di-serialize ke Redis
             return $bestResults->sort(function ($left, $right) {
                 return $right->irt_score <=> $left->irt_score
                     ?: $right->total_correct <=> $left->total_correct
                     ?: $left->id <=> $right->id;
-            })->values();
-        });
+            })->values()->all();
+        }));
 
         return view('participant.statistics', compact('session', 'isClosed', 'rankings', 'user'));
     }

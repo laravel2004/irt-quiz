@@ -323,13 +323,8 @@ class ExamController extends Controller
             }
 
             $questions = QuestionBank::whereIn('id', $questionIds)->get()->keyBy('id');
-            $existingAnswers = UserAnswer::where('participant_id', $participant->id)
-                ->whereIn('question_bank_id', $questionIds)
-                ->get()
-                ->keyBy('question_bank_id');
-
-            $insertData = [];
             $now = now();
+            $upsertData = [];
 
             foreach ($answers as $questionId => $answerData) {
                 $question = $questions->get($questionId);
@@ -427,31 +422,25 @@ class ExamController extends Controller
                     }
                 }
 
-                $existing = $existingAnswers->get($questionId);
-                if ($existing) {
-                    $existing->update([
-                        'answer' => $answer,
-                        'is_correct' => $isCorrect,
-                        'score' => $score,
-                    ]);
-                } else {
-                    $insertData[] = [
-                        'participant_id' => $participant->id,
-                        'exam_session_id' => $participant->exam_session_id,
-                        'question_bank_id' => $questionId,
-                        'answer' => is_array($answer) || is_object($answer) ? json_encode($answer) : $answer,
-                        'is_correct' => $isCorrect,
-                        'score' => $score,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ];
-                }
+                $upsertData[] = [
+                    'participant_id'   => $participant->id,
+                    'exam_session_id'  => $participant->exam_session_id,
+                    'question_bank_id' => $questionId,
+                    'answer'           => is_array($answer) || is_object($answer) ? json_encode($answer) : $answer,
+                    'is_correct'       => $isCorrect,
+                    'score'            => $score,
+                    'created_at'       => $now,
+                    'updated_at'       => $now,
+                ];
             }
 
-            if (! empty($insertData)) {
-                foreach (array_chunk($insertData, 500) as $chunk) {
-                    UserAnswer::insert($chunk);
-                }
+            // Single bulk upsert — jauh lebih cepat dari N+1 individual UPDATE
+            foreach (array_chunk($upsertData, 500) as $chunk) {
+                UserAnswer::upsert(
+                    $chunk,
+                    ['participant_id', 'question_bank_id'],          // unique keys
+                    ['answer', 'is_correct', 'score', 'updated_at']  // kolom yang diupdate jika sudah ada
+                );
             }
 
             if ($request->has('finish_category') && $request->finish_category) {
