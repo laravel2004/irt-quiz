@@ -33,7 +33,7 @@ class DashboardController extends Controller
 
         $groupedRegistrations = $registrations->groupBy('exam_session_id');
 
-        $scoreChartData = $registrations
+        $scoreRows = $registrations
             ->filter(fn ($registration) => $registration->finished_at && $registration->result?->irt_score !== null)
             ->sortBy(fn ($registration) => $registration->finished_at ?? $registration->created_at)
             ->values()
@@ -45,16 +45,33 @@ class DashboardController extends Controller
 
                 return [
                     'label' => $sessionName.' - '.$attemptLabel,
-                    'irt_score' => round((float) $registration->result->irt_score, 2),
-                    'predicate' => $registration->examSession->predicateForIrtScore((float) $registration->result->irt_score),
+                    'raw_score' => $registration->examSession->showsRawScoreToParticipant() ? round((float) $registration->result->score, 2) : null,
+                    'raw_predicate' => $registration->examSession->showsRawScoreToParticipant() ? $registration->examSession->predicateForRawScore((float) $registration->result->score) : null,
+                    'irt_score' => $registration->examSession->showsIrtScoreToParticipant() ? round((float) $registration->result->irt_score, 2) : null,
+                    'irt_predicate' => $registration->examSession->showsIrtScoreToParticipant() ? $registration->examSession->predicateForIrtScore((float) $registration->result->irt_score) : null,
                 ];
             });
 
         $scoreChartData = [
-            'labels' => $scoreChartData->pluck('label')->all(),
-            'irt_scores' => $scoreChartData->pluck('irt_score')->all(),
-            'predicates' => $scoreChartData->pluck('predicate')->all(),
+            'labels' => $scoreRows->pluck('label')->all(),
+            'datasets' => [],
         ];
+        if ($scoreRows->contains(fn ($row) => $row['raw_score'] !== null)) {
+            $scoreChartData['datasets'][] = [
+                'label' => 'Skor Raw',
+                'data' => $scoreRows->pluck('raw_score')->all(),
+                'predicates' => $scoreRows->pluck('raw_predicate')->all(),
+                'borderColor' => '#059669',
+            ];
+        }
+        if ($scoreRows->contains(fn ($row) => $row['irt_score'] !== null)) {
+            $scoreChartData['datasets'][] = [
+                'label' => 'Skor IRT',
+                'data' => $scoreRows->pluck('irt_score')->all(),
+                'predicates' => $scoreRows->pluck('irt_predicate')->all(),
+                'borderColor' => '#2563eb',
+            ];
+        }
 
         return view('participant.dashboard', compact('groupedRegistrations', 'scoreChartData'));
     }
@@ -278,8 +295,7 @@ class DashboardController extends Controller
         $totalCorrect = $registration->userAnswers->where('is_correct', true)->count();
         $totalIncorrect = $totalAnswered - $totalCorrect;
         $totalBlank = $totalQuestions - $totalAnswered;
-        $irtScore = (float) $registration->result->irt_score;
-        $predicate = $registration->examSession->predicateForIrtScore($irtScore);
+        $scoreSummary = $this->participantScoreSummary($registration->examSession, $registration->result);
 
         $analysis = $aiService->generateAnalysis([
             'participant_name' => $user->name,
@@ -287,7 +303,7 @@ class DashboardController extends Controller
             'correct' => $totalCorrect,
             'incorrect' => $totalIncorrect,
             'blank' => $totalBlank,
-            'total_score' => number_format($irtScore, 2)." (Predikat {$predicate})",
+            'total_score' => $scoreSummary,
             'category_stats' => $categoryStats,
         ]);
 
@@ -413,8 +429,7 @@ class DashboardController extends Controller
                     'total_correct' => $reg->result->total_correct,
                     'total_incorrect' => $reg->result->total_incorrect,
                     'total_blank' => $reg->result->total_blank,
-                    'irt_score' => $reg->result->irt_score,
-                    'predicate' => $reg->examSession->predicateForIrtScore((float) $reg->result->irt_score),
+                    'score_summary' => $this->participantScoreSummary($reg->examSession, $reg->result),
                 ];
             }
         }
@@ -465,12 +480,13 @@ class DashboardController extends Controller
         $end = Carbon::parse($session->end_date.' '.$session->end_time);
         $isClosed = ! $session->is_active || $now->gt($end);
 
-        $cacheKey = "statistics_session_{$sessionId}";
+        $scoreColumn = $session->participant_score_display === 'raw' ? 'score' : 'irt_score';
+        $cacheKey = "statistics_session_{$sessionId}_{$session->participant_score_display}";
 
-        $rankings = collect(Cache::remember($cacheKey, now()->addMinutes(5), function () use ($sessionId) {
+        $rankings = collect(Cache::remember($cacheKey, now()->addMinutes(5), function () use ($sessionId, $scoreColumn) {
             // Get all results for this session
             $allResults = ExamResult::where('exam_session_id', $sessionId)
-                ->whereNotNull('irt_score')
+                ->whereNotNull($scoreColumn)
                 ->with(['participant.user'])
                 ->get();
 
@@ -481,8 +497,8 @@ class DashboardController extends Controller
             });
 
             foreach ($groupedByUser as $userId => $userResults) {
-                $bestResult = $userResults->sort(function ($left, $right) {
-                    return $right->irt_score <=> $left->irt_score
+                $bestResult = $userResults->sort(function ($left, $right) use ($scoreColumn) {
+                    return $right->{$scoreColumn} <=> $left->{$scoreColumn}
                         ?: $right->total_correct <=> $left->total_correct
                         ?: $left->id <=> $right->id;
                 })->first();
@@ -490,13 +506,26 @@ class DashboardController extends Controller
             }
 
             // .all() mengubah Collection ke plain PHP array — aman di-serialize ke Redis
-            return $bestResults->sort(function ($left, $right) {
-                return $right->irt_score <=> $left->irt_score
+            return $bestResults->sort(function ($left, $right) use ($scoreColumn) {
+                return $right->{$scoreColumn} <=> $left->{$scoreColumn}
                     ?: $right->total_correct <=> $left->total_correct
                     ?: $left->id <=> $right->id;
             })->values()->all();
         }));
 
         return view('participant.statistics', compact('session', 'isClosed', 'rankings', 'user'));
+    }
+
+    private function participantScoreSummary(ExamSession $session, ExamResult $result): string
+    {
+        $scores = [];
+        if ($session->showsRawScoreToParticipant()) {
+            $scores[] = 'Skor Raw '.number_format((float) $result->score, 2).' (Predikat Raw '.$session->predicateForRawScore((float) $result->score).')';
+        }
+        if ($session->showsIrtScoreToParticipant()) {
+            $scores[] = 'Skor IRT '.number_format((float) $result->irt_score, 2).' (Predikat IRT '.$session->predicateForIrtScore((float) $result->irt_score).')';
+        }
+
+        return implode('; ', $scores);
     }
 }

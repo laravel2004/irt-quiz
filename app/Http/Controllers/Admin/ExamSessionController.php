@@ -169,9 +169,9 @@ class ExamSessionController extends Controller
             'Expires' => '0',
         ];
 
-        $columns = ['Rank', 'Nama Peserta', 'Kode Akses', 'Benar', 'Salah', 'Kosong', 'Skor Raw', 'Skor IRT'];
+        $columns = ['Rank', 'Nama Peserta', 'Kode Akses', 'Benar', 'Salah', 'Kosong', 'Skor Raw', 'Predikat Raw', 'Skor IRT', 'Predikat IRT'];
 
-        $callback = function () use ($results, $columns) {
+        $callback = function () use ($results, $columns, $session) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
 
@@ -184,7 +184,9 @@ class ExamSessionController extends Controller
                     $result->total_incorrect,
                     $result->total_blank,
                     number_format($result->score, 1),
+                    $session->predicateForRawScore((float) $result->score),
                     round($result->irt_score),
+                    $session->predicateForIrtScore((float) $result->irt_score),
                 ]);
             }
 
@@ -256,6 +258,11 @@ class ExamSessionController extends Controller
             'start_time' => 'required',
             'end_time' => 'required',
             'is_lock_quiz' => 'required|boolean',
+            'participant_score_display' => 'required|in:raw,irt,both',
+            'predicate_raw_kurang_min' => 'required|numeric|min:0',
+            'predicate_raw_memadai_min' => 'required|numeric|min:0',
+            'predicate_raw_baik_min' => 'required|numeric|min:0',
+            'predicate_raw_istimewa_min' => 'required|numeric|min:0',
             'predicate_kurang_min' => 'required|numeric|min:0',
             'predicate_memadai_min' => 'required|numeric|min:0',
             'predicate_baik_min' => 'required|numeric|min:0',
@@ -311,6 +318,32 @@ class ExamSessionController extends Controller
             }
             if ($thresholds[3] > $totalMax) {
                 $validator->errors()->add('predicate_istimewa_min', "Ambang Istimewa tidak boleh melebihi total batas atas IRT, yaitu {$totalMax}.");
+            }
+
+            $rawThresholdKeys = [
+                'predicate_raw_kurang_min',
+                'predicate_raw_memadai_min',
+                'predicate_raw_baik_min',
+                'predicate_raw_istimewa_min',
+            ];
+            if ($categories->contains(fn ($category) => ! is_numeric($category['max_score_raw'] ?? null))
+                || collect($rawThresholdKeys)->contains(fn ($key) => ! is_numeric($request->input($key)))) {
+                return;
+            }
+
+            $totalRawMax = round((float) $categories->sum('max_score_raw'), 2);
+            $rawThresholds = collect($rawThresholdKeys)
+                ->map(fn ($key) => round((float) $request->input($key), 2))
+                ->all();
+
+            if ($rawThresholds[0] !== 0.0) {
+                $validator->errors()->add('predicate_raw_kurang_min', 'Nilai minimum Predikat Raw Kurang harus 0.');
+            }
+            if (! ($rawThresholds[0] < $rawThresholds[1] && $rawThresholds[1] < $rawThresholds[2] && $rawThresholds[2] < $rawThresholds[3])) {
+                $validator->errors()->add('predicate_raw_memadai_min', 'Urutan ambang Predikat Raw harus Kurang < Memadai < Baik < Istimewa.');
+            }
+            if ($rawThresholds[3] > $totalRawMax) {
+                $validator->errors()->add('predicate_raw_istimewa_min', "Ambang Predikat Raw Istimewa tidak boleh melebihi total skor raw, yaitu {$totalRawMax}.");
             }
         });
 

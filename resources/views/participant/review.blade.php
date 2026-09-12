@@ -20,17 +20,29 @@
         $totalCorrect = $registration->userAnswers->where('is_correct', true)->count();
         $totalIncorrect = $totalAnswered - $totalCorrect;
         $totalBlank = $totalQuestions - $totalAnswered;
+        $rawScore = (float) $registration->result->score;
         $irtScore = (float) $registration->result->irt_score;
-        $predicate = $registration->examSession->predicateForIrtScore($irtScore);
+        $session = $registration->examSession;
     @endphp
 
     <!-- SCORE OVERVIEW -->
-    <div class="glass animate-fade-in" style="padding: 32px; border-radius: 24px; text-align: center; margin-bottom: 32px; display: flex; flex-direction: column; align-items: center;">
-        <div style="font-size: 0.85rem; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Total Skor IRT</div>
-        <div style="font-size: 3.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #0f172a; line-height: 1;">
-            {{ number_format($irtScore, 2) }}
+    <div class="glass animate-fade-in" style="padding: 32px; border-radius: 24px; text-align: center; margin-bottom: 32px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;">
+            @if($session->showsRawScoreToParticipant())
+            <div>
+                <div style="font-size: 0.85rem; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Total Skor Raw</div>
+                <div style="font-size: 3rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #047857; line-height: 1;">{{ number_format($rawScore, 2) }}</div>
+                <span class="badge" style="margin-top: 12px; background: #dcfce7; color: #166534;">Predikat Raw: {{ $session->predicateForRawScore($rawScore) }}</span>
+            </div>
+            @endif
+            @if($session->showsIrtScoreToParticipant())
+            <div>
+                <div style="font-size: 0.85rem; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Total Skor IRT</div>
+                <div style="font-size: 3rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: var(--accent); line-height: 1;">{{ number_format($irtScore, 2) }}</div>
+                <span class="badge" style="margin-top: 12px; background: #dbeafe; color: #1d4ed8;">Predikat IRT: {{ $session->predicateForIrtScore($irtScore) }}</span>
+            </div>
+            @endif
         </div>
-        <span class="badge" style="margin-top: 12px; background: #dcfce7; color: #166534;">Predikat {{ $predicate }}</span>
         
         <div style="display: flex; gap: 24px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--glass-border); width: 100%; justify-content: center;">
             <div style="text-align: center;">
@@ -70,12 +82,21 @@
                     <div style="margin-bottom: 12px;">
                         <span style="font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1rem; color: #0f172a;">{{ $catName }}</span>
                     </div>
-                    <div style="margin-bottom: 12px;">
+                    <div style="margin-bottom: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px;">
+                        @if($session->showsRawScoreToParticipant())
+                        <div style="background: #ecfdf5; padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #047857; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor Raw</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: #047857;">{{ number_format($catResult->score, 2) }}</div>
+                            <div style="font-size: 0.7rem; color: #94a3b8;">Maksimum {{ number_format($sessionCat->max_score_raw ?? 0, 2) }}</div>
+                        </div>
+                        @endif
+                        @if($session->showsIrtScoreToParticipant())
                         <div style="background: rgba(var(--accent-rgb), 0.05); padding: 12px; border-radius: 10px; text-align: center;">
                             <div style="font-size: 0.7rem; color: var(--accent); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Skor IRT</div>
                             <div style="font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--accent);">{{ number_format($catResult->irt_score, 2) }}</div>
                             <div style="font-size: 0.7rem; color: #94a3b8;">Rentang {{ number_format($minIrtCat, 2) }}–{{ number_format($maxIrtCat, 2) }}</div>
                         </div>
+                        @endif
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
                         <div style="text-align: center; padding: 8px; background: rgba(16, 185, 129, 0.08); border-radius: 8px;">
@@ -187,7 +208,7 @@
                             $catCorrect++;
                         }
                     }
-                    $catIrtScore = $registration->result->categoryResults->firstWhere('category_id', $categoryId)?->irt_score;
+                    $catResult = $registration->result->categoryResults->firstWhere('category_id', $categoryId);
                     $catAnswered = 0;
                     foreach ($categoryQuestions as $q) {
                         if ($registration->userAnswers->where('question_bank_id', $q->id)->first()) {
@@ -200,7 +221,11 @@
                 <a href="{{ route('participant.review.category', [$registration->id, $categoryId]) }}" class="btn-primary" style="background: #f8fafc; color: #0f172a; border: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; transition: all 0.3s ease; text-decoration: none; border-radius: 16px; height: auto;">
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <span style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 600;">{{ $categoryName }}</span>
-                        <span style="font-size: 1.2rem; font-weight: 700; color: var(--accent); font-family: 'Outfit', sans-serif;">IRT {{ number_format((float) $catIrtScore, 2) }}</span>
+                        <span style="font-size: 1rem; font-weight: 700; color: var(--accent); font-family: 'Outfit', sans-serif; text-align: right;">
+                            @if($session->showsRawScoreToParticipant()) Raw {{ number_format((float) $catResult?->score, 2) }} @endif
+                            @if($session->showsRawScoreToParticipant() && $session->showsIrtScoreToParticipant())<br>@endif
+                            @if($session->showsIrtScoreToParticipant()) IRT {{ number_format((float) $catResult?->irt_score, 2) }} @endif
+                        </span>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%;">

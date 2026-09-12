@@ -319,6 +319,8 @@ class ExamSessionService extends BaseService
 
     private function withScoringDefaults(array $data): array
     {
+        $data['participant_score_display'] ??= 'irt';
+
         foreach ($data['categories'] as &$category) {
             $category['min_score_irt'] ??= 0;
         }
@@ -332,6 +334,12 @@ class ExamSessionService extends BaseService
         $data['predicate_memadai_min'] ??= round($totalMin + ($range * 0.50), 2);
         $data['predicate_baik_min'] ??= round($totalMin + ($range * 0.70), 2);
         $data['predicate_istimewa_min'] ??= round($totalMin + ($range * 0.85), 2);
+
+        $totalRawMax = (float) collect($data['categories'])->sum('max_score_raw');
+        $data['predicate_raw_kurang_min'] ??= 0;
+        $data['predicate_raw_memadai_min'] ??= round($totalRawMax * 0.50, 2);
+        $data['predicate_raw_baik_min'] ??= round($totalRawMax * 0.70, 2);
+        $data['predicate_raw_istimewa_min'] ??= round($totalRawMax * 0.85, 2);
 
         return $data;
     }
@@ -369,6 +377,26 @@ class ExamSessionService extends BaseService
         if ($thresholds[3] > $totalMax) {
             throw new DomainException("Ambang Istimewa tidak boleh melebihi total batas atas IRT, yaitu {$totalMax}.");
         }
+
+        if (! in_array($data['participant_score_display'], ['raw', 'irt', 'both'], true)) {
+            throw new DomainException('Pilihan tampilan skor peserta tidak valid.');
+        }
+
+        $totalRawMax = round((float) collect($data['categories'])->sum('max_score_raw'), 2);
+        $rawThresholds = collect([
+            $data['predicate_raw_kurang_min'],
+            $data['predicate_raw_memadai_min'],
+            $data['predicate_raw_baik_min'],
+            $data['predicate_raw_istimewa_min'],
+        ])->map(fn ($value) => round((float) $value, 2))->all();
+
+        if ($rawThresholds[0] !== 0.0
+            || ! ($rawThresholds[0] < $rawThresholds[1]
+                && $rawThresholds[1] < $rawThresholds[2]
+                && $rawThresholds[2] < $rawThresholds[3])
+            || $rawThresholds[3] > $totalRawMax) {
+            throw new DomainException('Konfigurasi Predikat Raw tidak valid.');
+        }
     }
 
     private function scoringSignature(ExamSession|array $source): string
@@ -376,6 +404,7 @@ class ExamSessionService extends BaseService
         if ($source instanceof ExamSession) {
             $categories = $source->sessionCategories->sortBy('category_id')->map(fn ($category) => [
                 'id' => $category->category_id,
+                'raw_max' => number_format((float) $category->max_score_raw, 2, '.', ''),
                 'min' => number_format((float) $category->min_score_irt, 2, '.', ''),
                 'max' => number_format((float) $category->max_score_irt, 2, '.', ''),
             ])->values()->all();
@@ -385,9 +414,17 @@ class ExamSessionService extends BaseService
                 $source->predicate_baik_min,
                 $source->predicate_istimewa_min,
             ]);
+            $rawThresholds = collect([
+                $source->predicate_raw_kurang_min,
+                $source->predicate_raw_memadai_min,
+                $source->predicate_raw_baik_min,
+                $source->predicate_raw_istimewa_min,
+            ]);
+            $display = $source->participant_score_display;
         } else {
             $categories = collect($source['categories'])->sortBy('id')->map(fn ($category) => [
                 'id' => (int) $category['id'],
+                'raw_max' => number_format((float) $category['max_score_raw'], 2, '.', ''),
                 'min' => number_format((float) $category['min_score_irt'], 2, '.', ''),
                 'max' => number_format((float) $category['max_score_irt'], 2, '.', ''),
             ])->values()->all();
@@ -397,11 +434,20 @@ class ExamSessionService extends BaseService
                 $source['predicate_baik_min'],
                 $source['predicate_istimewa_min'],
             ]);
+            $rawThresholds = collect([
+                $source['predicate_raw_kurang_min'],
+                $source['predicate_raw_memadai_min'],
+                $source['predicate_raw_baik_min'],
+                $source['predicate_raw_istimewa_min'],
+            ]);
+            $display = $source['participant_score_display'];
         }
 
         return json_encode([
             'categories' => $categories,
             'thresholds' => $thresholds->map(fn ($value) => number_format((float) $value, 2, '.', ''))->all(),
+            'raw_thresholds' => $rawThresholds->map(fn ($value) => number_format((float) $value, 2, '.', ''))->all(),
+            'participant_score_display' => $display,
         ], JSON_THROW_ON_ERROR);
     }
 

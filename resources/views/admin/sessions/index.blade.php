@@ -273,6 +273,15 @@
                         </label>
                         <small style="display: block; margin-top: 4px; color: var(--text-secondary);">Soal terkunci tidak dapat digunakan oleh sesi ujian berikutnya sampai dibuka kembali.</small>
                     </div>
+
+                    <div class="form-group" style="margin: 16px 0 0;">
+                        <label for="participantScoreDisplay">Skor yang Ditampilkan ke Peserta</label>
+                        <select id="participantScoreDisplay" class="form-input" required>
+                            <option value="raw">Skor Raw</option>
+                            <option value="irt" selected>Skor IRT</option>
+                            <option value="both">Skor Raw dan IRT</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Subject Configurations -->
@@ -286,6 +295,32 @@
                     
                     <div id="sessionCategoriesList" style="display: flex; flex-direction: column; gap: 20px;">
                         <!-- Dynamic Category Rows -->
+                    </div>
+                </div>
+
+                <div style="background: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <h4 style="margin-bottom: 8px; font-family: 'Outfit', sans-serif; color: #059669;"><i class="fas fa-award"></i> Ambang Predikat Raw</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">Masukkan nilai minimum setiap predikat berdasarkan total skor raw sesi.</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="predicateRawKurangMin">Minimum Kurang</label>
+                            <input type="number" id="predicateRawKurangMin" class="form-input" required min="0" step="0.01" oninput="rawPredicateThresholdsTouched = true">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="predicateRawMemadaiMin">Minimum Memadai</label>
+                            <input type="number" id="predicateRawMemadaiMin" class="form-input" required min="0" step="0.01" oninput="rawPredicateThresholdsTouched = true">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="predicateRawBaikMin">Minimum Baik</label>
+                            <input type="number" id="predicateRawBaikMin" class="form-input" required min="0" step="0.01" oninput="rawPredicateThresholdsTouched = true">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="predicateRawIstimewaMin">Minimum Istimewa</label>
+                            <input type="number" id="predicateRawIstimewaMin" class="form-input" required min="0" step="0.01" oninput="rawPredicateThresholdsTouched = true">
+                        </div>
+                    </div>
+                    <div style="margin-top: 14px; color: var(--text-secondary); font-size: 0.85rem;">
+                        Total skor raw: <strong id="totalMaxRaw" style="color: #0f172a;">0.00</strong>
                     </div>
                 </div>
 
@@ -335,6 +370,7 @@
     let mode = 'create';
     let categoryIndexCounter = 0;
     let predicateThresholdsTouched = false;
+    let rawPredicateThresholdsTouched = false;
 
     const allCategories = @json($categories);
     let availabilityCounts = initialAvailabilityCounts();
@@ -354,9 +390,11 @@
         document.getElementById('sessionId').value = '';
         sessionForm.reset();
         document.getElementById('sIsLockQuiz').checked = false;
+        document.getElementById('participantScoreDisplay').value = 'irt';
         categoriesList.innerHTML = '';
         categoryIndexCounter = 0;
         predicateThresholdsTouched = false;
+        rawPredicateThresholdsTouched = false;
         availabilityCounts = initialAvailabilityCounts();
         
         if (m === 'create') {
@@ -434,7 +472,7 @@
         let options = allCategories.map(c => `<option value="${c.id}" ${c.id == catId ? 'selected' : ''}>${c.name}</option>`).join('');
 
         div.innerHTML = `
-            <button type="button" class="btn-icon delete" aria-label="Hapus mata pelajaran" onclick="this.parentElement.remove(); updateIrtTotals();" style="position: absolute; right: 10px; top: 10px; border:none; background:none;">
+            <button type="button" class="btn-icon delete" aria-label="Hapus mata pelajaran" onclick="this.parentElement.remove(); updateScoreTotals();" style="position: absolute; right: 10px; top: 10px; border:none; background:none;">
                 <i class="fas fa-times"></i>
             </button>
             <div class="form-group" style="margin-bottom: 12px; margin-right: 30px;">
@@ -456,7 +494,7 @@
                 </div>
                 <div>
                     <label style="font-size: 0.8rem;">Skor Raw</label>
-                    <input type="number" class="form-input cat-raw" aria-label="Skor raw maksimum" value="${msr}" required min="1">
+                    <input type="number" class="form-input cat-raw" aria-label="Skor raw maksimum" value="${msr}" required min="1" oninput="updateRawTotals()">
                 </div>
                 <div>
                     <label style="font-size: 0.8rem;">Batas Bawah IRT</label>
@@ -484,7 +522,7 @@
             </div>
         `;
         categoriesList.appendChild(div);
-        updateIrtTotals();
+        updateScoreTotals();
 
         // Load existing sub categories if editing
         if (data && data.sub_categories && data.sub_categories.length > 0) {
@@ -625,6 +663,26 @@
         return { totalMin, totalMax };
     }
 
+    function updateRawTotals() {
+        const totalMax = [...document.querySelectorAll('.cat-raw')]
+            .reduce((total, input) => total + Number(input.value || 0), 0);
+
+        document.getElementById('totalMaxRaw').innerText = totalMax.toFixed(2);
+        if (!rawPredicateThresholdsTouched && totalMax > 0) {
+            document.getElementById('predicateRawKurangMin').value = '0.00';
+            document.getElementById('predicateRawMemadaiMin').value = (totalMax * 0.50).toFixed(2);
+            document.getElementById('predicateRawBaikMin').value = (totalMax * 0.70).toFixed(2);
+            document.getElementById('predicateRawIstimewaMin').value = (totalMax * 0.85).toFixed(2);
+        }
+
+        return totalMax;
+    }
+
+    function updateScoreTotals() {
+        updateRawTotals();
+        updateIrtTotals();
+    }
+
     function validateIrtConfiguration() {
         const invalidBounds = [...document.querySelectorAll('.category-row')].some(row =>
             Number(row.querySelector('.cat-irt').value) <= Number(row.querySelector('.cat-irt-min').value)
@@ -652,6 +710,20 @@
         }
         if (thresholds[3] > totalMax) {
             showToast(`Minimum Istimewa tidak boleh melebihi total batas atas IRT (${totalMax.toFixed(2)}).`, 'error');
+            return false;
+        }
+
+        const totalRawMax = updateRawTotals();
+        const rawThresholds = [
+            Number(document.getElementById('predicateRawKurangMin').value),
+            Number(document.getElementById('predicateRawMemadaiMin').value),
+            Number(document.getElementById('predicateRawBaikMin').value),
+            Number(document.getElementById('predicateRawIstimewaMin').value),
+        ];
+        if (rawThresholds[0] !== 0
+            || !(rawThresholds[0] < rawThresholds[1] && rawThresholds[1] < rawThresholds[2] && rawThresholds[2] < rawThresholds[3])
+            || rawThresholds[3] > totalRawMax) {
+            showToast('Konfigurasi Ambang Predikat Raw tidak valid.', 'error');
             return false;
         }
 
@@ -724,6 +796,11 @@
             start_time: document.getElementById('sStartTime').value,
             end_time: document.getElementById('sEndTime').value,
             is_lock_quiz: document.getElementById('sIsLockQuiz').checked,
+            participant_score_display: document.getElementById('participantScoreDisplay').value,
+            predicate_raw_kurang_min: document.getElementById('predicateRawKurangMin').value,
+            predicate_raw_memadai_min: document.getElementById('predicateRawMemadaiMin').value,
+            predicate_raw_baik_min: document.getElementById('predicateRawBaikMin').value,
+            predicate_raw_istimewa_min: document.getElementById('predicateRawIstimewaMin').value,
             predicate_kurang_min: document.getElementById('predicateKurangMin').value,
             predicate_memadai_min: document.getElementById('predicateMemadaiMin').value,
             predicate_baik_min: document.getElementById('predicateBaikMin').value,
@@ -819,11 +896,17 @@
             document.getElementById('sStartTime').value = s.start_time ? s.start_time.substring(0, 5) : '';
             document.getElementById('sEndTime').value = s.end_time ? s.end_time.substring(0, 5) : '';
             document.getElementById('sIsLockQuiz').checked = Boolean(s.is_lock_quiz);
+            document.getElementById('participantScoreDisplay').value = s.participant_score_display || 'irt';
+            document.getElementById('predicateRawKurangMin').value = s.predicate_raw_kurang_min;
+            document.getElementById('predicateRawMemadaiMin').value = s.predicate_raw_memadai_min;
+            document.getElementById('predicateRawBaikMin').value = s.predicate_raw_baik_min;
+            document.getElementById('predicateRawIstimewaMin').value = s.predicate_raw_istimewa_min;
             document.getElementById('predicateKurangMin').value = s.predicate_kurang_min;
             document.getElementById('predicateMemadaiMin').value = s.predicate_memadai_min;
             document.getElementById('predicateBaikMin').value = s.predicate_baik_min;
             document.getElementById('predicateIstimewaMin').value = s.predicate_istimewa_min;
             predicateThresholdsTouched = true;
+            rawPredicateThresholdsTouched = true;
             availabilityCounts = data.data.availabilityCounts || initialAvailabilityCounts();
             
             categoriesList.innerHTML = '';
@@ -845,7 +928,7 @@
             } else {
                 addCategoryRow();
             }
-            updateIrtTotals();
+            updateScoreTotals();
         })
         .catch(err => {
             console.error(err);

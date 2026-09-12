@@ -261,12 +261,12 @@
     @if(!$isClosed)
         <div class="lb-info-box temporary animate-fade-in">
             <i class="fas fa-info-circle lb-info-icon"></i>
-            <div>Ini adalah <strong>Statistik Sementara</strong> berdasarkan <strong>Skor IRT</strong>. Nilai dan peringkat masih dapat berubah ketika peserta lain menyelesaikan ujian.</div>
+            <div>Ini adalah <strong>Statistik Sementara</strong> berdasarkan <strong>{{ $session->participant_score_display === 'raw' ? 'Skor Raw' : 'Skor IRT' }}</strong>. Nilai dan peringkat masih dapat berubah ketika peserta lain menyelesaikan ujian.</div>
         </div>
     @else
         <div class="lb-info-box final animate-fade-in">
             <i class="fas fa-check-circle lb-info-icon"></i>
-            <div>Ini adalah <strong>Statistik Final</strong>. Peringkat telah dikalibrasi dan diurutkan berdasarkan <strong>Skor IRT</strong> (Item Response Theory) untuk memberikan hasil yang paling adil dan akurat.</div>
+            <div>Ini adalah <strong>Statistik Final</strong> dan telah diurutkan berdasarkan <strong>{{ $session->participant_score_display === 'raw' ? 'Skor Raw' : 'Skor IRT' }}</strong>.</div>
         </div>
     @endif
 
@@ -306,11 +306,20 @@
                 </div>
 
                 <div class="lb-scores">
+                    @if($session->showsRawScoreToParticipant())
+                    <div class="lb-score-block {{ $session->participant_score_display === 'raw' ? 'primary' : '' }}">
+                        <div class="lb-score-label" style="color: inherit;">Skor Raw</div>
+                        <div class="lb-score-value">{{ number_format($res->score, 2) }}</div>
+                        <div class="lb-score-label" style="color: inherit;">Predikat Raw: {{ $session->predicateForRawScore((float) $res->score) }}</div>
+                    </div>
+                    @endif
+                    @if($session->showsIrtScoreToParticipant())
                     <div class="lb-score-block primary">
                         <div class="lb-score-label" style="color: inherit;">Skor IRT</div>
                         <div class="lb-score-value">{{ number_format($res->irt_score, 2) }}</div>
-                        <div class="lb-score-label" style="color: inherit;">{{ $session->predicateForIrtScore((float) $res->irt_score) }}</div>
+                        <div class="lb-score-label" style="color: inherit;">Predikat IRT: {{ $session->predicateForIrtScore((float) $res->irt_score) }}</div>
                     </div>
+                    @endif
                 </div>
             </div>
         @empty

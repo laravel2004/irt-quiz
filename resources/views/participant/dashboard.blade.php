@@ -50,7 +50,7 @@
             <span class="badge active" style="font-size: 0.75rem; white-space: nowrap;">Riwayat Nilai</span>
         </div>
 
-        @if(!empty($scoreChartData['irt_scores']))
+        @if(!empty($scoreChartData['datasets']))
             <div style="height: 320px; position: relative;">
                 <canvas id="scoreChart" aria-label="Grafik nilai sesi ujian" role="img"></canvas>
             </div>
@@ -162,7 +162,7 @@
 <script>
 const scoreChartData = @json($scoreChartData);
 
-if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && scoreChartData.irt_scores.length) {
+if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && scoreChartData.datasets.length) {
     const chartContext = document.getElementById('scoreChart');
     const isMobileChart = window.matchMedia('(max-width: 768px)').matches;
 
@@ -170,19 +170,17 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
         type: 'line',
         data: {
             labels: scoreChartData.labels,
-            datasets: [{
-                label: 'Skor IRT',
-                data: scoreChartData.irt_scores,
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.18)',
-                pointBackgroundColor: '#60a5fa',
+            datasets: scoreChartData.datasets.map(dataset => ({
+                ...dataset,
+                backgroundColor: dataset.borderColor + '22',
+                pointBackgroundColor: dataset.borderColor,
                 pointBorderColor: '#ffffff',
                 pointRadius: isMobileChart ? 3 : 4,
                 pointHoverRadius: isMobileChart ? 5 : 6,
                 borderWidth: isMobileChart ? 2 : 3,
                 fill: true,
                 tension: 0.3,
-            }]
+            }))
         },
         options: {
             responsive: true,
@@ -200,7 +198,8 @@ if (typeof Chart !== 'undefined' && document.getElementById('scoreChart') && sco
                             return context[0].label;
                         },
                         afterLabel: function(context) {
-                            return `Predikat: ${scoreChartData.predicates[context.dataIndex]}`;
+                            const predicate = scoreChartData.datasets[context.datasetIndex].predicates[context.dataIndex];
+                            return predicate ? `Predikat: ${predicate}` : '';
                         }
                     }
                 }
@@ -313,6 +312,5 @@ document.querySelectorAll('.retake-form').forEach(form => {
 </script>
 
 @endsection
-
 
 

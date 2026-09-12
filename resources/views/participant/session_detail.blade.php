@@ -131,7 +131,12 @@
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                             @if($reg->finished_at)
                                 @if($reg->result?->irt_score !== null)
-                                    <span class="badge" style="background: #dcfce7; color: #166534;">IRT {{ number_format($reg->result->irt_score, 2) }} · {{ $session->predicateForIrtScore((float) $reg->result->irt_score) }}</span>
+                                    @if($session->showsRawScoreToParticipant())
+                                        <span class="badge" style="background: #dcfce7; color: #166534;">Skor Raw {{ number_format($reg->result->score, 2) }} · Predikat Raw {{ $session->predicateForRawScore((float) $reg->result->score) }}</span>
+                                    @endif
+                                    @if($session->showsIrtScoreToParticipant())
+                                        <span class="badge" style="background: #dbeafe; color: #1d4ed8;">Skor IRT {{ number_format($reg->result->irt_score, 2) }} · Predikat IRT {{ $session->predicateForIrtScore((float) $reg->result->irt_score) }}</span>
+                                    @endif
                                 @endif
                                 {{-- <a href="{{ route('participant.result', $reg->id) }}" class="btn-primary" style="background: #eff6ff; color: #0f172a; border: 1px solid rgba(255,255,255,0.08); height: 40px; display: inline-flex; align-items: center; text-decoration: none;">
                                     <i class="fas fa-chart-bar" style="margin-right: 8px;"></i> Hasil
@@ -187,24 +192,35 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const labels = {!! json_encode($finishedAttempts->values()->map(fn($reg, $index) => 'Percobaan ' . ($index + 1))->all()) !!};
-    const irtScores = {!! json_encode($finishedAttempts->values()->map(fn($reg) => round((float) $reg->result->irt_score, 2))->all()) !!};
+    const datasets = [];
+    @if($session->showsRawScoreToParticipant())
+    datasets.push({
+        label: 'Skor Raw',
+        data: {!! json_encode($finishedAttempts->values()->map(fn($reg) => round((float) $reg->result->score, 2))->all()) !!},
+        borderColor: '#059669',
+        backgroundColor: 'rgba(5, 150, 105, 0.12)',
+    });
+    @endif
+    @if($session->showsIrtScoreToParticipant())
+    datasets.push({
+        label: 'Skor IRT',
+        data: {!! json_encode($finishedAttempts->values()->map(fn($reg) => round((float) $reg->result->irt_score, 2))->all()) !!},
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    });
+    @endif
 
     new Chart(chartCanvas, {
         type: 'line',
         data: {
             labels,
-            datasets: [
-                {
-                    label: 'Skor IRT',
-                    data: irtScores,
-                    borderColor: '#8b5cf6',
-                    backgroundColor: 'rgba(139, 92, 246, 0.12)',
+            datasets: datasets.map(dataset => ({
+                    ...dataset,
                     tension: 0.35,
                     fill: false,
                     pointRadius: 4,
                     pointHoverRadius: 6
-                }
-            ]
+                }))
         },
         options: {
             responsive: true,

@@ -40,13 +40,19 @@ class GenerateAiAnalysisJob implements ShouldQueue
         $attemptsData = [];
         foreach ($registrations as $index => $reg) {
             if ($reg->result?->irt_score !== null) {
+                $scores = [];
+                if ($reg->examSession->showsRawScoreToParticipant()) {
+                    $scores[] = 'Skor Raw '.number_format((float) $reg->result->score, 2).' (Predikat Raw '.$reg->examSession->predicateForRawScore((float) $reg->result->score).')';
+                }
+                if ($reg->examSession->showsIrtScoreToParticipant()) {
+                    $scores[] = 'Skor IRT '.number_format((float) $reg->result->irt_score, 2).' (Predikat IRT '.$reg->examSession->predicateForIrtScore((float) $reg->result->irt_score).')';
+                }
                 $attemptsData[] = [
                     'attempt_number' => $index + 1,
                     'total_correct' => $reg->result->total_correct,
                     'total_incorrect' => $reg->result->total_incorrect,
                     'total_blank' => $reg->result->total_blank,
-                    'irt_score' => $reg->result->irt_score,
-                    'predicate' => $reg->examSession->predicateForIrtScore((float) $reg->result->irt_score),
+                    'score_summary' => implode('; ', $scores),
                 ];
             }
         }

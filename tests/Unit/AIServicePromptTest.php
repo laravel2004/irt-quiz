@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 
 class AIServicePromptTest extends TestCase
 {
-    public function test_participant_result_prompt_only_uses_irt_score(): void
+    public function test_participant_result_prompt_uses_filtered_score_summary(): void
     {
         $service = new class extends AIService
         {
@@ -24,16 +24,15 @@ class AIServicePromptTest extends TestCase
             'correct' => 10,
             'incorrect' => 2,
             'blank' => 1,
-            'total_score' => '850.00 (Predikat Istimewa)',
+            'total_score' => 'Skor Raw 75.00 (Predikat Raw Baik)',
             'category_stats' => [],
         ]);
 
-        $this->assertStringContainsString('Skor IRT dan Predikat: 850.00', $prompt);
-        $this->assertStringNotContainsStringIgnoringCase('raw', $prompt);
-        $this->assertStringNotContainsStringIgnoringCase('mentah', $prompt);
+        $this->assertStringContainsString('Skor dan Predikat: Skor Raw 75.00 (Predikat Raw Baik)', $prompt);
+        $this->assertStringNotContainsString('IRT', $prompt);
     }
 
-    public function test_participant_progress_prompt_only_uses_irt_score(): void
+    public function test_participant_progress_prompt_uses_filtered_score_summary(): void
     {
         $service = new class extends AIService
         {
@@ -51,14 +50,11 @@ class AIServicePromptTest extends TestCase
                 'total_correct' => 10,
                 'total_incorrect' => 2,
                 'total_blank' => 1,
-                'irt_score' => 850,
-                'predicate' => 'Istimewa',
+                'score_summary' => 'Skor Raw 75.00 (Predikat Raw Baik); Skor IRT 850.00 (Predikat IRT Istimewa)',
             ]],
         ]);
 
-        $this->assertStringContainsString('Skor IRT 850', $prompt);
-        $this->assertStringContainsString('Predikat Istimewa', $prompt);
-        $this->assertStringNotContainsStringIgnoringCase('raw', $prompt);
-        $this->assertStringNotContainsStringIgnoringCase('mentah', $prompt);
+        $this->assertStringContainsString('Skor Raw 75.00 (Predikat Raw Baik)', $prompt);
+        $this->assertStringContainsString('Skor IRT 850.00 (Predikat IRT Istimewa)', $prompt);
     }
 }

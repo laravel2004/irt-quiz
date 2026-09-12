@@ -423,14 +423,14 @@ class ExamController extends Controller
                 }
 
                 $upsertData[] = [
-                    'participant_id'   => $participant->id,
-                    'exam_session_id'  => $participant->exam_session_id,
+                    'participant_id' => $participant->id,
+                    'exam_session_id' => $participant->exam_session_id,
                     'question_bank_id' => $questionId,
-                    'answer'           => is_array($answer) || is_object($answer) ? json_encode($answer) : $answer,
-                    'is_correct'       => $isCorrect,
-                    'score'            => $score,
-                    'created_at'       => $now,
-                    'updated_at'       => $now,
+                    'answer' => is_array($answer) || is_object($answer) ? json_encode($answer) : $answer,
+                    'is_correct' => $isCorrect,
+                    'score' => $score,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ];
             }
 
@@ -538,8 +538,10 @@ class ExamController extends Controller
             ]);
         }
 
+        $rawScore = number_format($result->score, 2);
         $irtScore = number_format($result->irt_score, 2);
-        $predicate = $session->predicateForIrtScore((float) $result->irt_score);
+        $rawPredicate = $session->predicateForRawScore((float) $result->score);
+        $irtPredicate = $session->predicateForIrtScore((float) $result->irt_score);
 
         $answeredQuestions = UserAnswer::where('participant_id', $participant->id)->count();
         $totalQuestions = $session->questions()->count();
@@ -556,6 +558,7 @@ class ExamController extends Controller
 
             $categoryScores[] = [
                 'name' => $cr->category->name,
+                'raw_score' => number_format($cr->score, 2),
                 'irt_score' => number_format($cr->irt_score, 2),
                 'answered' => $catAnswersCount,
                 'total' => $sc ? $sc->total_questions : 0,
@@ -566,8 +569,10 @@ class ExamController extends Controller
             'isCalculating' => false,
             'session' => $session,
             'participant' => $participant,
+            'rawScore' => $rawScore,
             'irtScore' => $irtScore,
-            'predicate' => $predicate,
+            'rawPredicate' => $rawPredicate,
+            'irtPredicate' => $irtPredicate,
             'answeredQuestions' => $answeredQuestions,
             'totalQuestions' => $totalQuestions,
             'categoryScores' => $categoryScores,

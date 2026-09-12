@@ -89,7 +89,7 @@ class AIService
         - Total Jawaban Benar: $correct
         - Total Jawaban Salah: $incorrect
         - Total Jawaban Kosong: $blank
-        - Skor IRT dan Predikat: $totalScore
+        - Skor dan Predikat: $totalScore
         
         Instruksi Analisis:
         1. **Kelebihan**: Identifikasi bidang/pelajaran mana yang paling dikuasai.
@@ -141,7 +141,7 @@ class AIService
 
         $attemptsStr = '';
         foreach ($attempts as $a) {
-            $attemptsStr .= "Percobaan ke-{$a['attempt_number']}: Benar {$a['total_correct']}, Salah {$a['total_incorrect']}, Kosong {$a['total_blank']}, Skor IRT {$a['irt_score']}, Predikat {$a['predicate']}\n";
+            $attemptsStr .= "Percobaan ke-{$a['attempt_number']}: Benar {$a['total_correct']}, Salah {$a['total_incorrect']}, Kosong {$a['total_blank']}, {$a['score_summary']}\n";
         }
 
         return "Analisis perkembangan siswa bernama $name pada sesi ujian: $session.
@@ -150,7 +150,7 @@ class AIService
         $attemptsStr
 
         Instruksi kualitas analisis:
-        1. analisis_progres: Jelaskan tren dari percobaan awal sampai terakhir menggunakan skor IRT, predikat, jumlah benar, salah, dan kosong. Sebutkan apakah progresnya kuat, stabil, naik tipis, turun, atau fluktuatif.
+        1. analisis_progres: Jelaskan tren dari percobaan awal sampai terakhir menggunakan skor dan predikat yang tersedia, jumlah benar, salah, dan kosong. Sebutkan apakah progresnya kuat, stabil, naik tipis, turun, atau fluktuatif.
         2. pola_kekurangan: Identifikasi pola masalah yang masih terlihat dari data. Bedakan antara masalah pemahaman materi (banyak salah), manajemen waktu/keberanian menjawab (banyak kosong), dan konsistensi performa.
         3. strategi_lanjutan: Berikan 3-5 arahan belajar yang taktis, konkret, dan bisa dilakukan sebelum percobaan berikutnya. Sertakan prioritas latihan, cara evaluasi, dan target perilaku saat ujian.
 

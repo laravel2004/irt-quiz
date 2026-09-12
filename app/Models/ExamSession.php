@@ -19,7 +19,12 @@ class ExamSession extends Model
         'end_time',
         'is_active',
         'is_lock_quiz',
+        'participant_score_display',
         'discussion_pdf',
+        'predicate_raw_kurang_min',
+        'predicate_raw_memadai_min',
+        'predicate_raw_baik_min',
+        'predicate_raw_istimewa_min',
         'predicate_kurang_min',
         'predicate_memadai_min',
         'predicate_baik_min',
@@ -34,6 +39,10 @@ class ExamSession extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_lock_quiz' => 'boolean',
+        'predicate_raw_kurang_min' => 'decimal:2',
+        'predicate_raw_memadai_min' => 'decimal:2',
+        'predicate_raw_baik_min' => 'decimal:2',
+        'predicate_raw_istimewa_min' => 'decimal:2',
         'predicate_kurang_min' => 'decimal:2',
         'predicate_memadai_min' => 'decimal:2',
         'predicate_baik_min' => 'decimal:2',
@@ -55,6 +64,33 @@ class ExamSession extends Model
         }
 
         return 'Kurang';
+    }
+
+    public function predicateForRawScore(float $score): string
+    {
+        if ($score >= (float) $this->predicate_raw_istimewa_min) {
+            return 'Istimewa';
+        }
+
+        if ($score >= (float) $this->predicate_raw_baik_min) {
+            return 'Baik';
+        }
+
+        if ($score >= (float) $this->predicate_raw_memadai_min) {
+            return 'Memadai';
+        }
+
+        return 'Kurang';
+    }
+
+    public function showsRawScoreToParticipant(): bool
+    {
+        return in_array($this->participant_score_display, ['raw', 'both'], true);
+    }
+
+    public function showsIrtScoreToParticipant(): bool
+    {
+        return in_array($this->participant_score_display ?? 'irt', ['irt', 'both'], true);
     }
 
     public function sessionCategories()

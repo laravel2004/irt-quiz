@@ -132,7 +132,7 @@
         </div>
         
         <h1>Sedang Menghitung...</h1>
-        <p class="subtitle">Sistem sedang memproses hasil ujian Anda dan melakukan kalibrasi skor (IRT). Harap tunggu sebentar, halaman ini akan dimuat ulang otomatis.</p>
+        <p class="subtitle">Sistem sedang memproses hasil ujian Anda. Harap tunggu sebentar, halaman ini akan dimuat ulang otomatis.</p>
         
         <div class="info-box" style="justify-content: center; margin-top: 20px;">
             <i class="fas fa-info-circle"></i>
@@ -163,14 +163,26 @@
         <p class="subtitle">Anda telah menyelesaikan seluruh rangkaian ujian<br><strong>{{ $session->name }}</strong>.</p>
         
         <div class="score-board">
+            @if($session->showsRawScoreToParticipant())
+            <div class="score-item">
+                <div class="score-value">{{ $rawScore }}</div>
+                <div class="score-label" style="color: #059669;">Total Skor Raw</div>
+            </div>
+            <div class="score-item">
+                <div class="score-value">{{ $rawPredicate }}</div>
+                <div class="score-label">Predikat Raw</div>
+            </div>
+            @endif
+            @if($session->showsIrtScoreToParticipant())
             <div class="score-item">
                 <div class="score-value">{{ $irtScore }}</div>
                 <div class="score-label" style="color: #059669;">Total Skor IRT</div>
             </div>
             <div class="score-item">
-                <div class="score-value">{{ $predicate }}</div>
-                <div class="score-label">Predikat</div>
+                <div class="score-value">{{ $irtPredicate }}</div>
+                <div class="score-label">Predikat IRT</div>
             </div>
+            @endif
         </div>
 
         <div style="text-align: center; margin-bottom: 24px;">
@@ -190,9 +202,16 @@
                             <div style="font-size: 0.85rem; color: #475569;">Terjawab: {{ $cs['answered'] }} / {{ $cs['total'] }} Soal</div>
                         </div>
                         <div style="text-align: right;">
+                            @if($session->showsRawScoreToParticipant())
+                            <div style="font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 700; color: #2563eb;">
+                                Raw: {{ $cs['raw_score'] }}
+                            </div>
+                            @endif
+                            @if($session->showsIrtScoreToParticipant())
                             <div style="font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 700; color: #059669;">
                                 IRT: {{ $cs['irt_score'] }}
                             </div>
+                            @endif
                         </div>
                     </div>
                 @endforeach

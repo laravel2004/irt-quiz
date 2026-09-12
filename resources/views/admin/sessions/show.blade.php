@@ -89,6 +89,21 @@
         </div>
 
         <div class="session-detail-soft-panel" style="border-radius: 12px; padding: 20px; margin-top: 24px;">
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: 1rem; margin-bottom: 12px;">Ambang Predikat Raw</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                @foreach([
+                    'Kurang' => $session->predicate_raw_kurang_min,
+                    'Memadai' => $session->predicate_raw_memadai_min,
+                    'Baik' => $session->predicate_raw_baik_min,
+                    'Istimewa' => $session->predicate_raw_istimewa_min,
+                ] as $predicate => $threshold)
+                    <div class="session-detail-light-panel" style="border-radius: 8px; padding: 12px;">
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ $predicate }}</div>
+                        <div style="font-weight: 700; margin-top: 4px;">≥ {{ number_format($threshold, 2) }}</div>
+                    </div>
+                @endforeach
+            </div>
+
             <h3 style="font-family: 'Outfit', sans-serif; font-size: 1rem; margin-bottom: 12px;">Ambang Predikat IRT</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
                 @foreach([
@@ -412,7 +427,9 @@
                     <th style="text-align: center;">S</th>
                     <th style="text-align: center;">K</th>
                     <th style="text-align: center;">SKOR RAW</th>
+                    <th style="text-align: center;">PREDIKAT RAW</th>
                     <th style="text-align: center;">SKOR IRT</th>
+                    <th style="text-align: center;">PREDIKAT IRT</th>
                 </tr>
             </thead>
             <tbody id="irtResultsTableBody">
@@ -447,15 +464,17 @@
                     <td style="text-align: center; color: #ef4444;">{{ $result->total_incorrect }}</td>
                     <td style="text-align: center; color: var(--text-secondary);">{{ $result->total_blank }}</td>
                     <td style="text-align: center;">{{ number_format($result->score, 1) }}</td>
+                    <td style="text-align: center;">{{ $session->predicateForRawScore((float) $result->score) }}</td>
                     <td style="text-align: center;">
                         <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent); font-family: 'Outfit', sans-serif;">
                             {{ number_format($result->irt_score, 0) }}
                         </div>
                     </td>
+                    <td style="text-align: center;">{{ $session->predicateForIrtScore((float) $result->irt_score) }}</td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 60px; color: var(--text-secondary);">
+                    <td colspan="9" style="text-align: center; padding: 60px; color: var(--text-secondary);">
                         <i class="fas fa-calculator" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.2;"></i>
                         <p>Hasil belum digenerate. Klik button di atas untuk mulai menghitung skor IRT.</p>
                     </td>
@@ -613,7 +632,11 @@
     };
 
     // IRT Results Pagination & Search Logic
-    let rawIRTResults = @json($session->results->load('participant'));
+    let rawIRTResults = @json($session->results->load('participant')->map(function ($result) use ($session) {
+        $result->setAttribute('raw_predicate', $session->predicateForRawScore((float) $result->score));
+        $result->setAttribute('irt_predicate', $session->predicateForIrtScore((float) $result->irt_score));
+        return $result;
+    }));
     
     // Filter to keep only the latest result per user (based on highest participant id)
     let latestResultsMap = new Map();
@@ -680,16 +703,18 @@
                     <td style="text-align: center; color: #ef4444;">${r.total_incorrect}</td>
                     <td style="text-align: center; color: var(--text-secondary);">${r.total_blank}</td>
                     <td style="text-align: center;">${parseFloat(r.score).toFixed(1)}</td>
+                    <td style="text-align: center;">${r.raw_predicate}</td>
                     <td style="text-align: center;">
                         <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent); font-family: 'Outfit', sans-serif;">
                             ${Math.round(r.irt_score)}
                         </div>
                     </td>
+                    <td style="text-align: center;">${r.irt_predicate}</td>
                 </tr>
             `;
         }).join('') : `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 60px; color: var(--text-secondary);">
+                <td colspan="9" style="text-align: center; padding: 60px; color: var(--text-secondary);">
                     <i class="fas fa-calculator" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.2;"></i>
                     <p>${searchVal ? 'Tidak ada hasil yang cocok dengan pencarian.' : 'Hasil belum digenerate.'}</p>
                 </td>

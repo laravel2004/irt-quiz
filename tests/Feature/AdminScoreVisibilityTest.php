@@ -26,6 +26,9 @@ class AdminScoreVisibilityTest extends TestCase
                 ->get(route('admin.sessions.show', $session->id))
                 ->assertOk()
                 ->assertSee('SKOR RAW')
+                ->assertSee('PREDIKAT RAW')
+                ->assertSee('PREDIKAT IRT')
+                ->assertSee('Ambang Predikat Raw')
                 ->assertSee('Batas IRT')
                 ->assertSee('Ambang Predikat IRT');
         }
@@ -46,7 +49,11 @@ class AdminScoreVisibilityTest extends TestCase
             ->streamedContent();
 
         $this->assertStringContainsString('Skor Raw', $content);
+        $this->assertStringContainsString('Predikat Raw', $content);
         $this->assertStringContainsString('Skor IRT', $content);
+        $this->assertStringContainsString('Predikat IRT', $content);
+        $this->assertStringContainsString('Baik', $content);
+        $this->assertStringContainsString('Istimewa', $content);
         $this->assertStringContainsString('42.5', $content);
         $this->assertStringContainsString('900', $content);
     }
@@ -62,6 +69,11 @@ class AdminScoreVisibilityTest extends TestCase
             'start_time' => '08:00',
             'end_time' => '10:00',
             'is_active' => true,
+            'participant_score_display' => 'raw',
+            'predicate_raw_kurang_min' => 0,
+            'predicate_raw_memadai_min' => 30,
+            'predicate_raw_baik_min' => 40,
+            'predicate_raw_istimewa_min' => 50,
             'predicate_kurang_min' => 100,
             'predicate_memadai_min' => 500,
             'predicate_baik_min' => 700,
