@@ -191,7 +191,7 @@
                 <h4 style="margin-bottom: 16px; color: #10b981;">Semua mata pelajaran telah selesai dikerjakan!</h4>
                 <form action="{{ route('exam.finish', $session->code) }}" method="POST" id="finishSessionForm">
                     @csrf
-                    <button type="button" class="btn-finish-all" onclick="confirmFinish()">
+                    <button type="button" id="finishSessionButton" class="btn-finish-all" onclick="confirmFinish()">
                         <i class="fas fa-flag-checkered" style="font-size: 1.3rem;"></i> Akhiri Ujian Sesi Ini
                     </button>
                 </form>
@@ -204,6 +204,8 @@
     </div>
 
     <script>
+        let isFinishingSession = false;
+
         function confirmStart(formId, categoryName, duration) {
             Swal.fire({
                 title: 'Mulai Ujian?',
@@ -224,6 +226,8 @@
         }
 
         function confirmFinish() {
+            if (isFinishingSession) return;
+
             Swal.fire({
                 title: 'Akhiri Seluruh Ujian?',
                 text: "Anda telah menyelesaikan semua mata pelajaran. Anda tidak dapat kembali ke ujian setelah mengakhiri sesi.",
@@ -237,37 +241,67 @@
                 color: '#0f172a'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'Menyimpan Hasil...',
-                        text: 'Mohon tunggu sebentar',
-                        allowOutsideClick: false,
-                        background: '#ffffff',
-                        color: '#0f172a',
-                        didOpen: () => {
-                            Swal.showLoading()
-                            
-                            // Submit via AJAX
-                            const form = document.getElementById('finishSessionForm');
-                            fetch(form.action, {
-                                method: 'POST',
-                                body: new FormData(form),
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                                    'Accept': 'application/json'
-                                }
-                            })
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.status === 'success') {
-                                    window.location.href = "{{ route('exam.success', $session->code) }}";
-                                } else {
-                                    Swal.fire({icon: 'error', title: 'Gagal', text: 'Gagal mengakhiri ujian', background: '#ffffff', color: '#0f172a'});
-                                }
-                            });
-                        }
-                    });
+                    finishSession();
                 }
             })
+        }
+
+        async function finishSession() {
+            if (isFinishingSession) return;
+
+            const form = document.getElementById('finishSessionForm');
+            const button = document.getElementById('finishSessionButton');
+            isFinishingSession = true;
+            button.disabled = true;
+
+            Swal.fire({
+                title: 'Menyimpan Hasil...',
+                text: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                background: '#ffffff',
+                color: '#0f172a',
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: {
+                        'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+                        'Accept': 'application/json'
+                    }
+                });
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (error) {
+                    data = null;
+                }
+
+                if (response.ok && data?.status === 'success') {
+                    window.location.href = "{{ route('exam.success', $session->code) }}";
+                    return;
+                }
+
+                throw new Error(data?.message || 'Server tidak memberikan konfirmasi yang valid.');
+            } catch (error) {
+                isFinishingSession = false;
+                button.disabled = false;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal mengakhiri ujian',
+                    text: error.message || 'Tidak dapat terhubung ke server.',
+                    confirmButtonText: 'Coba Lagi',
+                    confirmButtonColor: '#3b82f6',
+                    background: '#ffffff',
+                    color: '#0f172a'
+                }).then(result => {
+                    if (result.isConfirmed) finishSession();
+                });
+            }
         }
     </script>
 </body>

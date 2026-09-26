@@ -342,7 +342,7 @@
             </div>
         </div>
         <div style="padding: 24px; border-top: 1px solid #e2e8f0;">
-            <button class="btn-pill btn-red" style="width: 100%; justify-content: center; padding: 14px;" onclick="confirmSubmit()">
+            <button id="submitCategoryBtn" class="btn-pill btn-red" style="width: 100%; justify-content: center; padding: 14px;" onclick="confirmSubmit()">
                 <i class="fas fa-paper-plane"></i> Kumpul Mapel Ini
             </button>
         </div>
@@ -410,15 +410,120 @@
 
     <script>
         const questions = @json($questions);
-        const sessionKey = `exam_answers_{{ $participant->id }}`;
-        const doubtfulKey = `exam_doubtfuls_{{ $participant->id }}`;
+        const draftKey = 'exam_draft_v1:{{ $participant->id }}:{{ $sessionCategory->id }}';
+        const legacyAnswerKey = 'exam_answers_{{ $participant->id }}';
+        const legacyDoubtfulKey = 'exam_doubtfuls_{{ $participant->id }}';
         let currentIdx = 0;
-        let answers = JSON.parse(localStorage.getItem(sessionKey) || '{}');
-        let doubtfuls = JSON.parse(localStorage.getItem(doubtfulKey) || '{}');
+        let answers = {};
+        let doubtfuls = {};
         let remainingSeconds = Math.floor({{ $remainingSeconds }});
+        let isTimeExpired = remainingSeconds <= 0;
+        let isSubmitting = false;
+        let storageWarningShown = false;
+
+        function showStorageWarning(message) {
+            if (storageWarningShown) return;
+            storageWarningShown = true;
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'warning',
+                title: message,
+                showConfirmButton: false,
+                timer: 6000,
+                timerProgressBar: true
+            });
+        }
+
+        function loadDraft() {
+            const validQuestionIds = new Set(questions.map(question => String(question.id)));
+
+            try {
+                const rawDraft = localStorage.getItem(draftKey);
+                let storedAnswers = {};
+                let storedDoubtfuls = {};
+
+                if (rawDraft !== null) {
+                    const parsed = JSON.parse(rawDraft);
+                    const hasValidShape = parsed
+                        && parsed.version === 1
+                        && parsed.answers && typeof parsed.answers === 'object' && !Array.isArray(parsed.answers)
+                        && parsed.doubtfuls && typeof parsed.doubtfuls === 'object' && !Array.isArray(parsed.doubtfuls);
+
+                    if (!hasValidShape) throw new Error('Invalid draft format');
+                    storedAnswers = parsed.answers;
+                    storedDoubtfuls = parsed.doubtfuls;
+                } else {
+                    const legacyAnswers = JSON.parse(localStorage.getItem(legacyAnswerKey) || '{}');
+                    const legacyDoubtfuls = JSON.parse(localStorage.getItem(legacyDoubtfulKey) || '{}');
+                    storedAnswers = legacyAnswers && typeof legacyAnswers === 'object' && !Array.isArray(legacyAnswers) ? legacyAnswers : {};
+                    storedDoubtfuls = legacyDoubtfuls && typeof legacyDoubtfuls === 'object' && !Array.isArray(legacyDoubtfuls) ? legacyDoubtfuls : {};
+                }
+
+                answers = Object.fromEntries(
+                    Object.entries(storedAnswers).filter(([questionId]) => validQuestionIds.has(String(questionId)))
+                );
+                doubtfuls = Object.fromEntries(
+                    Object.entries(storedDoubtfuls).filter(([questionId, value]) => validQuestionIds.has(String(questionId)) && Boolean(value))
+                );
+
+                if (Object.keys(answers).length > 0 || Object.keys(doubtfuls).length > 0) {
+                    if (rawDraft === null) saveDraft();
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Jawaban sebelumnya berhasil dipulihkan dari perangkat ini.',
+                        showConfirmButton: false,
+                        timer: 3500,
+                        timerProgressBar: true
+                    });
+                }
+            } catch (error) {
+                answers = {};
+                doubtfuls = {};
+                showStorageWarning('Draft lokal tidak dapat dibaca. Ujian tetap dapat dilanjutkan.');
+            }
+        }
+
+        function saveDraft() {
+            try {
+                localStorage.setItem(draftKey, JSON.stringify({
+                    version: 1,
+                    answers,
+                    doubtfuls,
+                    updated_at: new Date().toISOString()
+                }));
+            } catch (error) {
+                showStorageWarning('Penyimpanan lokal tidak tersedia. Jangan refresh halaman sebelum submit berhasil.');
+            }
+        }
+
+        function clearDraft() {
+            try {
+                localStorage.removeItem(draftKey);
+                localStorage.removeItem(legacyAnswerKey);
+                localStorage.removeItem(legacyDoubtfulKey);
+            } catch (error) {
+                showStorageWarning('Jawaban sudah diterima server, tetapi draft lokal tidak dapat dibersihkan.');
+            }
+        }
 
         function changeFontSize(size) {
             document.documentElement.style.setProperty('--question-font-size', size + 'px');
+        }
+
+        function syncAnswerControlState() {
+            const locked = isSubmitting || isTimeExpired;
+            document.querySelectorAll('.option-row').forEach(row => {
+                row.setAttribute('aria-disabled', locked ? 'true' : 'false');
+                row.tabIndex = locked ? -1 : 0;
+                row.style.pointerEvents = locked ? 'none' : '';
+                row.style.opacity = locked ? '0.7' : '';
+            });
+            document.querySelectorAll('.mbs-btn').forEach(button => button.disabled = locked);
+            document.getElementById('raguBtn').disabled = locked;
+            document.getElementById('submitCategoryBtn').disabled = isSubmitting;
         }
 
         function renderNav() {
@@ -490,6 +595,7 @@
 
             document.getElementById('questionText').innerHTML = q.question_text;
             document.getElementById('optionsList').innerHTML = optionsHtml;
+            syncAnswerControlState();
 
             const leftPane = document.getElementById('examLeftPane');
             if (q.question_image) {
@@ -551,12 +657,14 @@
         }
 
         function selectOption(qId, val) {
+            if (isSubmitting || isTimeExpired) return;
             answers[qId] = val;
-            localStorage.setItem(sessionKey, JSON.stringify(answers));
+            saveDraft();
             renderQuestion();
         }
 
         function toggleOption(qId, val) {
+            if (isSubmitting || isTimeExpired) return;
             let current = answers[qId] || [];
             if (!Array.isArray(current)) current = [];
 
@@ -566,16 +674,17 @@
                 current.push(val);
             }
             answers[qId] = current;
-            localStorage.setItem(sessionKey, JSON.stringify(answers));
+            saveDraft();
             renderQuestion();
         }
 
         function selectMBS(qId, statementIdx, value) {
+            if (isSubmitting || isTimeExpired) return;
             if (!answers[qId] || typeof answers[qId] !== 'object' || Array.isArray(answers[qId])) {
                 answers[qId] = {};
             }
             answers[qId][statementIdx.toString()] = value;
-            localStorage.setItem(sessionKey, JSON.stringify(answers));
+            saveDraft();
             renderQuestion();
         }
 
@@ -601,20 +710,21 @@
         }
 
         function toggleDoubtfulCurrent() {
+            if (isSubmitting || isTimeExpired) return;
             const qId = questions[currentIdx].id;
             if (doubtfuls[qId]) {
                 delete doubtfuls[qId];
             } else {
                 doubtfuls[qId] = true;
             }
-            localStorage.setItem(doubtfulKey, JSON.stringify(doubtfuls));
+            saveDraft();
             renderQuestion();
         }
 
 
         document.addEventListener('click', function(event) {
             const optionRow = event.target.closest('.option-row');
-            if (!optionRow) return;
+            if (!optionRow || isSubmitting || isTimeExpired) return;
             const qId = optionRow.dataset.questionId;
             const index = Number(optionRow.dataset.optionIndex);
             const type = optionRow.dataset.optionType;
@@ -628,7 +738,7 @@
 
         document.addEventListener('keydown', function(event) {
             const optionRow = event.target.closest('.option-row');
-            if (!optionRow) return;
+            if (!optionRow || isSubmitting || isTimeExpired) return;
             if (event.key !== 'Enter' && event.key !== ' ') return;
             event.preventDefault();
             const qId = optionRow.dataset.questionId;
@@ -644,27 +754,37 @@
 
         function startTimer() {
             const display = document.getElementById('timeDisplay');
-            const interval = setInterval(() => {
-                if (remainingSeconds <= 0) {
-                    clearInterval(interval);
-                    autoSubmit();
-                    return;
-                }
-                remainingSeconds--;
-
+            const updateDisplay = () => {
                 const h = Math.floor(remainingSeconds / 3600);
                 const m = Math.floor((remainingSeconds % 3600) / 60);
                 const s = Math.floor(remainingSeconds % 60);
-
                 display.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                if (remainingSeconds < 300) display.style.color = '#ef4444';
+            };
 
-                if (remainingSeconds < 300) {
-                    display.style.color = '#ef4444';
+            updateDisplay();
+            if (remainingSeconds <= 0) {
+                isTimeExpired = true;
+                syncAnswerControlState();
+                autoSubmit();
+                return;
+            }
+
+            const interval = setInterval(() => {
+                remainingSeconds = Math.max(0, remainingSeconds - 1);
+                updateDisplay();
+
+                if (remainingSeconds === 0) {
+                    clearInterval(interval);
+                    isTimeExpired = true;
+                    syncAnswerControlState();
+                    autoSubmit();
                 }
             }, 1000);
         }
 
         function confirmSubmit() {
+            if (isSubmitting) return;
             const doubtfulCount = Object.keys(doubtfuls).length;
             if (doubtfulCount > 0) {
                 Swal.fire({
@@ -697,29 +817,22 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'Menyimpan...',
-                        allowOutsideClick: false,
-                        background: '#ffffff',
-                        color: '#0f172a',
-                        buttonsStyling: true,
-                        customClass: { popup: 'swal2-popup', title: 'swal2-title' },
-                        didOpen: () => Swal.showLoading()
-                    });
                     autoSubmit();
                 }
             });
         }
 
-        function autoSubmit() {
-            let payloadAnswers = {};
-            for (let qId in answers) {
+        async function autoSubmit(requestBody = null) {
+            if (isSubmitting) return;
+
+            const payloadAnswers = {};
+            for (const qId in answers) {
                 payloadAnswers[qId] = {
                     answer: answers[qId],
-                    is_doubtful: doubtfuls[qId] ? true : false
+                    is_doubtful: Boolean(doubtfuls[qId])
                 };
             }
-            for (let qId in doubtfuls) {
+            for (const qId in doubtfuls) {
                 if (!payloadAnswers[qId]) {
                     payloadAnswers[qId] = {
                         answer: null,
@@ -728,20 +841,82 @@
                 }
             }
 
-            fetch("{{ route('exam.submit_category', ['code' => $session->code, 'id' => $sessionCategory->id]) }}", {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ answers: payloadAnswers, finish_category: true })
-            })
-            .then(res => res.json())
-            .then(data => {
-                localStorage.removeItem(sessionKey);
-                localStorage.removeItem(doubtfulKey);
-                window.location.href = "{{ route('exam.categories', $session->code) }}";
+            const body = requestBody || JSON.stringify({ answers: payloadAnswers, finish_category: true });
+            const retryDelays = [0, 2000, 5000];
+            const retryableStatuses = [408, 429, 502, 503, 504, 520, 521, 522, 523, 524];
+            let lastError = null;
+
+            isSubmitting = true;
+            syncAnswerControlState();
+            Swal.fire({
+                title: 'Menyimpan...',
+                text: 'Jangan tutup halaman ini.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                background: '#ffffff',
+                color: '#0f172a',
+                didOpen: () => Swal.showLoading()
+            });
+
+            for (let attempt = 0; attempt < retryDelays.length; attempt++) {
+                if (retryDelays[attempt] > 0) {
+                    await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
+                }
+
+                try {
+                    const response = await fetch("{{ route('exam.submit_category', ['code' => $session->code, 'id' => $sessionCategory->id]) }}", {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body
+                    });
+                    let data = null;
+                    try {
+                        data = await response.json();
+                    } catch (error) {
+                        data = null;
+                    }
+
+                    if (response.ok && data?.status === 'success') {
+                        clearDraft();
+                        window.location.href = "{{ route('exam.categories', $session->code) }}";
+                        return;
+                    }
+
+                    const error = new Error(data?.message || 'Server tidak memberikan konfirmasi submit yang valid.');
+                    error.status = response.status;
+                    lastError = error;
+
+                    if (!retryableStatuses.includes(response.status)) break;
+                } catch (error) {
+                    lastError = error;
+                    if (!navigator.onLine) break;
+                }
+            }
+
+            isSubmitting = false;
+            syncAnswerControlState();
+
+            const sessionMessage = lastError?.status === 419
+                ? 'Sesi login perlu diperbarui. Refresh atau login kembali, lalu buka mata pelajaran ini untuk memulihkan jawaban.'
+                : (lastError?.message || 'Tidak dapat terhubung ke server.');
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Jawaban belum berhasil dikirim',
+                html: `${sessionMessage}<br><br><strong>Jawaban Anda masih tersimpan di perangkat ini.</strong>`,
+                confirmButtonText: 'Coba Lagi',
+                confirmButtonColor: '#3b82f6',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                background: '#ffffff',
+                color: '#0f172a'
+            }).then(result => {
+                if (result.isConfirmed) autoSubmit(body);
             });
         }
 
@@ -782,6 +957,7 @@
         });
 
         // Init
+        loadDraft();
         renderQuestion();
         startTimer();
     </script>

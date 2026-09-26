@@ -3,89 +3,105 @@ import { check, sleep } from 'k6';
 import { parseHTML } from 'k6/html';
 import exec from 'k6/execution';
 
+const BASE_URL = (__ENV.BASE_URL || 'http://localhost').replace(/\/$/, '');
+const EXAM_CODE = __ENV.EXAM_CODE;
+const MAX_VUS = Number(__ENV.MAX_VUS || 50);
+const RAMP_DURATION = __ENV.RAMP_DURATION || '30s';
+const ACCOUNTS = JSON.parse(__ENV.TEST_ACCOUNTS || '[]');
+const rampTargets = [10, 25, 50, 100].filter(target => target <= MAX_VUS);
+
+if (!rampTargets.includes(MAX_VUS)) rampTargets.push(MAX_VUS);
+if (!EXAM_CODE) throw new Error('EXAM_CODE wajib diisi.');
+if (ACCOUNTS.length < MAX_VUS) throw new Error(`TEST_ACCOUNTS harus berisi minimal ${MAX_VUS} akun peserta unik.`);
+
 export const options = {
-    vus: 50,          // Jumlah virtual user (siswa) yang akan testing bersamaan
-    iterations: 50,   // Jumlah iterasi total (masing-masing VU akan jalan 1x)
+    scenarios: {
+        simultaneous_submit: {
+            executor: 'ramping-vus',
+            startVUs: 0,
+            stages: [
+                ...rampTargets.map(target => ({ duration: RAMP_DURATION, target })),
+                { duration: RAMP_DURATION, target: 0 },
+            ],
+            gracefulRampDown: '10s',
+        },
+    },
+    thresholds: {
+        checks: ['rate>0.99'],
+        http_req_failed: ['rate<0.01'],
+        'http_req_duration{endpoint:submit}': ['p(95)<2000', 'p(99)<5000'],
+    },
 };
 
-const BASE_URL = 'https://exam.tampilku.id';
-
-// ==========================================
-// KONFIGURASI DATA (Sesuaikan dengan DB Anda)
-// ==========================================
-const EMAIL = 'peserta1@gmail.com';
-const PASSWORD = 'password';
-const EXAM_CODE = 'S0RM4WOA'; // Ganti dengan 'code' dari tabel exam_sessions
-const CATEGORY_ID = '78';     // Ganti dengan ID dari tabel exam_session_categories
-
 export default function () {
-    let currentEmail = EMAIL;
+    const account = ACCOUNTS[exec.vu.idInTest - 1];
 
-    // 1. Buka Halaman Login untuk mendapatkan CSRF Token
-    let loginPageRes = http.get(`${BASE_URL}/`);
-    check(loginPageRes, { 'halaman login terbuka': (r) => r.status === 200 });
+    const loginPage = http.get(`${BASE_URL}/`, { tags: { endpoint: 'login_page' } });
+    const loginToken = parseHTML(loginPage.body).find('input[name="_token"]').first().attr('value');
+    if (!check(loginPage, {
+        'halaman login terbuka': response => response.status === 200,
+        'token login tersedia': () => Boolean(loginToken),
+    })) return;
 
-    let doc = parseHTML(loginPageRes.body);
-    let csrfToken = doc.find('input[name="_token"]').first().attr('value');
+    const login = http.post(`${BASE_URL}/login`, {
+        _token: loginToken,
+        email: account.email,
+        password: account.password,
+    }, { tags: { endpoint: 'login' } });
+    if (!check(login, { 'berhasil login': response => response.status === 200 })) return;
 
-    // 2. Lakukan Login
-    let loginRes = http.post(`${BASE_URL}/login`, {
+    const terms = http.get(`${BASE_URL}/exam/${EXAM_CODE}/terms`, { tags: { endpoint: 'terms' } });
+    const csrfToken = parseHTML(terms.body).find('input[name="_token"]').first().attr('value');
+    if (!check(terms, {
+        'halaman terms terbuka': response => response.status === 200,
+        'token ujian tersedia': () => Boolean(csrfToken),
+    })) return;
+
+    const agree = http.post(`${BASE_URL}/exam/${EXAM_CODE}/agree`, {
         _token: csrfToken,
-        email: currentEmail,
-        password: PASSWORD,
-    });
-    // k6 otomatis mengikuti redirect, jadi status akhirnya harusnya 200 (Dashboard)
-    check(loginRes, { 'berhasil login': (r) => r.status === 200 });
+        agree_terms: '1',
+    }, { tags: { endpoint: 'agree' } });
+    if (!check(agree, { 'berhasil menyetujui terms': response => response.status === 200 })) return;
 
-    // 3. Masuk ke halaman Persetujuan Ujian (Terms)
-    let termsRes = http.get(`${BASE_URL}/exam/${EXAM_CODE}/terms`);
-    check(termsRes, { 'halaman terms terbuka': (r) => r.status === 200 });
+    const start = http.post(`${BASE_URL}/exam/${EXAM_CODE}/category/${account.category_id}/start`, {
+        _token: csrfToken,
+    }, { tags: { endpoint: 'start_category' } });
+    if (!check(start, { 'berhasil memulai kategori': response => response.status === 200 })) return;
 
-    doc = parseHTML(termsRes.body);
-    let termsToken = doc.find('input[name="_token"]').first().attr('value') || csrfToken;
+    const payloadAnswers = Object.fromEntries(
+        Object.entries(account.answers || {}).map(([questionId, answer]) => [
+            questionId,
+            { answer, is_doubtful: false },
+        ])
+    );
+    const submitAt = Number(__ENV.SUBMIT_AT || 0);
+    const waitSeconds = submitAt > 0 ? submitAt - (Date.now() / 1000) : Number(__ENV.THINK_TIME || 3);
+    if (waitSeconds > 0) sleep(waitSeconds);
 
-    // 4. Setuju dengan persetujuan (Agree)
-    let agreeRes = http.post(`${BASE_URL}/exam/${EXAM_CODE}/agree`, {
-        _token: termsToken,
-        agree_terms: '1', // Checkbox disetujui
-    });
-    check(agreeRes, { 'berhasil setuju terms': (r) => r.status === 200 });
-
-    // 5. Mulai Kategori Mata Pelajaran
-    let startCatRes = http.post(`${BASE_URL}/exam/${EXAM_CODE}/category/${CATEGORY_ID}/start`, {
-        _token: termsToken,
-    });
-    check(startCatRes, { 'berhasil mulai kategori': (r) => r.status === 200 });
-
-    // Simulasi siswa membaca dan mengerjakan soal
-    sleep(3);
-
-    // 6. Submit Jawaban (Simulasi)
-    // Di sini kita mengirim jawaban untuk ID soal tertentu. 
-    // Jika tidak tahu ID spesifik, kita bisa saja mengirim dummy payload, backend akan skip soal yang tidak valid.
-    let submitPayload = {
-        _token: termsToken,
-        'answers[1]': 'A',  // Contoh: Soal ID 1 jawab 'A'
-        'answers[2]': 'B',  // Contoh: Soal ID 2 jawab 'B'
-        'finish_category': '1' // Flag untuk menyelesaikan mapel ini
-    };
-
-    let submitRes = http.post(`${BASE_URL}/exam/${EXAM_CODE}/category/${CATEGORY_ID}/submit`, submitPayload, {
-        headers: {
-            'Accept': 'application/json',
+    const submit = http.post(
+        `${BASE_URL}/exam/${EXAM_CODE}/category/${account.category_id}/submit`,
+        JSON.stringify({ answers: payloadAnswers, finish_category: true }),
+        {
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            tags: { endpoint: 'submit' },
         }
-    });
-    check(submitRes, { 'berhasil submit jawaban': (r) => r.status === 200 });
+    );
 
-    // 7. Selesaikan Sesi Ujian Keseluruhan
-    let finishRes = http.post(`${BASE_URL}/exam/${EXAM_CODE}/finish`, {
-        _token: termsToken,
-    }, {
-        headers: {
-            'Accept': 'application/json',
-        }
+    check(submit, {
+        'submit HTTP 200': response => response.status === 200,
+        'submit dikonfirmasi server': response => {
+            try {
+                return response.json('status') === 'success';
+            } catch (error) {
+                return false;
+            }
+        },
     });
-    check(finishRes, { 'berhasil menyelesaikan ujian': (r) => r.status === 200 });
 
-    sleep(1);
+    // Satu akun hanya boleh dipakai oleh satu VU dan satu submit dalam test ini.
+    sleep(Number(__ENV.HOLD_SECONDS || 180));
 }

@@ -31,11 +31,11 @@ RUN chown -R root:root /app/storage /app/bootstrap/cache && \
 RUN php artisan storage:link
 
 # PHP Memory & OPcache configuration for 2GB RAM Server to prevent OOM
-RUN echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/memory-limit.ini \
+RUN echo "memory_limit = 128M" > /usr/local/etc/php/conf.d/memory-limit.ini \
     && echo "max_execution_time = 60" >> /usr/local/etc/php/conf.d/memory-limit.ini \
     && echo "max_input_time = 60" >> /usr/local/etc/php/conf.d/memory-limit.ini \
     && echo "opcache.enable=1" > /usr/local/etc/php/conf.d/opcache-recommended.ini \
-    && echo "opcache.memory_consumption=128" >> /usr/local/etc/php/conf.d/opcache-recommended.ini \
+    && echo "opcache.memory_consumption=96" >> /usr/local/etc/php/conf.d/opcache-recommended.ini \
     && echo "opcache.interned_strings_buffer=8" >> /usr/local/etc/php/conf.d/opcache-recommended.ini \
     && echo "opcache.max_accelerated_files=10000" >> /usr/local/etc/php/conf.d/opcache-recommended.ini \
     && echo "opcache.revalidate_freq=2" >> /usr/local/etc/php/conf.d/opcache-recommended.ini \

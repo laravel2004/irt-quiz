@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -12,8 +10,16 @@ services:
     environment:
       # SERVER_NAME is required by FrankenPHP to serve requests
       SERVER_NAME: ":80"
+      FRANKENPHP_CONFIG: |
+        num_threads 2
+        max_threads 2
+        max_wait_time 10s
       APP_ENV: production
       APP_DEBUG: "false"
+      LOG_CHANNEL: daily
+      LOG_LEVEL: warning
+      LOG_DAILY_DAYS: 14
+      EXAM_CONCURRENT_LIMIT: 30
       # DB Connection to internal network
       DB_HOST: mysql
       REDIS_HOST: redis
@@ -36,6 +42,11 @@ services:
           memory: 512M # Limit app to 512MB
         reservations:
           memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:alpine
@@ -43,8 +54,6 @@ services:
     restart: unless-stopped
     # Limit Redis memory directly in Redis config
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -57,16 +66,21 @@ services:
         limits:
           cpus: '0.5'
           memory: 300M # Limit container to 300MB
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   mysql:
     image: mysql:8.0
     container_name: irt_quiz_mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-db_irt_quiz}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-@Agungdwin2004}
-    ports:
-      - "33061:3306"
+      MYSQL_DATABASE: ${DB_DATABASE:?DB_DATABASE must be set}
+      MYSQL_USER: ${DB_USERNAME:?DB_USERNAME must be a non-root user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set}
     volumes:
       - mysql_data:/var/lib/mysql
     # Optimize MySQL for low memory (2GB RAM total system)
@@ -85,6 +99,11 @@ services:
         limits:
           cpus: '1.0'
           memory: 600M # Limit container to 600MB
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Queue worker for Laravel background jobs
   queue:
@@ -93,13 +112,26 @@ services:
       dockerfile: Dockerfile
     container_name: irt_quiz_queue
     restart: unless-stopped
-    command: php artisan queue:work --sleep=3 --tries=3
+    command: >
+      php -d memory_limit=192M artisan queue:work
+      --sleep=1
+      --tries=2
+      --backoff=30
+      --timeout=180
+      --memory=192
+      --max-jobs=20
     env_file:
       - .env
     environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      LOG_CHANNEL: daily
+      LOG_LEVEL: warning
+      LOG_DAILY_DAYS: 14
       DB_HOST: mysql
       REDIS_HOST: redis
       QUEUE_CONNECTION: redis
+      REDIS_QUEUE_RETRY_AFTER: 240
     depends_on:
       - app
       - redis
@@ -109,6 +141,11 @@ services:
         limits:
           cpus: '0.5'
           memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   redis_data:

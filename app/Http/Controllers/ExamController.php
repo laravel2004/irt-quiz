@@ -8,7 +8,6 @@ use App\Models\ExamSession;
 use App\Models\ExamSessionCategory;
 use App\Models\ExamSessionParticipant;
 use App\Models\ParticipantCategoryStatus;
-use App\Models\QuestionBank;
 use App\Models\UserAnswer;
 use App\Services\ExamSessionService;
 use Carbon\Carbon;
@@ -16,6 +15,9 @@ use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ExamController extends Controller
 {
@@ -273,7 +275,9 @@ class ExamController extends Controller
             return redirect()->route('participant.dashboard')->with('error', 'Sesi ujian telah ditutup oleh administrator.');
         }
 
-        $sessionCategory = ExamSessionCategory::with('category')->findOrFail($categoryId);
+        $sessionCategory = ExamSessionCategory::with('category')
+            ->where('exam_session_id', $participant->exam_session_id)
+            ->findOrFail($categoryId);
 
         $status = ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
             ->where('exam_session_category_id', $categoryId)
@@ -297,68 +301,90 @@ class ExamController extends Controller
         $endTime = $startTime->copy()->addMinutes((int) $sessionCategory->duration);
         $remainingSeconds = max(0, now()->diffInSeconds($endTime, false));
 
-        if ($remainingSeconds <= 0) {
-            // Auto submit
-            $status->update(['finished_at' => now()]);
-
-            return redirect()->route('exam.categories', $code)->with('error', 'Waktu mata pelajaran ini sudah habis.');
-        }
-
         return view('exam.main', compact('session', 'participant', 'questions', 'remainingSeconds', 'sessionCategory'));
     }
 
     public function submitCategory(Request $request, $code, $categoryId)
     {
-        $participant = $this->getParticipant($code);
-        if (! $participant) {
-            return response()->json(['status' => 'error', 'message' => 'Not found'], 404);
-        }
+        $requestStartedAt = microtime(true);
+        $transactionDurationMs = 0;
+        $participant = null;
 
-        $answers = $request->input('answers', []);
-
-        DB::transaction(function () use ($participant, $answers, $categoryId, $request) {
-            $questionIds = array_keys($answers);
-            if (empty($questionIds)) {
-                return;
+        try {
+            $participant = $this->getParticipant($code);
+            if (! $participant) {
+                return response()->json(['status' => 'error', 'message' => 'Not found'], 404);
             }
 
-            $questions = QuestionBank::whereIn('id', $questionIds)->get()->keyBy('id');
+            $sessionCategory = ExamSessionCategory::where('exam_session_id', $participant->exam_session_id)
+                ->findOrFail($categoryId);
+            $status = ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
+                ->where('exam_session_category_id', $sessionCategory->id)
+                ->first();
+
+            if (! $status || ! $status->started_at) {
+                return response()->json(['status' => 'error', 'message' => 'Mata pelajaran belum dimulai.'], 422);
+            }
+
+            if ($status->finished_at) {
+                return response()->json([
+                    'status' => 'success',
+                    'saved_count' => 0,
+                    'category_finished' => true,
+                    'already_finished' => true,
+                ]);
+            }
+
+            if (! $participant->examSession->is_active) {
+                return response()->json(['status' => 'error', 'message' => 'Sesi ujian telah ditutup.'], 409);
+            }
+
+            $validated = $request->validate([
+                'answers' => ['present', 'array'],
+                'answers.*' => ['required', 'array'],
+                'answers.*.answer' => ['nullable'],
+                'answers.*.is_doubtful' => ['nullable', 'boolean'],
+                'finish_category' => ['required', 'boolean'],
+            ]);
+            $answers = $validated['answers'];
+            $questionIds = array_map('strval', array_keys($answers));
+            $questions = $participant->questions()
+                ->where('question_banks.category_id', $sessionCategory->category_id)
+                ->whereIn('question_banks.id', $questionIds)
+                ->get()
+                ->keyBy('id');
+            $allowedQuestionIds = $questions->keys()->map(fn ($id) => (string) $id)->all();
+
+            if (array_diff($questionIds, $allowedQuestionIds) !== []) {
+                throw ValidationException::withMessages([
+                    'answers' => 'Terdapat soal yang tidak ditugaskan untuk peserta atau mata pelajaran ini.',
+                ]);
+            }
+
             $now = now();
             $upsertData = [];
 
             foreach ($answers as $questionId => $answerData) {
                 $question = $questions->get($questionId);
-                if (! $question) {
-                    continue;
-                }
-
-                $answer = is_array($answerData) && isset($answerData['answer']) ? $answerData['answer'] : $answerData;
-                $isDoubtful = is_array($answerData) && isset($answerData['is_doubtful']) ? $answerData['is_doubtful'] : false;
-
+                $answer = $answerData['answer'] ?? null;
                 $isCorrect = false;
                 $score = 0;
-
-                // Check correctness based on question type
                 $correctArr = (array) $question->correct_answer;
                 $options = (array) $question->options;
 
                 if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah') {
                     $correctIndex = $this->resolveCorrectIndices($correctArr, $options)[0] ?? null;
-                    $isCorrect = false;
 
                     if (is_numeric($answer) && array_key_exists((int) $answer, $options)) {
-                        // Compare by index if frontend sends an index
-                        $isCorrect = ($correctIndex !== null && (string) $answer === $correctIndex);
+                        $isCorrect = $correctIndex !== null && (string) $answer === $correctIndex;
                     } else {
-                        // Fallback: compare by value (legacy)
                         $correctValue = $this->resolveCorrectValues($correctArr, $options)[0] ?? null;
-                        $isCorrect = ($correctValue !== null && $this->answersMatch($correctValue, $answer));
+                        $isCorrect = $correctValue !== null && $this->answersMatch($correctValue, $answer);
                     }
 
                     $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
                 } elseif ($question->type === 'multiple_choice') {
                     $correctIndices = $this->resolveCorrectIndices($correctArr, $options);
-                    $isCorrect = false;
 
                     if (is_array($answer)) {
                         $userIndices = [];
@@ -371,52 +397,34 @@ class ExamController extends Controller
                         $totalCorrectAvailable = count($correctIndices);
                         $correctSelected = count(array_intersect($userIndices, $correctIndices));
                         $wrongSelected = count(array_diff($userIndices, $correctIndices));
-
-                        if ($correctSelected === $totalCorrectAvailable && $wrongSelected === 0) {
-                            $isCorrect = true;
-                        } else {
-                            $isCorrect = false;
-                        }
-
+                        $isCorrect = $correctSelected === $totalCorrectAvailable && $wrongSelected === 0;
                         $netCorrect = max(0, $correctSelected - $wrongSelected);
-                        $percentage = $totalCorrectAvailable > 0 ? ($netCorrect / $totalCorrectAvailable) : 0;
-
-                        if ($percentage == 0) {
-                            $score = $question->score_incorrect ?? 0;
-                        } else {
-                            $score = round($percentage * ($question->score_correct ?? 1), 2);
-                        }
+                        $percentage = $totalCorrectAvailable > 0 ? $netCorrect / $totalCorrectAvailable : 0;
+                        $score = $percentage == 0
+                            ? ($question->score_incorrect ?? 0)
+                            : round($percentage * ($question->score_correct ?? 1), 2);
                     } else {
                         $score = $question->score_incorrect ?? 0;
                     }
                 } elseif ($question->type === 'multiple_benar_salah') {
-                    $isCorrect = false;
                     if (is_array($answer)) {
                         $totalStatements = count($options);
                         $correctCount = 0;
 
                         foreach ($options as $idx => $optText) {
-                            $userAnswer = $answer[strval($idx)] ?? null;
-                            $shouldBeBenar = in_array(strval($idx), $correctArr);
+                            $userAnswer = $answer[(string) $idx] ?? null;
+                            $shouldBeBenar = in_array((string) $idx, $correctArr);
 
                             if (($shouldBeBenar && $userAnswer === 'benar') || (! $shouldBeBenar && $userAnswer === 'salah')) {
                                 $correctCount++;
                             }
                         }
 
-                        $percentage = $totalStatements > 0 ? ($correctCount / $totalStatements) : 0;
-
-                        if ($correctCount === $totalStatements) {
-                            $isCorrect = true;
-                        } else {
-                            $isCorrect = false;
-                        }
-
-                        if ($percentage == 0) {
-                            $score = $question->score_incorrect ?? 0;
-                        } else {
-                            $score = round($percentage * ($question->score_correct ?? 1), 2);
-                        }
+                        $percentage = $totalStatements > 0 ? $correctCount / $totalStatements : 0;
+                        $isCorrect = $correctCount === $totalStatements;
+                        $score = $percentage == 0
+                            ? ($question->score_incorrect ?? 0)
+                            : round($percentage * ($question->score_correct ?? 1), 2);
                     } else {
                         $score = $question->score_incorrect ?? 0;
                     }
@@ -426,7 +434,7 @@ class ExamController extends Controller
                     'participant_id' => $participant->id,
                     'exam_session_id' => $participant->exam_session_id,
                     'question_bank_id' => $questionId,
-                    'answer' => is_array($answer) || is_object($answer) ? json_encode($answer) : $answer,
+                    'answer' => $answer === null ? null : json_encode($answer, JSON_UNESCAPED_UNICODE),
                     'is_correct' => $isCorrect,
                     'score' => $score,
                     'created_at' => $now,
@@ -434,23 +442,68 @@ class ExamController extends Controller
                 ];
             }
 
-            // Single bulk upsert — jauh lebih cepat dari N+1 individual UPDATE
-            foreach (array_chunk($upsertData, 500) as $chunk) {
-                UserAnswer::upsert(
-                    $chunk,
-                    ['participant_id', 'question_bank_id'],          // unique keys
-                    ['answer', 'is_correct', 'score', 'updated_at']  // kolom yang diupdate jika sudah ada
-                );
+            $transactionStartedAt = microtime(true);
+            $alreadyFinished = DB::transaction(function () use ($participant, $sessionCategory, $validated, $upsertData) {
+                $lockedStatus = ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
+                    ->where('exam_session_category_id', $sessionCategory->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($lockedStatus->finished_at) {
+                    return true;
+                }
+
+                foreach (array_chunk($upsertData, 500) as $chunk) {
+                    UserAnswer::upsert(
+                        $chunk,
+                        ['participant_id', 'question_bank_id'],
+                        ['answer', 'is_correct', 'score', 'updated_at']
+                    );
+                }
+
+                if ($validated['finish_category']) {
+                    $lockedStatus->update(['finished_at' => now()]);
+                }
+
+                return false;
+            });
+            $transactionDurationMs = (int) round((microtime(true) - $transactionStartedAt) * 1000);
+            $durationMs = (int) round((microtime(true) - $requestStartedAt) * 1000);
+
+            if ($durationMs >= 2000) {
+                Log::warning('Slow exam category submit', [
+                    'participant_id' => $participant->id,
+                    'exam_session_id' => $participant->exam_session_id,
+                    'exam_session_category_id' => $sessionCategory->id,
+                    'answer_count' => count($answers),
+                    'duration_ms' => $durationMs,
+                    'transaction_duration_ms' => $transactionDurationMs,
+                    'status' => 'success',
+                    'cf_ray' => $request->header('CF-Ray'),
+                ]);
             }
 
-            if ($request->has('finish_category') && $request->finish_category) {
-                ParticipantCategoryStatus::where('exam_session_participant_id', $participant->id)
-                    ->where('exam_session_category_id', $categoryId)
-                    ->update(['finished_at' => now()]);
-            }
-        });
+            return response()->json([
+                'status' => 'success',
+                'saved_count' => $alreadyFinished ? 0 : count($upsertData),
+                'category_finished' => $alreadyFinished || $validated['finish_category'],
+                'already_finished' => $alreadyFinished,
+            ]);
+        } catch (Throwable $exception) {
+            Log::error('Exam category submit failed', [
+                'participant_id' => $participant?->id,
+                'exam_session_id' => $participant?->exam_session_id,
+                'exam_session_category_id' => $categoryId,
+                'answer_count' => is_array($request->input('answers')) ? count($request->input('answers')) : 0,
+                'duration_ms' => (int) round((microtime(true) - $requestStartedAt) * 1000),
+                'transaction_duration_ms' => $transactionDurationMs,
+                'status' => 'failed',
+                'exception' => $exception::class,
+                'cf_ray' => $request->header('CF-Ray'),
+            ]);
 
-        return response()->json(['status' => 'success']);
+            throw $exception;
+        }
     }
 
     private function generateParticipantQuestions(ExamSessionParticipant $participant)
