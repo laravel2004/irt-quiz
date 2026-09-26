@@ -3,9 +3,10 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. coba check login nya itu apakah refresh token nya berlaku dengan baik.
-2. soal nya ada issue user login terus ngerjain soal(user) atau admin input soal terus agak lama tiba" ke logout 
-3. coba telusuri kenapa itu bisa terjadi, aku engga mau hal itu terjadi ya 
+1. ada issue cloudflare jika yang mengerjakan tryout banyak pasti ada yang kenak host error cloudflare.
+2. kebanyakan user terjadi pada saat submit tryout nya.
+3. aku mau jawaban user itu kesimpan di localstorage nya dia biar kalau ada error kayak gitu jawabanya ke restore dan kalau berhasil submit baru didelete dari localstoregnya mereka.
+4. kalau bisa fix juga permasalahan di point 1 dan 2
 
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail
