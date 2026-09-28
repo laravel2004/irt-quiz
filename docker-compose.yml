@@ -19,7 +19,7 @@ services:
       LOG_CHANNEL: daily
       LOG_LEVEL: warning
       LOG_DAILY_DAYS: 14
-      EXAM_CONCURRENT_LIMIT: 30
+      EXAM_CONCURRENT_LIMIT: 800
       # DB Connection to internal network
       DB_HOST: mysql
       REDIS_HOST: redis
