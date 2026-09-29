@@ -3,10 +3,12 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. ada issue cloudflare jika yang mengerjakan tryout banyak pasti ada yang kenak host error cloudflare.
-2. kebanyakan user terjadi pada saat submit tryout nya.
-3. aku mau jawaban user itu kesimpan di localstorage nya dia biar kalau ada error kayak gitu jawabanya ke restore dan kalau berhasil submit baru didelete dari localstoregnya mereka.
-4. kalau bisa fix juga permasalahan di point 1 dan 2
+1. perhatikan di edit sesi ujian itu ya.
+2. aku mau walaupun sudah ada user yang mengerjakan tryout tersebut masih bisa bisa di edit yang bagian :
+    - skor yang ditampilkan ke peserta
+    - ambang predikat raw
+    - ambang predikat irt 
+3. aku mau itu bisa diedit ya soal nya kalau sekarang kalau udah ada yang ngerjain kena middleware ini "Konfigurasi nilai tidak dapat diubah karena sesi sudah mulai dikerjakan."
 
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail

@@ -408,19 +408,6 @@ class ExamSessionService extends BaseService
                 'min' => number_format((float) $category->min_score_irt, 2, '.', ''),
                 'max' => number_format((float) $category->max_score_irt, 2, '.', ''),
             ])->values()->all();
-            $thresholds = collect([
-                $source->predicate_kurang_min,
-                $source->predicate_memadai_min,
-                $source->predicate_baik_min,
-                $source->predicate_istimewa_min,
-            ]);
-            $rawThresholds = collect([
-                $source->predicate_raw_kurang_min,
-                $source->predicate_raw_memadai_min,
-                $source->predicate_raw_baik_min,
-                $source->predicate_raw_istimewa_min,
-            ]);
-            $display = $source->participant_score_display;
         } else {
             $categories = collect($source['categories'])->sortBy('id')->map(fn ($category) => [
                 'id' => (int) $category['id'],
@@ -428,26 +415,10 @@ class ExamSessionService extends BaseService
                 'min' => number_format((float) $category['min_score_irt'], 2, '.', ''),
                 'max' => number_format((float) $category['max_score_irt'], 2, '.', ''),
             ])->values()->all();
-            $thresholds = collect([
-                $source['predicate_kurang_min'],
-                $source['predicate_memadai_min'],
-                $source['predicate_baik_min'],
-                $source['predicate_istimewa_min'],
-            ]);
-            $rawThresholds = collect([
-                $source['predicate_raw_kurang_min'],
-                $source['predicate_raw_memadai_min'],
-                $source['predicate_raw_baik_min'],
-                $source['predicate_raw_istimewa_min'],
-            ]);
-            $display = $source['participant_score_display'];
         }
 
         return json_encode([
             'categories' => $categories,
-            'thresholds' => $thresholds->map(fn ($value) => number_format((float) $value, 2, '.', ''))->all(),
-            'raw_thresholds' => $rawThresholds->map(fn ($value) => number_format((float) $value, 2, '.', ''))->all(),
-            'participant_score_display' => $display,
         ], JSON_THROW_ON_ERROR);
     }
 

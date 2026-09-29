@@ -89,7 +89,7 @@ class ExamSessionScoreDisplayTest extends TestCase
         $this->assertDatabaseCount('exam_sessions', 0);
     }
 
-    public function test_started_session_rejects_score_display_changes(): void
+    public function test_started_session_allows_score_display_and_predicate_changes(): void
     {
         $category = $this->makeCategoryWithQuestions();
         $data = $this->sessionData($category->id) + ['code' => 'DISPLAY1'];
@@ -104,11 +104,21 @@ class ExamSessionScoreDisplayTest extends TestCase
             'started_at' => now(),
         ]);
         $data['participant_score_display'] = 'raw';
+        $data['predicate_raw_memadai_min'] = 45;
+        $data['predicate_memadai_min'] = 450;
 
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('Konfigurasi nilai tidak dapat diubah karena sesi sudah mulai dikerjakan.');
+        $updatedSession = $service->updateWithCategories($session->id, $data);
 
-        $service->updateWithCategories($session->id, $data);
+        $this->assertSame('raw', $updatedSession->participant_score_display);
+        $this->assertEquals(45, $updatedSession->predicate_raw_memadai_min);
+        $this->assertEquals(450, $updatedSession->predicate_memadai_min);
+
+        $this->assertDatabaseHas('exam_sessions', [
+            'id' => $session->id,
+            'participant_score_display' => 'raw',
+            'predicate_raw_memadai_min' => 45,
+            'predicate_memadai_min' => 450,
+        ]);
     }
 
     private function makeCategoryWithQuestions(): Category
