@@ -22,6 +22,10 @@
                     <i class="fas {{ auth()->user()->role === 'premium' ? 'fa-crown' : 'fa-user' }}" style="margin-right: 4px;"></i>
                     Peserta {{ ucfirst(auth()->user()->role) }}
                 </span>
+                <span class="badge" style="background: #fdf4ff; color: #7c3aed; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;">
+                    <i class="fas fa-star" style="margin-right: 4px; color: #f59e0b;"></i>
+                    {{ number_format(auth()->user()->xp->total_xp ?? 0) }} XP
+                </span>
                 <span style="color: var(--text-secondary); font-size: 0.9rem;">{{ auth()->user()->email }}</span>
             </div>
         </div>
@@ -41,7 +45,34 @@
         </div>
     @endif
 
-    <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
+    @if(!empty($quizCard))
+<style>
+    @keyframes quizFloat { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
+    @keyframes quizGlow  { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,.55); } 50% { box-shadow: 0 0 0 14px rgba(255,255,255,0); } }
+    .quiz-today-icon { animation: quizFloat 3s ease-in-out infinite; }
+    .quiz-today-cta  { animation: quizGlow 2s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) { .quiz-today-icon, .quiz-today-cta { animation: none; } }
+</style>
+<div class="glass animate-fade-in flex-stack-mobile" style="padding: 28px 32px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); border: none; color: #fff;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <div class="quiz-today-icon" style="width: 64px; height: 64px; border-radius: 18px; background: rgba(255,255,255,.18); display: flex; align-items: center; justify-content: center; font-size: 1.8rem;">
+            <i class="fas fa-bolt"></i>
+        </div>
+        <div>
+            <h3 style="font-family: 'Outfit', sans-serif; margin: 0 0 4px; color: #fff;">Quiz Hari Ini</h3>
+            <p style="margin: 0; opacity: .9; font-size: .95rem;">
+                {{ $quizCard['pending'] }} soal menunggumu &middot; +{{ $quizCard['xp_per_correct'] }} XP tiap jawaban benar &middot; Total XP: {{ number_format($quizCard['total_xp']) }}
+            </p>
+            <p style="margin: 4px 0 0; opacity: .75; font-size: .8rem;">Kerjakan sebelum reset pukul {{ $quizCard['reset_at']->format('H:i') }}</p>
+        </div>
+    </div>
+    <a href="{{ route('participant.quiz') }}" class="btn-primary quiz-today-cta" style="background: #fff; color: #2563eb; text-decoration: none; white-space: nowrap; font-weight: 700;">
+        Mulai Quiz <i class="fas fa-arrow-right"></i>
+    </a>
+</div>
+@endif
+
+<div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px;">
             <div>
                 <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 8px;">Grafik Nilai Sesi Ujian</h3>

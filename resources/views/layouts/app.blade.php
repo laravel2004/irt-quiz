@@ -210,6 +210,34 @@
         });
     })();
     </script>
+    @if(auth()->user()->role === 'basic' && empty(auth()->user()->jenjang))
+    <!-- Jenjang Modal -->
+    <div id="jenjang-modal" style="display:flex; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; align-items:center; justify-content:center;">
+        <div style="background:white; padding:30px; border-radius:12px; max-width:400px; width:90%; text-align:left; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+            <h3 style="color:#0f172a; margin-bottom:10px; margin-top:0;">Lengkapi Profil Anda</h3>
+            <p style="color:#4a5568; margin-bottom:20px; font-size:14px;">(isi jenjang anda untuk membuka fitur quiz dan level xp)</p>
+            <form action="{{ route('user.jenjang.update') }}" method="POST">
+                @csrf
+                @method('PATCH')
+                <div class="form-group">
+                    <label for="jenjang">Pilih Jenjang</label>
+                    <select name="jenjang" id="jenjang" class="form-input" required>
+                        <option value="" disabled selected>Pilih jenjang pendidikan</option>
+                        <option value="SD">SD</option>
+                        <option value="SMP">SMP</option>
+                        <option value="SMA">SMA / SMK</option>
+                        <option value="Mahasiswa">Mahasiswa</option>
+                        <option value="Umum">Umum</option>
+                    </select>
+                </div>
+                <div style="text-align:right; margin-top:20px;">
+                    <button type="submit" class="btn-primary" style="width:100%;">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
     @endauth
 </body>
 </html>

@@ -8,6 +8,7 @@ use App\Models\ExamResult;
 use App\Models\ExamSession;
 use App\Models\ExamSessionParticipant;
 use App\Services\AIService;
+use App\Services\QuizService;
 use App\Traits\ResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -73,8 +74,24 @@ class DashboardController extends Controller
             ];
         }
 
-        return view('participant.dashboard', compact('groupedRegistrations', 'scoreChartData'));
+        $quizCard = app(QuizService::class)->todaySummary($user);
+
+        return view('participant.dashboard', compact('groupedRegistrations', 'scoreChartData', 'quizCard'));
     }
+
+    public function updateJenjang(Request $request)
+    {
+        $request->validate([
+            'jenjang' => 'required|string|max:255',
+        ]);
+
+        $user = $request->user();
+        $user->jenjang = $request->jenjang;
+        $user->save();
+
+        return redirect()->back()->with('success', 'Jenjang berhasil disimpan.');
+    }
+
 
     public function showSession($sessionId)
     {

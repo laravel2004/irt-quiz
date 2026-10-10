@@ -62,6 +62,18 @@
                     <span>Bank Soal</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{{ route('admin.quizzes.index') }}" class="nav-link {{ request()->routeIs('admin.quizzes.*') ? 'active' : '' }}">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Modul Quiz</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ route('admin.quiz-settings.index') }}" class="nav-link {{ request()->routeIs('admin.quiz-settings.*') || request()->routeIs('admin.quiz-logs.*') ? 'active' : '' }}">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Quiz Setting</span>
+                </a>
+            </li>
             @endif
             <li class="nav-item">
                 <a href="{{ route('admin.sessions.index') }}" class="nav-link {{ request()->routeIs('admin.sessions.*') ? 'active' : '' }}">

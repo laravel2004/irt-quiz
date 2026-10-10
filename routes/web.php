@@ -19,8 +19,12 @@ Route::middleware(['auth'])->group(function() {
         return response()->json(['status' => 'ok', 'user' => auth()->id()]);
     })->name('keep-alive');
 
+    Route::patch('/user/jenjang', [\App\Http\Controllers\Participant\DashboardController::class, 'updateJenjang'])->name('user.jenjang.update');
+
     Route::get('/dashboard', [\App\Http\Controllers\Participant\DashboardController::class, 'index'])->name('participant.dashboard');
     Route::post('/dashboard', function () { return redirect()->route('participant.dashboard'); });
+    Route::get('/quiz', [\App\Http\Controllers\Participant\QuizController::class, 'show'])->name('participant.quiz');
+    Route::post('/quiz/{attempt}/answer', [\App\Http\Controllers\Participant\QuizController::class, 'answer'])->name('participant.quiz.answer');
     Route::post('/dashboard/join-session', [\App\Http\Controllers\Participant\DashboardController::class, 'joinSession'])->name('participant.join-session');
     Route::get('/dashboard/session/{sessionId}', [\App\Http\Controllers\Participant\DashboardController::class, 'showSession'])->name('participant.session.show');
     Route::get('/dashboard/result/{registrationId}', [\App\Http\Controllers\Participant\DashboardController::class, 'showResult'])->name('participant.result');
@@ -72,6 +76,15 @@ Route::middleware(AdminMiddleware::class)->group(function () {
         Route::get('/admin/questions/kode-soal', [\App\Http\Controllers\Admin\QuestionBankController::class, 'kodeSoalOptions'])->name('admin.questions.kode-soal');
         Route::post('/admin/questions/upload-image', [\App\Http\Controllers\Admin\QuestionBankController::class, 'uploadImage'])->name('admin.questions.upload-image');
         Route::resource('/admin/questions', \App\Http\Controllers\Admin\QuestionBankController::class)->names('admin.questions');
+
+        // Modul Quiz
+        Route::get('/admin/quizzes/import/bank-soal', [\App\Http\Controllers\Admin\QuizController::class, 'importBankSoalView'])->name('admin.quizzes.import-view');
+        Route::post('/admin/quizzes/import/bank-soal', [\App\Http\Controllers\Admin\QuizController::class, 'processImportBankSoal'])->name('admin.quizzes.import-process');
+        Route::resource('/admin/quizzes', \App\Http\Controllers\Admin\QuizController::class)->names('admin.quizzes');
+        Route::get('/admin/quiz-settings', [\App\Http\Controllers\Admin\QuizSettingController::class, 'index'])->name('admin.quiz-settings.index');
+        Route::put('/admin/quiz-settings', [\App\Http\Controllers\Admin\QuizSettingController::class, 'update'])->name('admin.quiz-settings.update');
+        Route::get('/admin/quiz-logs', [\App\Http\Controllers\Admin\QuizLogController::class, 'index'])->name('admin.quiz-logs.index');
+        Route::get('/admin/quiz-logs/{id}', [\App\Http\Controllers\Admin\QuizLogController::class, 'show'])->name('admin.quiz-logs.show');
         
         // Admin Management of Participants (Users)
         Route::get('/admin/participants/all-basic', [\App\Http\Controllers\Admin\ParticipantController::class, 'allBasicParticipants'])->name('admin.participants.all-basic');

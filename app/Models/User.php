@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'phone', 'age', 'address', 'role'])]
+#[Fillable(['name', 'email', 'password', 'phone', 'age', 'address', 'role', 'jenjang'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -38,5 +38,10 @@ class User extends Authenticatable
     public function registrations()
     {
         return $this->hasMany(ExamSessionParticipant::class, 'user_id');
+    }
+
+    public function xp()
+    {
+        return $this->hasOne(UserXp::class);
     }
 }
