@@ -99,7 +99,7 @@
             <div style="display: flex; gap: 8px;">
                 <button type="button" class="btn-primary" onclick="filterExam('all')" id="btn-filter-all" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 99px;">Semua</button>
                 <button type="button" class="btn-primary" onclick="filterExam('pending')" id="btn-filter-pending" style="background: #f1f5f9; color: #475569; padding: 6px 16px; font-size: 0.85rem; border-radius: 99px; border: 1px solid #cbd5e1;">Belum Dikerjakan</button>
-                <button type="button" class="btn-primary" onclick="filterExam('done')" id="btn-filter-done" style="background: #f1f5f9; color: #475569; padding: 6px 16px; font-size: 0.85rem; border-radius: 99px; border: 1px solid #cbd5e1;">Sudah Selesai</button>
+                <button type="button" class="btn-primary" onclick="filterExam('done')" id="btn-filter-done" style="background: #f1f5f9; color: #475569; padding: 6px 16px; font-size: 0.85rem; border-radius: 99px; border: 1px solid #cbd5e1;">Pernah Dikerjakan</button>
             </div>
         </div>
         
@@ -115,7 +115,8 @@
                 $isPastEnd = $now->gt($end);
                 $isBeforeStart = $now->lt($start);
                 $isClosed = !$session->is_active || $isPastEnd;
-                $statusPengerjaan = $latestReg->finished_at ? 'done' : 'pending';
+                $hasFinishedAny = $sessionRegistrations->contains(function($reg) { return !is_null($reg->finished_at); });
+                $statusPengerjaan = $hasFinishedAny ? 'done' : 'pending';
             @endphp
             <div class="glass card-hover exam-card" data-status="{{ $statusPengerjaan }}" style="padding: 24px; border-radius: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
                 <div style="position: absolute; top: 24px; right: 24px;">
