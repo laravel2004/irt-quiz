@@ -94,7 +94,14 @@
     </div>
 
     <div class="glass animate-fade-in" style="padding: 32px;">
-        <h3 style="font-family: 'Outfit', sans-serif; margin-bottom: 24px;">Ujian Saya</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+            <h3 style="font-family: 'Outfit', sans-serif; margin: 0;">Ujian Saya</h3>
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn-primary" onclick="filterExam('all')" id="btn-filter-all" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 99px;">Semua</button>
+                <button type="button" class="btn-primary" onclick="filterExam('pending')" id="btn-filter-pending" style="background: #f1f5f9; color: #475569; padding: 6px 16px; font-size: 0.85rem; border-radius: 99px; border: 1px solid #cbd5e1;">Belum Dikerjakan</button>
+                <button type="button" class="btn-primary" onclick="filterExam('done')" id="btn-filter-done" style="background: #f1f5f9; color: #475569; padding: 6px 16px; font-size: 0.85rem; border-radius: 99px; border: 1px solid #cbd5e1;">Sudah Selesai</button>
+            </div>
+        </div>
         
         <div class="responsive-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
             @forelse($groupedRegistrations as $sessionId => $sessionRegistrations)
@@ -108,8 +115,9 @@
                 $isPastEnd = $now->gt($end);
                 $isBeforeStart = $now->lt($start);
                 $isClosed = !$session->is_active || $isPastEnd;
+                $statusPengerjaan = $latestReg->finished_at ? 'done' : 'pending';
             @endphp
-            <div class="glass card-hover" style="padding: 24px; border-radius: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+            <div class="glass card-hover exam-card" data-status="{{ $statusPengerjaan }}" style="padding: 24px; border-radius: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
                 <div style="position: absolute; top: 24px; right: 24px;">
                     @if($latestReg->privilege === 'premium')
                         <span class="badge" style="font-size: 0.7rem; background: #fef9c3; color: #854d0e; border: 1px solid #fde047;">
@@ -340,6 +348,31 @@ document.querySelectorAll('.retake-form').forEach(form => {
         });
     });
 });
+
+function filterExam(status) {
+    document.querySelectorAll('.exam-card').forEach(card => {
+        if (status === 'all' || card.dataset.status === status) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    const buttons = ['all', 'pending', 'done'];
+    buttons.forEach(btn => {
+        const el = document.getElementById('btn-filter-' + btn);
+        if (!el) return;
+        if (btn === status) {
+            el.style.background = '#2563eb';
+            el.style.color = '#fff';
+            el.style.border = 'none';
+        } else {
+            el.style.background = '#f1f5f9';
+            el.style.color = '#475569';
+            el.style.border = '1px solid #cbd5e1';
+        }
+    });
+}
 </script>
 
 @endsection
