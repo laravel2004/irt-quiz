@@ -3,9 +3,10 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. perhatikan page ini http://127.0.0.1:8000/admin/quizzes/import/bank-soal.
-2. aku mau ini ada filter by mata perlajaran ya.
-3. nanti yang di tampilkan hanya matapelajaran yang terfilter aja
+1. aku mau dibawah section quiz di http://127.0.0.1:8000/dashboard itu ada leaderboard.
+2. leaderboard itu sampai top 10 saja.
+3. dan nanti bakal reset setiap 7 hari sekali ya dan semua xp users itu juga bakal reset jadi 0 lagi
+
 
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail

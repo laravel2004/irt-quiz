@@ -166,4 +166,58 @@ class DailyQuizTest extends TestCase
         // Verify it's a new assignment block
         $this->assertNotEquals($assigned1->id, $assigned2->id);
     }
+
+    public function test_quiz_card_still_displayed_on_dashboard_after_quiz_completed(): void
+    {
+        $user = User::factory()->create(['role' => 'participant', 'jenjang' => 'SMA']);
+        $quiz = Quiz::create([
+            'jenjang' => 'SMA',
+            'type' => 'pilihan_ganda',
+            'question_text' => 'Berapa 5 + 5?',
+            'correct_answer' => ['A'],
+            'options' => ['10', '15', '20'],
+            'score_correct' => 1,
+            'score_incorrect' => 0,
+        ]);
+
+        $service = new QuizService();
+        $assigned = $service->attemptsForToday($user)->first();
+        $service->submitAnswer($user, $assigned, '0');
+
+        $this->actingAs($user);
+        $response = $this->get('/dashboard');
+
+        $response->assertStatus(200);
+        $response->assertSee('Quiz Hari Ini');
+        $response->assertSee('Sudah Selesai');
+        $response->assertSee('Lihat Hasil');
+    }
+
+    public function test_user_can_view_quiz_in_preview_mode_after_completed(): void
+    {
+        $user = User::factory()->create(['role' => 'participant', 'jenjang' => 'SMA']);
+        $quiz = Quiz::create([
+            'jenjang' => 'SMA',
+            'type' => 'pilihan_ganda',
+            'question_text' => 'Soal untuk preview mode',
+            'explanation' => 'Penjelasan jawaban kuis ini.',
+            'correct_answer' => ['A'],
+            'options' => ['A', 'B'],
+            'score_correct' => 1,
+            'score_incorrect' => 0,
+        ]);
+
+        $service = new QuizService();
+        $assigned = $service->attemptsForToday($user)->first();
+        $service->submitAnswer($user, $assigned, '0');
+
+        $this->actingAs($user);
+        $response = $this->get('/quiz');
+
+        $response->assertStatus(200);
+        $response->assertViewIs('participant.quiz');
+        $response->assertSee('Soal untuk preview mode');
+        $response->assertSee('Penjelasan jawaban kuis ini.');
+        $response->assertViewHas('isPreview', true);
+    }
 }

@@ -53,24 +53,158 @@
     .quiz-today-cta  { animation: quizGlow 2s ease-in-out infinite; }
     @media (prefers-reduced-motion: reduce) { .quiz-today-icon, .quiz-today-cta { animation: none; } }
 </style>
-<div class="glass animate-fade-in flex-stack-mobile" style="padding: 28px 32px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); border: none; color: #fff;">
+<div class="glass animate-fade-in flex-stack-mobile" style="padding: 28px 32px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; background: {{ !empty($quizCard['is_completed']) ? 'linear-gradient(135deg, #059669 0%, #0d9488 100%)' : 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' }}; border: none; color: #fff;">
     <div style="display: flex; align-items: center; gap: 20px;">
         <div class="quiz-today-icon" style="width: 64px; height: 64px; border-radius: 18px; background: rgba(255,255,255,.18); display: flex; align-items: center; justify-content: center; font-size: 1.8rem;">
-            <i class="fas fa-bolt"></i>
+            <i class="fas {{ !empty($quizCard['is_completed']) ? 'fa-check-double' : 'fa-bolt' }}"></i>
         </div>
         <div>
-            <h3 style="font-family: 'Outfit', sans-serif; margin: 0 0 4px; color: #fff;">Quiz Hari Ini</h3>
-            <p style="margin: 0; opacity: .9; font-size: .95rem;">
-                {{ $quizCard['pending'] }} soal menunggumu &middot; +{{ $quizCard['xp_per_correct'] }} XP tiap jawaban benar &middot; Total XP: {{ number_format($quizCard['total_xp']) }}
-            </p>
-            <p style="margin: 4px 0 0; opacity: .75; font-size: .8rem;">Kerjakan sebelum reset pukul {{ $quizCard['reset_at']->format('H:i') }}</p>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <h3 style="font-family: 'Outfit', sans-serif; margin: 0; color: #fff;">Quiz Hari Ini</h3>
+                @if(!empty($quizCard['is_completed']))
+                    <span style="background: rgba(255,255,255,0.25); font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 600;">Sudah Selesai</span>
+                @endif
+            </div>
+
+            @if(!empty($quizCard['is_completed']))
+                <p style="margin: 0; opacity: .95; font-size: .95rem;">
+                    Kamu sudah menyelesaikan quiz hari ini! &middot; <strong>{{ $quizCard['correct_count'] }}/{{ $quizCard['total'] }} Benar</strong> &middot; +{{ $quizCard['earned_xp_today'] }} XP diperoleh
+                </p>
+                <p style="margin: 4px 0 0; opacity: .8; font-size: .8rem;">Quiz berikutnya siap pukul {{ $quizCard['reset_at']->format('H:i') }} WIB</p>
+            @else
+                <p style="margin: 0; opacity: .9; font-size: .95rem;">
+                    {{ $quizCard['pending'] }} soal menunggumu &middot; +{{ $quizCard['xp_per_correct'] }} XP tiap jawaban benar &middot; Total XP: {{ number_format($quizCard['total_xp']) }}
+                </p>
+                <p style="margin: 4px 0 0; opacity: .75; font-size: .8rem;">Kerjakan sebelum reset pukul {{ $quizCard['reset_at']->format('H:i') }}</p>
+            @endif
         </div>
     </div>
-    <a href="{{ route('participant.quiz') }}" class="btn-primary quiz-today-cta" style="background: #fff; color: #2563eb; text-decoration: none; white-space: nowrap; font-weight: 700;">
-        Mulai Quiz <i class="fas fa-arrow-right"></i>
-    </a>
+    
+    @if(!empty($quizCard['is_completed']))
+        <a href="{{ route('participant.quiz') }}" class="btn-primary" style="background: #fff; color: #059669; text-decoration: none; white-space: nowrap; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <i class="fas fa-poll"></i> Lihat Hasil
+        </a>
+    @else
+        <a href="{{ route('participant.quiz') }}" class="btn-primary quiz-today-cta" style="background: #fff; color: #2563eb; text-decoration: none; white-space: nowrap; font-weight: 700;">
+            Mulai Quiz <i class="fas fa-arrow-right"></i>
+        </a>
+    @endif
 </div>
 @endif
+
+    <!-- Section Leaderboard Mingguan (Top 10) -->
+    <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                    <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center; color: #f59e0b; font-size: 1.2rem;">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3 style="font-family: 'Outfit', sans-serif; margin: 0; font-size: 1.4rem;">Leaderboard Mingguan {{ !empty($leaderboardData['jenjang']) ? '• Jenjang ' . $leaderboardData['jenjang'] : '' }}</h3>
+                </div>
+                <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">
+                    Top 10 pejuang XP {{ !empty($leaderboardData['jenjang']) ? 'jenjang ' . $leaderboardData['jenjang'] : '' }} minggu ini &middot; Reset otomatis setiap 7 hari sekali.
+                </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge" style="background: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 99px; font-weight: 600; font-size: 0.8rem; border: 1px solid #fde68a;">
+                    <i class="fas fa-clock" style="margin-right: 4px;"></i> 
+                    Reset: {{ ($leaderboardData['daysUntilReset'] ?? 0) > 0 ? $leaderboardData['daysUntilReset'] . ' hari lagi' : ($leaderboardData['hoursUntilReset'] ?? 0) . ' jam lagi' }}
+                </span>
+            </div>
+        </div>
+
+        @if(!empty($leaderboardData['topUsers']) && $leaderboardData['topUsers']->isNotEmpty())
+            <div class="table-responsive">
+                <table class="data-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px; text-align: center;">RANK</th>
+                            <th>NAMA PESERTA</th>
+                            <th>JENJANG</th>
+                            <th style="text-align: right; width: 140px;">TOTAL XP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($leaderboardData['topUsers'] as $index => $row)
+                            @php
+                                $rank = $index + 1;
+                                $isMe = auth()->id() === $row->user_id;
+                            @endphp
+                            <tr style="{{ $isMe ? 'background: rgba(37, 99, 235, 0.06); font-weight: 600;' : '' }}">
+                                <td style="text-align: center;">
+                                    @if($rank === 1)
+                                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #fef08a; color: #854d0e; font-weight: 800; font-size: 0.95rem; box-shadow: 0 2px 8px rgba(234, 179, 8, 0.3);">
+                                            🥇
+                                        </span>
+                                    @elseif($rank === 2)
+                                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; color: #334155; font-weight: 800; font-size: 0.95rem;">
+                                            🥈
+                                        </span>
+                                    @elseif($rank === 3)
+                                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #fed7aa; color: #9a3412; font-weight: 800; font-size: 0.95rem;">
+                                            🥉
+                                        </span>
+                                    @else
+                                        <span style="color: var(--text-secondary); font-weight: 700; font-size: 0.95rem;">
+                                            #{{ $rank }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div style="width: 34px; height: 34px; border-radius: 50%; background: {{ $isMe ? '#2563eb' : '#e0e7ff' }}; color: {{ $isMe ? '#fff' : '#3730a3' }}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
+                                            {{ strtoupper(substr($row->user->name ?? 'U', 0, 1)) }}
+                                        </div>
+                                        <div>
+                                            <div style="color: #0f172a;">
+                                                {{ $row->user->name ?? 'Peserta' }}
+                                                @if($isMe)
+                                                    <span class="badge" style="background: #dbeafe; color: #1d4ed8; font-size: 0.7rem; padding: 2px 6px; margin-left: 4px;">Kamu</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--accent); font-size: 0.75rem;">
+                                        {{ $row->user->jenjang ?? '-' }}
+                                    </span>
+                                </td>
+                                <td style="text-align: right;">
+                                    <span style="color: #7c3aed; font-weight: 700; font-size: 1rem; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="fas fa-star" style="color: #f59e0b; font-size: 0.85rem;"></i>
+                                        {{ number_format($row->total_xp) }} XP
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Jika user login berada di luar Top 10 -->
+            @if(!empty($leaderboardData['myRank']) && $leaderboardData['myRank'] > 10)
+                <div style="margin-top: 16px; padding: 14px 20px; background: #eff6ff; border: 1px dashed #93c5fd; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-weight: 700; color: #1e40af;">Posisi Kamu: #{{ $leaderboardData['myRank'] }} {{ !empty($leaderboardData['jenjang']) ? '(Jenjang ' . $leaderboardData['jenjang'] . ')' : '' }}</span>
+                        <span style="color: var(--text-secondary); font-size: 0.85rem;">Terus kumpulkan XP untuk masuk Top 10!</span>
+                    </div>
+                    <span style="color: #7c3aed; font-weight: 800; font-size: 0.95rem;">
+                        <i class="fas fa-star" style="color: #f59e0b;"></i> {{ number_format($leaderboardData['myXp']) }} XP
+                    </span>
+                </div>
+            @endif
+        @else
+            <div style="padding: 36px 20px; text-align: center; background: #f8fafc; border-radius: 16px; border: 1px dashed #cbd5e1;">
+                <i class="fas fa-medal" style="font-size: 2.4rem; color: #cbd5e1; margin-bottom: 12px; display: inline-block;"></i>
+                <h4 style="font-family: 'Outfit', sans-serif; margin: 0 0 4px; color: #475569;">Belum Ada Peringkat Minggu Ini {{ !empty($leaderboardData['jenjang']) ? 'di Jenjang ' . $leaderboardData['jenjang'] : '' }}</h4>
+                <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">
+                    Jadilah yang pertama mengumpulkan XP dengan menyelesaikan Quiz Hari Ini!
+                </p>
+            </div>
+        @endif
+    </div>
 
 <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px;">

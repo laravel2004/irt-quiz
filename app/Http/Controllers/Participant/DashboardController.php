@@ -74,9 +74,11 @@ class DashboardController extends Controller
             ];
         }
 
-        $quizCard = app(QuizService::class)->todaySummary($user);
+        $quizService = app(QuizService::class);
+        $quizCard = $quizService->todaySummary($user);
+        $leaderboardData = $quizService->getWeeklyLeaderboardData($user);
 
-        return view('participant.dashboard', compact('groupedRegistrations', 'scoreChartData', 'quizCard'));
+        return view('participant.dashboard', compact('groupedRegistrations', 'scoreChartData', 'quizCard', 'leaderboardData'));
     }
 
     public function updateJenjang(Request $request)

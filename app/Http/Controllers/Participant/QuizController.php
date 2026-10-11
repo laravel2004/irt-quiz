@@ -14,18 +14,31 @@ class QuizController extends Controller
     {
     }
 
-    /** Halaman mengerjakan quiz. Kalau tidak ada yang perlu dikerjakan, balik ke dashboard. */
+    /** Halaman mengerjakan quiz atau preview pembahasan jika sudah dikerjakan. */
     public function show()
     {
         $user = auth()->user();
         $attempts = $this->quiz->attemptsForToday($user)->filter(fn ($a) => $a->quiz)->values();
-        $pending = $attempts->whereNull('answered_at')->values();
 
-        if ($pending->isEmpty()) {
+        if ($attempts->isEmpty()) {
             return redirect()->route('participant.dashboard');
         }
 
+        $pending = $attempts->whereNull('answered_at')->values();
+
+        if ($pending->isEmpty()) {
+            return view('participant.quiz', [
+                'isPreview' => true,
+                'questions' => $attempts->map(fn ($a) => $this->quiz->previewQuestion($a))->values(),
+                'total' => $attempts->count(),
+                'answeredCount' => $attempts->count(),
+                'xpPerCorrect' => (int) $this->quiz->settings()->xp_per_correct,
+                'totalXp' => (int) (UserXp::where('user_id', $user->id)->value('total_xp') ?? 0),
+            ]);
+        }
+
         return view('participant.quiz', [
+            'isPreview' => false,
             'questions' => $pending->map(fn ($a) => $this->quiz->publicQuestion($a))->values(),
             'total' => $attempts->count(),
             'answeredCount' => $attempts->count() - $pending->count(),

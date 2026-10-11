@@ -64,6 +64,7 @@ class QuizService
         $fetch = fn () => QuizAttempt::with('quiz')
             ->where('user_id', $user->id)
             ->where('period_key', $period)
+            ->whereHas('quiz')
             ->orderBy('id')
             ->get();
 
@@ -118,17 +119,25 @@ class QuizService
     /** Ringkasan untuk kartu dashboard. null = kartu tidak ditampilkan. */
     public function todaySummary(User $user): ?array
     {
-        // abaikan baris yang soalnya sudah dihapus superadmin
+        // Abaikan baris yang soalnya sudah dihapus superadmin
         $attempts = $this->attemptsForToday($user)->filter(fn ($a) => $a->quiz);
-        $pending = $attempts->whereNull('answered_at');
 
-        if ($pending->isEmpty()) {
+        // Jika tidak ada soal yang di-assign untuk user, kartu tidak muncul
+        if ($attempts->isEmpty()) {
             return null;
         }
 
+        $pending = $attempts->whereNull('answered_at');
+        $isCompleted = $pending->isEmpty();
+        $correctCount = $attempts->where('is_correct', true)->count();
+        $earnedXpToday = (int) $attempts->sum('xp_earned');
+
         return [
+            'is_completed' => $isCompleted,
             'pending' => $pending->count(),
             'total' => $attempts->count(),
+            'correct_count' => $correctCount,
+            'earned_xp_today' => $earnedXpToday,
             'xp_per_correct' => (int) $this->settings()->xp_per_correct,
             'total_xp' => (int) (UserXp::where('user_id', $user->id)->value('total_xp') ?? 0),
             'reset_at' => $this->nextResetAt(),
@@ -146,6 +155,28 @@ class QuizService
             'question_text' => $quiz->question_text,
             'question_image' => $quiz->question_image ? asset('storage/' . $quiz->question_image) : null,
             'options' => array_values((array) $quiz->options),
+        ];
+    }
+
+    /**
+     * Data soal untuk mode preview (menampilkan jawaban user, status benar/salah, kunci jawaban, dan pembahasan).
+     */
+    public function previewQuestion(QuizAttempt $attempt): array
+    {
+        $quiz = $attempt->quiz;
+        $checker = app(QuizAnswerChecker::class);
+
+        return [
+            'attempt_id' => $attempt->id,
+            'type' => $quiz->type,
+            'question_text' => $quiz->question_text,
+            'question_image' => $quiz->question_image ? asset('storage/' . $quiz->question_image) : null,
+            'options' => array_values((array) $quiz->options),
+            'user_answer' => $attempt->answer,
+            'is_correct' => (bool) $attempt->is_correct,
+            'xp_earned' => (int) $attempt->xp_earned,
+            'correct_indices' => $checker->correctIndices($quiz),
+            'explanation' => $quiz->explanation,
         ];
     }
 
@@ -190,5 +221,116 @@ class QuizService
                 'explanation' => $attempt->quiz->explanation,
             ];
         });
+    }
+
+    // ---------- Leaderboard Mingguan & Reset XP ----------
+
+    /**
+     * Waktu kapan reset XP mingguan berikutnya akan dieksekusi.
+     */
+    public function nextWeeklyResetAt(): Carbon
+    {
+        $lastReset = $this->settings()->last_weekly_reset_at ?? now();
+        return $lastReset->copy()->addDays(7);
+    }
+
+    /**
+     * Periksa apakah sudah mencapai 7 hari sejak reset terakhir.
+     * Jika ya, reset semua XP users menjadi 0.
+     */
+    public function checkAndResetWeeklyXp(?Carbon $now = null): bool
+    {
+        $now = $now ?? now();
+        $settings = $this->settings();
+
+        if (! $settings->last_weekly_reset_at) {
+            $settings->update(['last_weekly_reset_at' => $now]);
+            return false;
+        }
+
+        // Jika sudah 7 hari atau lebih sejak reset terakhir
+        if ($now->greaterThanOrEqualTo($settings->last_weekly_reset_at->copy()->addDays(7))) {
+            $this->performWeeklyXpReset($now);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Eksekusi reset XP semua users ke 0 dan catat waktu reset terbaru.
+     */
+    public function performWeeklyXpReset(?Carbon $now = null): void
+    {
+        $now = $now ?? now();
+
+        DB::transaction(function () use ($now) {
+            // Reset seluruh XP users menjadi 0
+            UserXp::query()->update(['total_xp' => 0]);
+
+            // Update timestamp reset mingguan di settings
+            $this->settings()->update([
+                'last_weekly_reset_at' => $now,
+            ]);
+        });
+    }
+
+    /**
+     * Ambil data Leaderboard Top 10 per jenjang peserta beserta info posisi user yang sedang login.
+     */
+    public function getWeeklyLeaderboardData(?User $currentUser = null): array
+    {
+        // 1. Cek lazy reset otomatis jika sudah lewat 7 hari
+        $this->checkAndResetWeeklyXp();
+
+        $jenjang = $currentUser?->jenjang;
+
+        // 2. Query top 10 users (hanya peserta non-admin, difilter sesuai jenjang peserta)
+        $topUsers = UserXp::with('user')
+            ->whereHas('user', function ($query) use ($jenjang) {
+                $query->whereNotIn('role', ['superadmin', 'admin_sesi']);
+                if ($jenjang) {
+                    $query->where('jenjang', $jenjang);
+                }
+            })
+            ->where('total_xp', '>', 0)
+            ->orderByDesc('total_xp')
+            ->orderBy('updated_at', 'asc') // tie breaker: yang mencapai skor duluan di atas
+            ->limit(10)
+            ->get();
+
+        // 3. Hitung posisi / rank user saat ini di jenjang yang sama
+        $myRank = null;
+        $myXp = 0;
+
+        if ($currentUser && ! in_array($currentUser->role, ['superadmin', 'admin_sesi'])) {
+            $myXp = (int) (UserXp::where('user_id', $currentUser->id)->value('total_xp') ?? 0);
+
+            if ($myXp > 0) {
+                // Rank adalah jumlah user dengan XP lebih tinggi di jenjang yang sama + 1
+                $higherCount = UserXp::whereHas('user', function ($query) use ($jenjang) {
+                    $query->whereNotIn('role', ['superadmin', 'admin_sesi']);
+                    if ($jenjang) {
+                        $query->where('jenjang', $jenjang);
+                    }
+                })->where('total_xp', '>', $myXp)->count();
+
+                $myRank = $higherCount + 1;
+            }
+        }
+
+        $nextReset = $this->nextWeeklyResetAt();
+        $daysUntilReset = max(0, (int) now()->diffInDays($nextReset, false));
+        $hoursUntilReset = max(0, (int) now()->diffInHours($nextReset, false));
+
+        return [
+            'topUsers' => $topUsers,
+            'jenjang' => $jenjang,
+            'myRank' => $myRank,
+            'myXp' => $myXp,
+            'nextResetAt' => $nextReset,
+            'daysUntilReset' => $daysUntilReset,
+            'hoursUntilReset' => $hoursUntilReset,
+        ];
     }
 }

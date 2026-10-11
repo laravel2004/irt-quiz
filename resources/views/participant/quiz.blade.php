@@ -93,6 +93,7 @@
     const DASHBOARD_URL = @json(route('participant.dashboard'));
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
     const REDUCE = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const IS_PREVIEW = @json($isPreview ?? false);
 
     const $ = id => document.getElementById(id);
     const card = $('card'), btnSubmit = $('btnSubmit'), btnNext = $('btnNext');
@@ -123,15 +124,21 @@
     function boom(opts) { if (window.confetti && !REDUCE) confetti(Object.assign({ particleCount: 120, spread: 70, origin: { y: .7 } }, opts)); }
 
     function drawDots() {
-        $('dots').innerHTML = Array.from({ length: TOTAL }, (_, i) =>
-            `<span class="quiz-dot ${i < ANSWERED_BEFORE ? 'done' : ''}" data-d="${i}"></span>`).join('');
+        $('dots').innerHTML = Array.from({ length: TOTAL }, (_, i) => {
+            if (IS_PREVIEW) {
+                const q = QUESTIONS[i];
+                const dotClass = q && q.is_correct ? 'ok' : 'bad';
+                return `<span class="quiz-dot ${dotClass}" data-d="${i}"></span>`;
+            }
+            return `<span class="quiz-dot ${i < ANSWERED_BEFORE ? 'done' : ''}" data-d="${i}"></span>`;
+        }).join('');
     }
     function setDot(state) {
         document.querySelectorAll('.quiz-dot').forEach(d => d.classList.remove('active'));
         const d = document.querySelector(`.quiz-dot[data-d="${ANSWERED_BEFORE + idx}"]`);
         if (d) { d.classList.remove('active'); if (state) d.classList.add(state); else d.classList.add('active'); }
     }
-    function setProgress() { $('progressBar').style.width = ((ANSWERED_BEFORE + idx) / TOTAL * 100) + '%'; }
+    function setProgress() { $('progressBar').style.width = (((IS_PREVIEW ? idx : (ANSWERED_BEFORE + idx)) + 1) / TOTAL * 100) + '%'; }
 
     function optionsHtml(q) {
         if (q.type === 'multiple_benar_salah') {
@@ -158,21 +165,82 @@
     }
     function payload(q) { return q.type === 'multiple_choice' ? [...sel] : sel; }
 
+    function renderPreviewFeedback(q) {
+        const correctSet = new Set((q.correct_indices || []).map(String));
+        const userAns = q.user_answer;
+
+        if (q.type === 'multiple_benar_salah') {
+            document.querySelectorAll('.q-mbs').forEach(row => {
+                const rowI = row.dataset.i;
+                const userVal = userAns && userAns[rowI];
+                const shouldVal = correctSet.has(rowI) ? 'benar' : 'salah';
+
+                row.querySelectorAll('.q-mbs-btn').forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.cursor = 'default';
+                    if (btn.dataset.v === userVal) {
+                        btn.classList.add(userVal === 'benar' ? 'sel-benar' : 'sel-salah');
+                    }
+                });
+                row.classList.add(userVal === shouldVal ? 'is-correct' : 'is-wrong');
+            });
+        } else {
+            document.querySelectorAll('.q-opt').forEach(o => {
+                const i = o.dataset.i;
+                o.disabled = true;
+                o.style.cursor = 'default';
+                const chosen = q.type === 'multiple_choice'
+                    ? (Array.isArray(userAns) && userAns.map(String).includes(i))
+                    : String(userAns) === String(i);
+
+                if (chosen) {
+                    o.classList.add('selected');
+                }
+                if (correctSet.has(i)) {
+                    o.classList.add('is-correct');
+                } else if (chosen) {
+                    o.classList.add('is-wrong');
+                }
+            });
+        }
+
+        $('qFeedback').innerHTML = `
+            <div class="q-banner ${q.is_correct ? 'ok' : 'bad'}">
+                <i class="fas ${q.is_correct ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size:1.6rem"></i>
+                <span>${q.is_correct ? 'Jawaban Benar! (+' + q.xp_earned + ' XP)' : 'Jawaban Kurang Tepat (+0 XP)'}</span>
+            </div>
+            ${q.explanation ? `<div class="q-explain"><strong><i class="fas fa-lightbulb"></i> Pembahasan</strong><div style="margin-top:8px">${q.explanation}</div></div>` : ''}`;
+
+        renderMath($('qFeedback'));
+    }
+
     function render() {
         const q = QUESTIONS[idx];
         sel = q.type === 'multiple_choice' ? new Set() : (q.type === 'multiple_benar_salah' ? {} : null);
         locked = false;
 
         card.className = 'quiz-card'; void card.offsetWidth; card.classList.add('enter');
-        $('qNumber').textContent = `Soal ${ANSWERED_BEFORE + idx + 1} dari ${TOTAL}`;
+        $('qNumber').textContent = `Soal ${IS_PREVIEW ? (idx + 1) : (ANSWERED_BEFORE + idx + 1)} dari ${TOTAL}${IS_PREVIEW ? ' (Preview)' : ''}`;
         $('qText').innerHTML = q.question_text;
         const img = $('qImage');
         if (q.question_image) { img.src = q.question_image; img.classList.remove('hidden'); } else { img.classList.add('hidden'); }
         $('qOptions').innerHTML = optionsHtml(q);
         $('qFeedback').innerHTML = '';
-        btnSubmit.classList.remove('hidden', 'btn-loading'); btnSubmit.disabled = true;
-        btnNext.classList.add('hidden');
-        setProgress(); setDot(null); renderMath(card);
+
+        if (IS_PREVIEW) {
+            locked = true;
+            btnSubmit.classList.add('hidden');
+            renderPreviewFeedback(q);
+            btnNext.innerHTML = idx === QUESTIONS.length - 1 ? 'Selesai & Dashboard <i class="fas fa-home"></i>' : 'Lanjut <i class="fas fa-arrow-right"></i>';
+            btnNext.classList.remove('hidden');
+        } else {
+            btnSubmit.classList.remove('hidden', 'btn-loading'); btnSubmit.disabled = true;
+            btnNext.classList.add('hidden');
+        }
+
+        setProgress(); 
+        if (!IS_PREVIEW) setDot(null);
+        renderMath(card);
     }
 
     $('qOptions').addEventListener('click', e => {
@@ -259,6 +327,10 @@
     }
 
     btnNext.addEventListener('click', () => {
+        if (IS_PREVIEW && idx === QUESTIONS.length - 1) {
+            location.href = DASHBOARD_URL;
+            return;
+        }
         card.classList.remove('enter'); card.classList.add('leave');
         setTimeout(() => { idx++; idx < QUESTIONS.length ? render() : summary(); }, REDUCE ? 0 : 300);
     });
