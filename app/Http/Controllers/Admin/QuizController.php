@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Quiz;
 use App\Models\QuestionBank;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
@@ -162,14 +163,22 @@ class QuizController extends Controller
     public function importBankSoalView(Request $request)
     {
         $search = $request->query('search');
-        $query = QuestionBank::query();
+        $categoryId = $request->query('category_id');
+
+        $query = QuestionBank::with('category');
 
         if ($search) {
             $query->where('question_text', 'like', "%{$search}%");
         }
 
-        $questions = $query->paginate(20);
-        return view('admin.quizzes.import', compact('questions', 'search'));
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
+        }
+
+        $questions = $query->orderBy('id', 'desc')->paginate(20)->withQueryString();
+        $categories = Category::orderBy('name', 'asc')->get();
+
+        return view('admin.quizzes.import', compact('questions', 'categories', 'search', 'categoryId'));
     }
 
     public function processImportBankSoal(Request $request)

@@ -3,17 +3,9 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. di sisi user buatkan diatas grafik itu quiz hari ini ya.
-2. siswa nanti ditampilkan quiz nya 1 aja random setiap user soal nya bisa beda"
-3. sesuaikan dengan jenjang nya yang ada di users itu dengan di quiz
-4. aku mau hasil quiz nya itu users menjawabnya di simpan di table gitu ya.
-5. terus users yang sudah menjawab di hari itu udah tidak bisa menjawab lagi.
-6. buat scheduller nya juga yang bisa di setting di superadmin setiap jam berapa reset quiz nya dan bisa dikerjakan lagi.
-7. buat table xp ya setiap users menjawab benar mendapatkan xp sesuai yang disetting superadmin juga ya.
-8. jadi di superadmin nanti ada menu baru quiz setting yang isinya scheduller nya reset jam berapa terus jumlah soal nya berapa 1 atau2 atau yang lainnya dan juga setiap users yang menjawab soal benar per quiz padat exp berapa.
-9. tambahkan di metu setting quiz itu log users menjawab quiz dan hasil nya bisa di check.
-10. di sisi users itu hanya menampilkan quiz yang harus di kerjakan di atas grafik itu terus mengerjakan quiz nya itu.
-11. dan untuk mengerjakan quiz itu beda ya sesi ujian UI nya. buat lebih interaktif dan banyak animasi ya 
+1. perhatikan page ini http://127.0.0.1:8000/admin/quizzes/import/bank-soal.
+2. aku mau ini ada filter by mata perlajaran ya.
+3. nanti yang di tampilkan hanya matapelajaran yang terfilter aja
 
     
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail

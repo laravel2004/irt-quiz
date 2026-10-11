@@ -28,14 +28,23 @@
     @endif
 
     <form method="GET" action="{{ route('admin.quizzes.import-view') }}" style="display: flex; gap: 12px; align-items: center; margin-bottom: 24px; width: 100%; flex-wrap: wrap;">
-        <div style="display: flex; gap: 12px; flex: 1; min-width: 300px;">
-            <div style="position: relative; flex: 1;">
+        <div style="display: flex; gap: 12px; flex: 1; min-width: 300px; flex-wrap: wrap;">
+            <select name="category_id" class="form-input" onchange="this.form.submit()" style="flex: 1; margin-bottom: 0; color: #000; min-width: 180px;">
+                <option value="">Semua Mata Pelajaran</option>
+                @foreach($categories as $cat)
+                    <option value="{{ $cat->id }}" {{ (string)($categoryId ?? '') === (string)$cat->id ? 'selected' : '' }}>
+                        {{ $cat->name }}
+                    </option>
+                @endforeach
+            </select>
+
+            <div style="position: relative; flex: 2; min-width: 200px;">
                 <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
                 <input type="text" name="search" id="searchInput" class="form-input" placeholder="Cari soal (tekan enter)..." value="{{ $search ?? '' }}" style="width: 100%; padding-left: 44px; margin-bottom: 0;">
             </div>
         </div>
 
-        @if(isset($search) && $search)
+        @if(($search ?? null) || ($categoryId ?? null))
             <a href="{{ route('admin.quizzes.import-view') }}" class="btn-primary" style="background: #ef4444; white-space: nowrap; flex-shrink: 0; text-decoration: none;">
                 <i class="fas fa-times"></i> Reset
             </a>
