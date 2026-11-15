@@ -1,541 +1,634 @@
-# Rencana Implementasi: Leaderboard Mingguan Top 10 & Reset XP Otomatis (7 Hari Sekali)
+# Rencana Implementasi: Role Baru `admin` (Viewer / Pengawas Sesi Read-Only)
 
-Dokumen ini disusun sebagai panduan teknis langkah-demi-langkah bagi **Junior Programmer** atau **Model AI (Cost-effective / Budget AI)** untuk mengimplementasikan fitur **Leaderboard Mingguan (Top 10)** di halaman Dashboard Peserta dengan sistem reset otomatis setiap 7 hari sekali.
-
----
-
-## 1. Ringkasan Fitur & Spesifikasi
-
-### Konteks & URL Terkait
-- **URL Dashboard Peserta:** `http://127.0.0.1:8000/dashboard` (Route: `participant.dashboard`)
-- **Controller:** `app/Http/Controllers/Participant/DashboardController.php`
-- **Service:** `app/Services/QuizService.php`
-- **Model Terkait:** `app/Models/UserXp.php`, `app/Models/User.php`, `app/Models/QuizSetting.php`
-- **Blade View:** `resources/views/participant/dashboard.blade.php`
-
-### Kebutuhan yang Diinginkan
-1. **Posisi Komponen:**
-   - Komponen Leaderboard diletakkan **di bawah section kartu Quiz** dan **di atas section Grafik Nilai Sesi Ujian** pada halaman dashboard peserta.
-2. **Kapasitas Leaderboard (Top 10) & Filter Per Jenjang:**
-   - Menampilkan maksimal **10 peserta teratas** dengan perolehan XP tertinggi.
-   - **Filter Berdasarkan Jenjang Peserta:** Leaderboard bersifat terisolasi per jenjang pendidikan (`SD`, `SMP`, `SMA`, dll.). Peserta yang login hanya melihat peserta lain yang memiliki jenjang yang sama (`where('jenjang', $currentUser->jenjang)`).
-   - Hanya peserta (`role` peserta: `basic`, `participant`, `premium`) yang boleh masuk leaderboard. User admin (`superadmin`, `admin_sesi`) **tidak boleh** masuk ke dalam leaderboard.
-   - Setiap baris menampilkan:
-     - Peringkat (#1 medali emas 🥇, #2 medali perak 🥈, #3 medali perunggu 🥉, #4 s/d #10 nomor urut).
-     - Nama peserta & badge jenjang (SD/SMP/SMA/dsb).
-     - Total XP mingguan (dengan icon bintang).
-   - Baris peserta yang sedang login diberi penanda highlight khusus jika masuk top 10.
-   - Jika peserta yang login berada di luar top 10, tampilkan ringkasan posisinya di bawah tabel (contoh: *"Posisi Kamu: #15 • 20 XP"* di jenjang yang sama).
-3. **Siklus Reset 7 Hari Sekali:**
-   - Leaderboard dan XP user memiliki siklus **7 hari sekali**.
-   - Saat waktu reset tiba: **seluruh XP users (`user_xps.total_xp`) di-reset kembali menjadi 0**.
-   - Tampilkan informasi kapan reset berikutnya akan terjadi pada header leaderboard (contoh: *"Reset dalam 4 hari"*).
-   - Mekanisme reset harus **bulletproof**:
-     - **Metode A (Lazy Evaluation / Fallback Otomatis di Service):** Setiap kali dashboard diakses, service memeriksa apakah sudah lewat 7 hari sejak reset terakhir. Jika ya, reset otomatis dieksekusi secara instan. *Ini menjamin reset tetap berjalan di environment local/Docker yang tidak memiliki cron background running.*
-     - **Metode B (Artisan Command & Scheduler):** Disediakan perintah `php artisan leaderboard:reset-weekly` yang didaftarkan ke Laravel scheduler (`routes/console.php`).
+Dokumen ini disusun sebagai panduan spesifikasi dan teknis implementasi langkah-demi-langkah bagi **Junior Programmer** atau **Model AI (Cost-effective / Budget AI)** untuk menambahkan role baru bernama `admin` pada sistem JagoBelajar Tryout IRT.
 
 ---
 
-## 2. Struktur Data & Perubahan Database
+## 1. Ringkasan & Definisi Kebutuhan
 
-### 2.1. Kolom Tambahan di Tabel `quiz_settings`
-Kita memerlukan penanda kapan reset mingguan terakhir kali dieksekusi.
-Buat migration baru untuk menambahkan kolom `last_weekly_reset_at` pada tabel `quiz_settings`:
-- Nama kolom: `last_weekly_reset_at` (nullable timestamp, default: `now()`).
+### 1.1. Latar Belakang
+Saat ini sistem memiliki 2 level admin:
+1. `superadmin`: Memiliki akses penuh ke seluruh sistem (Bank Soal, Modul Quiz, Kategori, Quiz Settings, Manajemen User/Peserta, Cetak Raport, dan Sesi Ujian).
+2. `admin_sesi`: Hanya memiliki akses ke modul Sesi Ujian yang ditugaskan kepadanya. Pada sesi tersebut, `admin_sesi` dapat melihat nilai, melihat soal, serta **menambahkan / mendaftarkan peserta** ke sesi ujian.
+
+### 1.2. Kebutuhan Role Baru: `admin`
+Dibutuhkan satu role baru dengan kode role: **`admin`**.
+Karakteristik role `admin`:
+- **Hampir sama dengan `admin_sesi`**:
+  - Tampilan dashboard dan layout minimalis (sidebar admin master soal/peserta disembunyikan, langsung diarahkan ke daftar Sesi Ujian).
+  - Hanya dapat melihat sesi ujian yang **ditugaskan / di-assign** kepadanya (melalui relasi `exam_session_participants`).
+  - Dapat membuka halaman detail sesi (`/admin/sessions/{id}`), melihat daftar peserta terdaftar, melihat nilai/hasil ujian peserta, preview soal, serta export hasil ujian.
+- **Perbedaan Utama (Read-Only pada Peserta):**
+  - Role `admin` **HANYA BISA LIHAT-LIHAT SAJA** pada sesi ujian.
+  - Role `admin` **TIDAK BISA** menambahkan siswa/peserta ke dalam sesi ujian (baik memilih user yang sudah ada maupun membuat user baru).
+  - Role `admin` **TIDAK BISA** menghapus siswa dari sesi ujian.
+  - Role `admin` **TIDAK BISA** mengubah privilege (General / Premium) peserta di sesi ujian.
+- **Batasan Sistem Lainnya**:
+  - Tidak memiliki akses ke menu Superadmin (`/admin/categories`, `/admin/questions`, `/admin/quizzes`, `/admin/participants`, dll.).
+  - Tidak boleh muncul atau masuk ke dalam perhitungan Leaderboard Mingguan Peserta (`QuizService`).
 
 ---
 
-## 3. File yang Terlibat
+## 2. Matriks Perbandingan Hak Akses Role Admin
 
-| No | File | Jenis Tindakan | Deskripsi |
+| Fitur / Tindakan | `superadmin` | `admin_sesi` | `admin` (Role Baru) |
+| :--- | :---: | :---: | :---: |
+| Akses Menu Master (Soal, Kategori, Quiz, Raport, User) | ✅ Ya | ❌ Tidak (403) | ❌ Tidak (403) |
+| Melihat Semua Sesi Ujian | ✅ Semua | ❌ Hanya yang ditugaskan | ❌ Hanya yang ditugaskan |
+| Buat / Edit / Hapus Sesi Ujian | ✅ Ya | ❌ Tidak | ❌ Tidak |
+| Melihat Detail Sesi, Soal, & Hasil Nilai Ujian | ✅ Ya | ✅ Ya | ✅ Ya |
+| Export Hasil Ujian (CSV) | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Menambah Peserta ke Sesi Ujian (User Lama)** | ✅ Ya | ✅ Ya | ❌ **DILARANG (403 & Tombol Hidden)** |
+| **Membuat Peserta Baru ke Sesi Ujian** | ✅ Ya | ✅ Ya | ❌ **DILARANG (403 & Tombol Hidden)** |
+| **Hapus Peserta dari Sesi Ujian** | ✅ Ya | ✅ Ya | ❌ **DILARANG (403 & Tombol Hidden)** |
+| **Ubah Privilege Peserta (General / Premium)** | ✅ Ya | ✅ Ya | ❌ **DILARANG (403 & Input Disabled)** |
+| Muncul di Leaderboard Peserta | ❌ Tidak | ❌ Tidak | ❌ Tidak |
+
+---
+
+## 3. Daftar File yang Terlibat
+
+| No | File | Jenis Perubahan | Deskripsi |
 |---|---|---|---|
-| 1 | `database/migrations/2026_10_11_020000_add_last_weekly_reset_at_to_quiz_settings_table.php` | Buat File Baru | Migration untuk menambah kolom `last_weekly_reset_at` pada tabel `quiz_settings`. |
-| 2 | `app/Models/QuizSetting.php` | Modifikasi | Tambahkan `last_weekly_reset_at` ke dalam property `$fillable` dan `$casts`. |
-| 3 | `app/Services/QuizService.php` | Modifikasi | Tambahkan method untuk cek & eksekusi reset 7 hari, hitung waktu reset berikutnya, dan query data Top 10 leaderboard. |
-| 4 | `app/Console/Commands/ResetWeeklyLeaderboardCommand.php` | Buat File Baru | Artisan command `leaderboard:reset-weekly` untuk mereset XP setiap 7 hari. |
-| 5 | `routes/console.php` | Modifikasi | Daftarkan jadwal scheduler untuk command reset leaderboard. |
-| 6 | `app/Http/Controllers/Participant/DashboardController.php` | Modifikasi | Ambil data leaderboard dari `QuizService` dan kirim ke view `participant.dashboard`. |
-| 7 | `resources/views/participant/dashboard.blade.php` | Modifikasi | Tambahkan markup UI tabel Leaderboard Top 10 di bawah section kuis. |
-| 8 | `tests/Feature/WeeklyLeaderboardTest.php` | Buat File Baru | Feature test untuk memverifikasi query top 10, filter role non-admin, dan mekanisme reset XP 7 hari. |
+| 1 | `app/Models/User.php` | Edit | Menambahkan `'admin'` ke method helper `isAdmin()` |
+| 2 | `app/Http/Controllers/AuthController.php` | Edit | Redirect user setelah login jika role adalah `'admin'` |
+| 3 | `routes/web.php` | Edit | Redirect pada route root `/` jika user yang login ber-role `'admin'` |
+| 4 | `app/Http/Controllers/Admin/ExamSessionController.php` | Edit | Filter sesi yang ditugaskan untuk `'admin'` di `index()` & tambahkan `'admin'` ke daftar user yang dapat di-assign di `show()` |
+| 5 | `app/Http/Controllers/Admin/ExamSessionParticipantController.php` | Edit | Proteksi backend 403 Forbidden untuk role `'admin'` pada endpoint penambahan/penghapusan peserta |
+| 6 | `resources/views/layouts/admin.blade.php` | Edit | Menyesuaikan tampilan layout (hide sidebar) untuk role `'admin'` sama seperti `admin_sesi` |
+| 7 | `resources/views/admin/sessions/show.blade.php` | Edit | Sembunyikan tombol tambah peserta, modal tambah peserta, tombol hapus, dan disable dropdown privilege jika role adalah `'admin'` |
+| 8 | `app/Http/Controllers/Admin/ParticipantController.php` | Edit | Menambahkan role `'admin'` pada query index dan validasi form manajemen user superadmin |
+| 9 | `resources/views/admin/participants/index.blade.php` | Edit | Menambahkan opsi role `Admin` pada dropdown modal & styling badge role |
+| 10 | `app/Services/QuizService.php` | Edit | Memastikan role `'admin'` di-exclude dari query leaderboard mingguan |
+| 11 | `tests/Feature/AdminRolePermissionTest.php` | Baru | Unit/Feature test untuk memastikan seluruh hak akses role `admin` bekerja sesuai spesifikasi |
 
 ---
 
-## 4. Langkah-demi-Langkah Implementasi
+## 4. Rincian Langkah Implementasi (Step-by-Step)
+
+### Langkah 1: Update Model `app/Models/User.php`
+Buka file `app/Models/User.php`. Cari method `isAdmin()`:
+
+**Sebelum:**
+```php
+public function isAdmin()
+{
+    return in_array($this->role, ['superadmin', 'admin_sesi']);
+}
+```
+
+**Sesudah:**
+```php
+public function isAdmin()
+{
+    return in_array($this->role, ['superadmin', 'admin_sesi', 'admin']);
+}
+```
+> **Penjelasan:** Method ini digunakan oleh `AdminMiddleware` untuk mengizinkan user masuk ke prefix `/admin`. Dengan memasukkan `'admin'`, user dengan role baru ini diakui sebagai admin level sistem.
 
 ---
 
-### Tahap 1: Migration Database
+### Langkah 2: Update Autentikasi & Routing Redirect
+User dengan role `admin` harus langsung diarahkan ke halaman daftar sesi ujian (`admin.sessions.index`) ketika berhasil login.
 
-Buat migration baru:
-`database/migrations/2026_10_11_020000_add_last_weekly_reset_at_to_quiz_settings_table.php`
+#### 2.1. File `app/Http/Controllers/AuthController.php`
+Cari method `login()` sekitar baris 56-66:
 
-**Isi File:**
+**Sebelum:**
+```php
+if ($user->role === 'superadmin') {
+    return redirect()->intended(route('admin.dashboard'));
+}
+
+if ($user->role === 'admin_sesi') {
+    return redirect()->intended(route('admin.sessions.index'));
+}
+
+if ($user->role === 'basic') {
+    return redirect()->intended(route('participant.dashboard'));
+}
+```
+
+**Sesudah:**
+```php
+if ($user->role === 'superadmin') {
+    return redirect()->intended(route('admin.dashboard'));
+}
+
+if (in_array($user->role, ['admin_sesi', 'admin'])) {
+    return redirect()->intended(route('admin.sessions.index'));
+}
+
+if ($user->role === 'basic') {
+    return redirect()->intended(route('participant.dashboard'));
+}
+```
+
+#### 2.2. File `routes/web.php`
+Cari route root `/` pada baris 5-13:
+
+**Sebelum:**
+```php
+Route::get('/', function() {
+    if (auth()->check()) {
+        $role = auth()->user()->role;
+        if ($role === 'superadmin') return redirect()->route('admin.dashboard');
+        if ($role === 'admin_sesi') return redirect()->route('admin.sessions.index');
+        return redirect()->route('participant.dashboard');
+    }
+    return view('participant.auth.login');
+})->name('login');
+```
+
+**Sesudah:**
+```php
+Route::get('/', function() {
+    if (auth()->check()) {
+        $role = auth()->user()->role;
+        if ($role === 'superadmin') return redirect()->route('admin.dashboard');
+        if (in_array($role, ['admin_sesi', 'admin'])) return redirect()->route('admin.sessions.index');
+        return redirect()->route('participant.dashboard');
+    }
+    return view('participant.auth.login');
+})->name('login');
+```
+
+---
+
+### Langkah 3: Update `app/Http/Controllers/Admin/ExamSessionController.php`
+Ada dua penyesuaian di controller ini:
+
+#### 3.1. Filter Sesi di Method `index()` (Baris ~39)
+User dengan role `admin` hanya boleh melihat sesi yang ditugaskan kepadanya, sama seperti `admin_sesi`.
+
+**Sebelum:**
+```php
+if (auth()->user() && auth()->user()->role === 'admin_sesi') {
+    $query->whereHas('participants', function ($q) {
+        $q->where('user_id', auth()->id());
+    });
+}
+```
+
+**Sesudah:**
+```php
+if (auth()->user() && in_array(auth()->user()->role, ['admin_sesi', 'admin'])) {
+    $query->whereHas('participants', function ($q) {
+        $q->where('user_id', auth()->id());
+    });
+}
+```
+
+#### 3.2. Daftar User yang Dapat Ditugaskan di Method `show()` (Baris ~97)
+Agar Superadmin dapat menugaskan user ber-role `admin` ke suatu sesi ujian:
+
+**Sebelum:**
+```php
+$availableParticipants = User::whereIn('role', ['basic', 'premium', 'user', 'admin_sesi'])->orderBy('name')->get();
+```
+
+**Sesudah:**
+```php
+$availableParticipants = User::whereIn('role', ['basic', 'premium', 'user', 'admin_sesi', 'admin'])->orderBy('name')->get();
+```
+
+---
+
+### Langkah 4: Proteksi Backend di `app/Http/Controllers/Admin/ExamSessionParticipantController.php`
+Ini adalah proteksi paling krusial. Meskipun tombol di frontend disembunyikan, endpoint backend **wajib memblokir** user role `admin` dengan status kode `403 Forbidden`.
+
+Buka file `app/Http/Controllers/Admin/ExamSessionParticipantController.php`:
+
+Tambahkan pengecekan hak akses di awal 4 method berikut:
+1. `store(Request $request)` - Menambah peserta yang sudah ada
+2. `storeNewUser(Request $request)` - Membuat user baru dan menambahkannya ke sesi
+3. `destroy($id)` - Menghapus peserta dari sesi
+4. `updatePrivilege(Request $request, $id)` - Mengubah status privilege peserta
+
+**Contoh Implementasi pada Masing-Masing Method:**
+
+```php
+public function store(Request $request)
+{
+    if (auth()->user()->role === 'admin') {
+        return $this->errorResponse('Akses Ditolak. Role Admin hanya memiliki izin melihat data dan tidak dapat menambahkan peserta.', 403);
+    }
+    
+    // ... kode yang sudah ada ...
+}
+
+public function storeNewUser(Request $request)
+{
+    if (auth()->user()->role === 'admin') {
+        return $this->errorResponse('Akses Ditolak. Role Admin tidak diizinkan membuat akun atau menambahkan peserta baru.', 403);
+    }
+
+    // ... kode yang sudah ada ...
+}
+
+public function destroy($id)
+{
+    if (auth()->user()->role === 'admin') {
+        return $this->errorResponse('Akses Ditolak. Role Admin tidak memiliki izin menghapus peserta.', 403);
+    }
+
+    // ... kode yang sudah ada ...
+}
+
+public function updatePrivilege(Request $request, $id)
+{
+    if (auth()->user()->role === 'admin') {
+        return $this->errorResponse('Akses Ditolak. Role Admin tidak memiliki izin mengubah privilege peserta.', 403);
+    }
+
+    // ... kode yang sudah ada ...
+}
+```
+
+> **Catatan:** Jika response web biasa (non-JSON), controller dapat memanggil `abort(403, 'Akses Ditolak...')`. Namun karena controller ini menggunakan trait `ResponseTrait` dan dipanggil via `fetch()` (AJAX), `$this->errorResponse(..., 403)` atau `abort(403)` akan mengembalikan JSON error 403 yang tepat.
+
+---
+
+### Langkah 5: Update Layout Admin `resources/views/layouts/admin.blade.php`
+Buka file `resources/views/layouts/admin.blade.php`.
+Cari blok style khusus `admin_sesi` pada baris 27-37:
+
+**Sebelum:**
+```blade
+@if(auth()->user() && auth()->user()->role === 'admin_sesi')
+    <style>
+        .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
+        .main-content { margin-left: 0 !important; max-width: 100%; margin: 0 auto; width: 100%; padding: 40px 32px; }
+        @media (max-width: 768px) {
+            .main-content { padding: 20px 16px; }
+            header { flex-direction: column; align-items: flex-start !important; gap: 20px; }
+            .search-container { max-width: 100% !important; }
+        }
+    </style>
+@endif
+```
+
+**Sesudah:**
+```blade
+@if(auth()->user() && in_array(auth()->user()->role, ['admin_sesi', 'admin']))
+    <style>
+        .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
+        .main-content { margin-left: 0 !important; max-width: 100%; margin: 0 auto; width: 100%; padding: 40px 32px; }
+        @media (max-width: 768px) {
+            .main-content { padding: 20px 16px; }
+            header { flex-direction: column; align-items: flex-start !important; gap: 20px; }
+            .search-container { max-width: 100% !important; }
+        }
+    </style>
+@endif
+```
+
+---
+
+### Langkah 6: Update Halaman Detail Sesi `resources/views/admin/sessions/show.blade.php`
+Pada halaman ini, kita perlu memastikan elemen interaktif untuk menambah/mengubah/menghapus peserta dinonaktifkan jika yang login adalah role `admin`.
+
+#### 6.1. Sembunyikan Tombol "Buat Peserta Baru" dan "Tambah Peserta"
+Cari baris ~178-184:
+
+**Sebelum:**
+```blade
+<button class="btn-primary" onclick="openNewUserModal()" style="height: 38px; font-size: 0.85rem; background: transparent; border: 1px solid var(--accent); color: var(--accent);">
+    <i class="fas fa-plus"></i> Buat Peserta Baru
+</button>
+<button class="btn-primary" onclick="openParticipantModal()" style="height: 38px; font-size: 0.85rem;">
+    <i class="fas fa-user-plus"></i> Tambah Peserta
+</button>
+```
+
+**Sesudah:**
+```blade
+@if(auth()->user()->role !== 'admin')
+<button class="btn-primary" onclick="openNewUserModal()" style="height: 38px; font-size: 0.85rem; background: transparent; border: 1px solid var(--accent); color: var(--accent);">
+    <i class="fas fa-plus"></i> Buat Peserta Baru
+</button>
+<button class="btn-primary" onclick="openParticipantModal()" style="height: 38px; font-size: 0.85rem;">
+    <i class="fas fa-user-plus"></i> Tambah Peserta
+</button>
+@endif
+```
+
+#### 6.2. Atur Tampilan Kolom Privilege & Aksi pada Tabel Peserta (SSR Blade)
+Cari baris ~197-231:
+- Jika user ber-role `'admin'`, dropdown privilege diganti menjadi teks / badge non-editable (disable atau plain text).
+- Tombol delete peserta disembunyikan.
+
+**Sesudah:**
+```blade
+<!-- Di thead baris ~197: -->
+@if(auth()->user()->role !== 'admin')
+<th style="width: 80px; text-align: center;">AKSI</th>
+@endif
+
+<!-- Di tbody baris ~220-231: -->
+<td>
+    @if(auth()->user()->role === 'admin')
+        <span class="badge" style="font-size: 0.75rem; background: {{ $participant->privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $participant->privilege === 'premium' ? '#eab308' : '#3b82f6' }}; font-weight: 600;">
+            {{ ucfirst($participant->privilege ?? 'general') }}
+        </span>
+    @else
+        <select onchange="updateParticipantPrivilege({{ $participant->id }}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: {{ $participant->privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $participant->privilege === 'premium' ? '#eab308' : '#3b82f6' }}; font-weight: 600;">
+            <option value="general" {{ $participant->privilege === 'general' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">General</option>
+            <option value="premium" {{ $participant->privilege === 'premium' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">Premium</option>
+        </select>
+    @endif
+</td>
+<td style="color: var(--text-secondary); font-size: 0.85rem;">{{ data_get($participant, 'address') ?? '-' }}</td>
+@if(auth()->user()->role !== 'admin')
+<td style="text-align: center;">
+    <button class="btn-icon delete" onclick="deleteParticipant({{ $participant->id }})" title="Hapus">
+        <i class="fas fa-trash"></i>
+    </button>
+</td>
+@endif
+```
+
+#### 6.3. Badge Role untuk Peserta di Tabel (SSR & JS)
+Tambahkan penanganan warna badge untuk role `'admin'`:
+```php
+if($roleName === 'superadmin') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
+elseif($roleName === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
+elseif($roleName === 'admin') { $bgRole = 'rgba(6, 182, 212, 0.1)'; $colorRole = '#06b6d4'; }
+```
+
+#### 6.4. Sinkronisasi di Javascript Table Rendering (`renderTable`)
+Di bagian script `resources/views/admin/sessions/show.blade.php`:
+Definisikan variable role di script Blade:
+```javascript
+const isReadOnlyAdmin = @json(auth()->user()->role === 'admin');
+```
+Pada fungsi `renderTable(data)`:
+- Jika `isReadOnlyAdmin` bernilai `true`, render kolom privilege sebagai static badge, dan **jangan** render kolom tombol delete.
+- Pastikan colspan untuk state kosong disesuaikan (`isReadOnlyAdmin ? 6 : 7`).
+
+#### 6.5. Proteksi Render Modal
+Bungkus elemen modal HTML `#participantModal` dan `#newUserModal` dengan:
+```blade
+@if(auth()->user()->role !== 'admin')
+    <!-- Modal Tambah Peserta & Buat User Baru -->
+@endif
+```
+
+---
+
+### Langkah 7: Update Manajemen User Superadmin (`ParticipantController.php` & `index.blade.php`)
+Superadmin harus bisa membuat user baru atau mengubah user yang sudah ada menjadi role `admin`.
+
+#### 7.1. File `app/Http/Controllers/Admin/ParticipantController.php`
+Perbarui 3 tempat:
+1. Method `index()` (Baris 22):
+   ```php
+   $query = User::whereIn('role', ['basic', 'admin_sesi', 'superadmin', 'admin'])->latest();
+   ```
+2. Method `store()` (Baris 48):
+   ```php
+   'role' => 'required|in:basic,admin_sesi,superadmin,admin',
+   ```
+3. Method `update()` (Baris 81):
+   ```php
+   'role' => 'required|in:basic,admin_sesi,superadmin,admin',
+   ```
+
+#### 7.2. File `resources/views/admin/participants/index.blade.php`
+1. **Dropdown Pilihan Role (Baris ~180):**
+   ```blade
+   <select name="role" id="pRole" class="form-input" required>
+       <option value="basic">Basic (Peserta Ujian)</option>
+       <option value="admin">Admin (Viewer Sesi Ujian)</option>
+       <option value="admin_sesi">Admin Sesi (Kelola Sesi & Peserta)</option>
+       <option value="superadmin">Superadmin</option>
+   </select>
+   ```
+2. **Badge Role di Tabel (Baris ~56):**
+   ```blade
+   @php
+       $bgRole = 'rgba(59, 130, 246, 0.1)';
+       $colorRole = '#3b82f6';
+       if($user->role === 'superadmin') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
+       elseif($user->role === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
+       elseif($user->role === 'admin') { $bgRole = 'rgba(6, 182, 212, 0.1)'; $colorRole = '#06b6d4'; }
+   @endphp
+   ```
+
+---
+
+### Langkah 8: Filter Leaderboard Mingguan di `app/Services/QuizService.php`
+Pastikan user dengan role `admin` tidak masuk ke daftar leaderboard mingguan peserta.
+
+Buka `app/Services/QuizService.php`:
+Cari pemanggilan `whereNotIn('role', ['superadmin', 'admin_sesi'])` pada baris 291, 306, dan 312:
+
+Ubah ketiga baris tersebut menjadi:
+```php
+// Baris ~291
+$query->whereNotIn('role', ['superadmin', 'admin_sesi', 'admin']);
+
+// Baris ~306
+if ($currentUser && ! in_array($currentUser->role, ['superadmin', 'admin_sesi', 'admin'])) {
+
+// Baris ~312
+$query->whereNotIn('role', ['superadmin', 'admin_sesi', 'admin']);
+```
+
+---
+
+## 5. Rencana Pengujian Otomatis (Automated Testing)
+
+Buat file test baru di `tests/Feature/AdminRolePermissionTest.php`.
+
+Test suite ini wajib mencakup skenario-skenario berikut:
+
 ```php
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+namespace Tests\Feature;
 
-return new class extends Migration
+use App\Models\ExamSession;
+use App\Models\ExamSessionParticipant;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class AdminRolePermissionTest extends TestCase
 {
-    public function up(): void
-    {
-        Schema::table('quiz_settings', function (Blueprint $table) {
-            $table->timestamp('last_weekly_reset_at')->nullable()->after('xp_per_correct');
-        });
+    use RefreshDatabase;
 
-        // Set nilai awal pada baris setting yang sudah ada
-        DB::table('quiz_settings')->update([
-            'last_weekly_reset_at' => now(),
+    protected User $adminUser;
+    protected User $adminSesiUser;
+    protected User $superAdmin;
+    protected ExamSession $assignedSession;
+    protected ExamSession $unassignedSession;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->superAdmin = User::factory()->create(['role' => 'superadmin']);
+        $this->adminUser = User::factory()->create(['role' => 'admin']);
+        $this->adminSesiUser = User::factory()->create(['role' => 'admin_sesi']);
+
+        $this->assignedSession = ExamSession::factory()->create(['name' => 'Sesi Ditugaskan']);
+        $this->unassignedSession = ExamSession::factory()->create(['name' => 'Sesi Rahasia']);
+
+        // Tugaskan adminUser ke assignedSession
+        ExamSessionParticipant::create([
+            'exam_session_id' => $this->assignedSession->id,
+            'user_id' => $this->adminUser->id,
+            'name' => $this->adminUser->name,
+            'access_code' => 'ADMIN01',
         ]);
     }
 
-    public function down(): void
+    /** 1. Test redirect login untuk role admin */
+    public function test_admin_redirects_to_sessions_index_after_login(): void
     {
-        Schema::table('quiz_settings', function (Blueprint $table) {
-            $table->dropColumn('last_weekly_reset_at');
-        });
-    }
-};
-```
-
-Jalankan perintah migration:
-```bash
-docker compose -f docker-compose.dev.yml exec app php artisan migrate
-```
-*(Atau `php artisan migrate` jika di luar docker)*.
-
----
-
-### Tahap 2: Update Model `app/Models/QuizSetting.php`
-
-Buka file `app/Models/QuizSetting.php`.
-
-**Kode Sebelum Perubahan:**
-```php
-#[Fillable(['reset_time', 'questions_per_day', 'xp_per_correct'])]
-class QuizSetting extends Model
-{
-    /** Ambil satu-satunya baris setting (dibuat otomatis jika belum ada). */
-    public static function current(): self
-    {
-        return static::query()->first() ?? static::create([])->fresh();
-    }
-}
-```
-
-**Kode Sesudah Perubahan:**
-```php
-#[Fillable(['reset_time', 'questions_per_day', 'xp_per_correct', 'last_weekly_reset_at'])]
-class QuizSetting extends Model
-{
-    protected $casts = [
-        'last_weekly_reset_at' => 'datetime',
-    ];
-
-    /** Ambil satu-satunya baris setting (dibuat otomatis jika belum ada). */
-    public static function current(): self
-    {
-        return static::query()->first() ?? static::create([
-            'last_weekly_reset_at' => now(),
-        ])->fresh();
-    }
-}
-```
-
----
-
-### Tahap 3: Tambahkan Logika Leaderboard di `app/Services/QuizService.php`
-
-Buka `app/Services/QuizService.php`.
-Tambahkan method-method pendukung leaderboard dan reset mingguan:
-
-1. **`checkAndResetWeeklyXp(?Carbon $now = null): bool`**: Memeriksa apakah selisih hari sejak `last_weekly_reset_at` sudah >= 7 hari. Jika ya, setel semua `user_xps.total_xp` ke `0` dan perbarui `last_weekly_reset_at`.
-2. **`nextWeeklyResetAt(): Carbon`**: Mengembalikan Carbon datetime kapan reset 7 hari berikutnya akan terjadi (`last_weekly_reset_at + 7 days`).
-3. **`getWeeklyLeaderboardData(?User $currentUser = null): array`**: Mengambil top 10 peserta beserta ranking user yang login.
-
-**Tambahkan kode berikut pada `app/Services/QuizService.php`:**
-```php
-    // ---------- Leaderboard Mingguan & Reset XP ----------
-
-    /**
-     * Waktu kapan reset XP mingguan berikutnya akan dieksekusi.
-     */
-    public function nextWeeklyResetAt(): Carbon
-    {
-        $lastReset = $this->settings()->last_weekly_reset_at ?? now();
-        return $lastReset->copy()->addDays(7);
+        $response = $this->actingAs($this->adminUser)->get('/');
+        $response->assertRedirect(route('admin.sessions.index'));
     }
 
-    /**
-     * Periksa apakah sudah mencapai 7 hari sejak reset terakhir.
-     * Jika ya, reset semua XP users menjadi 0.
-     */
-    public function checkAndResetWeeklyXp(?Carbon $now = null): bool
+    /** 2. Test role admin hanya melihat sesi yang ditugaskan */
+    public function test_admin_only_sees_assigned_sessions(): void
     {
-        $now = $now ?? now();
-        $settings = $this->settings();
-
-        if (! $settings->last_weekly_reset_at) {
-            $settings->update(['last_weekly_reset_at' => $now]);
-            return false;
-        }
-
-        // Jika sudah 7 hari atau lebih sejak reset terakhir
-        if ($now->greaterThanOrEqualTo($settings->last_weekly_reset_at->copy()->addDays(7))) {
-            $this->performWeeklyXpReset($now);
-            return true;
-        }
-
-        return false;
+        $response = $this->actingAs($this->adminUser)->get(route('admin.sessions.index'));
+        $response->assertOk();
+        $response->assertSee('Sesi Ditugaskan');
+        $response->assertDontSee('Sesi Rahasia');
     }
 
-    /**
-     * Eksekusi reset XP semua users ke 0 dan catat waktu reset terbaru.
-     */
-    public function performWeeklyXpReset(?Carbon $now = null): void
+    /** 3. Test role admin dapat melihat detail sesi yang ditugaskan */
+    public function test_admin_can_view_assigned_session_details(): void
     {
-        $now = $now ?? now();
-
-        DB::transaction(function () use ($now) {
-            // Reset seluruh XP users menjadi 0
-            UserXp::query()->update(['total_xp' => 0]);
-
-            // Update timestamp reset mingguan di settings
-            $this->settings()->update([
-                'last_weekly_reset_at' => $now,
-            ]);
-        });
+        $response = $this->actingAs($this->adminUser)->get(route('admin.sessions.show', $this->assignedSession->id));
+        $response->assertOk();
+        $response->assertSee('Daftar Peserta');
     }
 
-    /**
-     * Ambil data Leaderboard Top 10 per jenjang peserta beserta info posisi user yang sedang login.
-     */
-    public function getWeeklyLeaderboardData(?User $currentUser = null): array
+    /** 4. Test role admin TIDAK BISA melihat tombol Tambah Peserta di halaman detail */
+    public function test_admin_does_not_see_add_participant_buttons(): void
     {
-        // 1. Cek lazy reset otomatis jika sudah lewat 7 hari
-        $this->checkAndResetWeeklyXp();
-
-        $jenjang = $currentUser?->jenjang;
-
-        // 2. Query top 10 users (hanya peserta non-admin, difilter sesuai jenjang peserta)
-        $topUsers = UserXp::with('user')
-            ->whereHas('user', function ($query) use ($jenjang) {
-                $query->whereNotIn('role', ['superadmin', 'admin_sesi']);
-                if ($jenjang) {
-                    $query->where('jenjang', $jenjang);
-                }
-            })
-            ->where('total_xp', '>', 0)
-            ->orderByDesc('total_xp')
-            ->orderBy('updated_at', 'asc') // tie breaker: yang mencapai skor duluan di atas
-            ->limit(10)
-            ->get();
-
-        // 3. Hitung posisi / rank user saat ini di jenjang yang sama
-        $myRank = null;
-        $myXp = 0;
-
-        if ($currentUser && ! in_array($currentUser->role, ['superadmin', 'admin_sesi'])) {
-            $myXp = (int) (UserXp::where('user_id', $currentUser->id)->value('total_xp') ?? 0);
-
-            if ($myXp > 0) {
-                // Rank adalah jumlah user dengan XP lebih tinggi di jenjang yang sama + 1
-                $higherCount = UserXp::whereHas('user', function ($query) use ($jenjang) {
-                    $query->whereNotIn('role', ['superadmin', 'admin_sesi']);
-                    if ($jenjang) {
-                        $query->where('jenjang', $jenjang);
-                    }
-                })->where('total_xp', '>', $myXp)->count();
-
-                $myRank = $higherCount + 1;
-            }
-        }
-
-        $nextReset = $this->nextWeeklyResetAt();
-        $daysUntilReset = max(0, (int) now()->diffInDays($nextReset, false));
-        $hoursUntilReset = max(0, (int) now()->diffInHours($nextReset, false));
-
-        return [
-            'topUsers' => $topUsers,
-            'jenjang' => $jenjang,
-            'myRank' => $myRank,
-            'myXp' => $myXp,
-            'nextResetAt' => $nextReset,
-            'daysUntilReset' => $daysUntilReset,
-            'hoursUntilReset' => $hoursUntilReset,
-        ];
+        $response = $this->actingAs($this->adminUser)->get(route('admin.sessions.show', $this->assignedSession->id));
+        $response->assertOk();
+        $response->assertDontSee('openParticipantModal');
+        $response->assertDontSee('openNewUserModal');
     }
-```
 
----
-
-### Tahap 4: Buat Artisan Command `app/Console/Commands/ResetWeeklyLeaderboardCommand.php`
-
-Buat file baru:
-`app/Console/Commands/ResetWeeklyLeaderboardCommand.php`
-
-**Isi File:**
-```php
-<?php
-
-namespace App\Console\Commands;
-
-use App\Services\QuizService;
-use Illuminate\Console\Command;
-
-class ResetWeeklyLeaderboardCommand extends Command
-{
-    protected $signature = 'leaderboard:reset-weekly {--force : Paksa reset tanpa menunggu 7 hari}';
-    protected $description = 'Reset seluruh total XP peserta kembali ke 0 setiap 7 hari sekali';
-
-    public function handle(QuizService $quizService): int
+    /** 5. Test proteksi backend: admin DITOLAK saat menambahkan user lama (POST /admin/session-participants) */
+    public function test_admin_cannot_store_existing_participant(): void
     {
-        if ($this->option('force')) {
-            $this->info('Memaksa reset XP mingguan...');
-            $quizService->performWeeklyXpReset();
-            $this->info('Seluruh XP user berhasil direset ke 0.');
-            return Command::SUCCESS;
-        }
+        $student = User::factory()->create(['role' => 'basic']);
 
-        $this->info('Memeriksa jadwal reset XP mingguan...');
-        $didReset = $quizService->checkAndResetWeeklyXp();
+        $response = $this->actingAs($this->adminUser)->postJson(route('admin.session-participants.store'), [
+            'exam_session_id' => $this->assignedSession->id,
+            'user_ids' => [$student->id],
+        ]);
 
-        if ($didReset) {
-            $this->info('Siklus 7 hari tercapai. Seluruh XP peserta berhasil direset ke 0.');
-        } else {
-            $next = $quizService->nextWeeklyResetAt()->format('Y-m-d H:i:s');
-            $this->info("Belum mencapai 7 hari. Reset berikutnya pada: {$next}");
-        }
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('exam_session_participants', [
+            'exam_session_id' => $this->assignedSession->id,
+            'user_id' => $student->id,
+        ]);
+    }
 
-        return Command::SUCCESS;
+    /** 6. Test proteksi backend: admin DITOLAK saat membuat user baru (POST /admin/session-participants/new) */
+    public function test_admin_cannot_store_new_user_participant(): void
+    {
+        $response = $this->actingAs($this->adminUser)->postJson(route('admin.session-participants.store-new'), [
+            'exam_session_id' => $this->assignedSession->id,
+            'name' => 'Siswa Baru',
+            'email' => 'siswabaru@test.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('users', ['email' => 'siswabaru@test.com']);
+    }
+
+    /** 7. Test proteksi backend: admin DITOLAK saat menghapus peserta */
+    public function test_admin_cannot_delete_participant(): void
+    {
+        $student = User::factory()->create(['role' => 'basic']);
+        $participant = ExamSessionParticipant::create([
+            'exam_session_id' => $this->assignedSession->id,
+            'user_id' => $student->id,
+            'name' => $student->name,
+            'access_code' => 'STU001',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)->deleteJson(route('admin.session-participants.destroy', $participant->id));
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('exam_session_participants', ['id' => $participant->id]);
+    }
+
+    /** 8. Test proteksi backend: admin DITOLAK saat mengubah privilege peserta */
+    public function test_admin_cannot_update_participant_privilege(): void
+    {
+        $student = User::factory()->create(['role' => 'basic']);
+        $participant = ExamSessionParticipant::create([
+            'exam_session_id' => $this->assignedSession->id,
+            'user_id' => $student->id,
+            'name' => $student->name,
+            'access_code' => 'STU002',
+            'privilege' => 'general',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)->patchJson(route('admin.session-participants.update-privilege', $participant->id), [
+            'privilege' => 'premium',
+        ]);
+
+        $response->assertStatus(403);
+        $this->assertEquals('general', $participant->fresh()->privilege);
+    }
+
+    /** 9. Test role admin DITOLAK saat mencoba akses menu Superadmin */
+    public function test_admin_cannot_access_superadmin_menus(): void
+    {
+        $response = $this->actingAs($this->adminUser)->get(route('admin.categories.index'));
+        $response->assertForbidden();
+
+        $responseQuestions = $this->actingAs($this->adminUser)->get(route('admin.questions.index'));
+        $responseQuestions->assertForbidden();
+
+        $responseParticipants = $this->actingAs($this->adminUser)->get(route('admin.participants.index'));
+        $responseParticipants->assertForbidden();
     }
 }
 ```
 
-#### Daftarkan ke `routes/console.php`
-Buka `routes/console.php` dan tambahkan:
-```php
-use Illuminate\Support\Facades\Schedule;
-
-Schedule::command('leaderboard:reset-weekly')->daily();
-```
-
 ---
 
-### Tahap 5: Update `app/Http/Controllers/Participant/DashboardController.php`
+## 6. Checklist Verifikasi Manual (QA Acceptance Criteria)
 
-Buka file `app/Http/Controllers/Participant/DashboardController.php`.
-Di method `index()`, ambil data leaderboard dan kirimkan ke view.
+Lakukan verifikasi manual berikut sebelum menandai pekerjaan selesai:
 
-**Kode Sebelum Perubahan (sekitar baris 77-80):**
-```php
-        $quizCard = app(QuizService::class)->todaySummary($user);
-
-        return view('participant.dashboard', compact('groupedRegistrations', 'scoreChartData', 'quizCard'));
-```
-
-**Kode Sesudah Perubahan:**
-```php
-        $quizService = app(QuizService::class);
-        $quizCard = $quizService->todaySummary($user);
-        $leaderboardData = $quizService->getWeeklyLeaderboardData($user);
-
-        return view('participant.dashboard', compact(
-            'groupedRegistrations',
-            'scoreChartData',
-            'quizCard',
-            'leaderboardData'
-        ));
-```
-
----
-
-### Tahap 6: Tambahkan Komponen UI Leaderboard di `resources/views/participant/dashboard.blade.php`
-
-Buka `resources/views/participant/dashboard.blade.php`.
-Temukan akhir dari section kartu kuis:
-```html
-@endif
-```
-(Tepat di atas `<div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">` yang merupakan blok Grafik Nilai).
-
-**Sisipkan markup Leaderboard berikut:**
-```html
-    <!-- Section Leaderboard Mingguan (Top 10) -->
-    <div class="glass animate-fade-in" style="padding: 32px; margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
-            <div>
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                    <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center; color: #f59e0b; font-size: 1.2rem;">
-                        <i class="fas fa-trophy"></i>
-                    </div>
-                    <h3 style="font-family: 'Outfit', sans-serif; margin: 0; font-size: 1.4rem;">Leaderboard Mingguan {{ !empty($leaderboardData['jenjang']) ? '• Jenjang ' . $leaderboardData['jenjang'] : '' }}</h3>
-                </div>
-                <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">
-                    Top 10 pejuang XP {{ !empty($leaderboardData['jenjang']) ? 'jenjang ' . $leaderboardData['jenjang'] : '' }} minggu ini &middot; Reset otomatis setiap 7 hari sekali.
-                </p>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="badge" style="background: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 99px; font-weight: 600; font-size: 0.8rem; border: 1px solid #fde68a;">
-                    <i class="fas fa-clock" style="margin-right: 4px;"></i> 
-                    Reset: {{ $leaderboardData['daysUntilReset'] > 0 ? $leaderboardData['daysUntilReset'] . ' hari lagi' : $leaderboardData['hoursUntilReset'] . ' jam lagi' }}
-                </span>
-            </div>
-        </div>
-
-        @if($leaderboardData['topUsers']->isNotEmpty())
-            <div class="table-responsive">
-                <table class="data-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
-                    <thead>
-                        <tr>
-                            <th style="width: 80px; text-align: center;">RANK</th>
-                            <th>NAMA PESERTA</th>
-                            <th>JENJANG</th>
-                            <th style="text-align: right; width: 140px;">TOTAL XP</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($leaderboardData['topUsers'] as $index => $row)
-                            @php
-                                $rank = $index + 1;
-                                $isMe = auth()->id() === $row->user_id;
-                            @endphp
-                            <tr style="{{ $isMe ? 'background: rgba(37, 99, 235, 0.06); font-weight: 600;' : '' }}">
-                                <td style="text-align: center;">
-                                    @if($rank === 1)
-                                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #fef08a; color: #854d0e; font-weight: 800; font-size: 0.95rem; box-shadow: 0 2px 8px rgba(234, 179, 8, 0.3);">
-                                            🥇
-                                        </span>
-                                    @elseif($rank === 2)
-                                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; color: #334155; font-weight: 800; font-size: 0.95rem;">
-                                            🥈
-                                        </span>
-                                    @elseif($rank === 3)
-                                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #fed7aa; color: #9a3412; font-weight: 800; font-size: 0.95rem;">
-                                            🥉
-                                        </span>
-                                    @else
-                                        <span style="color: var(--text-secondary); font-weight: 700; font-size: 0.95rem;">
-                                            #{{ $rank }}
-                                        </span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <div style="width: 34px; height: 34px; border-radius: 50%; background: {{ $isMe ? '#2563eb' : '#e0e7ff' }}; color: {{ $isMe ? '#fff' : '#3730a3' }}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
-                                            {{ strtoupper(substr($row->user->name ?? 'U', 0, 1)) }}
-                                        </div>
-                                        <div>
-                                            <div style="color: #0f172a;">
-                                                {{ $row->user->name ?? 'Peserta' }}
-                                                @if($isMe)
-                                                    <span class="badge" style="background: #dbeafe; color: #1d4ed8; font-size: 0.7rem; padding: 2px 6px; margin-left: 4px;">Kamu</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--accent); font-size: 0.75rem;">
-                                        {{ $row->user->jenjang ?? '-' }}
-                                    </span>
-                                </td>
-                                <td style="text-align: right;">
-                                    <span style="color: #7c3aed; font-weight: 700; font-size: 1rem; display: inline-flex; align-items: center; gap: 4px;">
-                                        <i class="fas fa-star" style="color: #f59e0b; font-size: 0.85rem;"></i>
-                                        {{ number_format($row->total_xp) }} XP
-                                    </span>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Jika user login berada di luar Top 10 -->
-            @if(!empty($leaderboardData['myRank']) && $leaderboardData['myRank'] > 10)
-                <div style="margin-top: 16px; padding: 14px 20px; background: #eff6ff; border: 1px dashed #93c5fd; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-weight: 700; color: #1e40af;">Posisi Kamu: #{{ $leaderboardData['myRank'] }}</span>
-                        <span style="color: var(--text-secondary); font-size: 0.85rem;">Terus kumpulkan XP untuk masuk Top 10!</span>
-                    </div>
-                    <span style="color: #7c3aed; font-weight: 800; font-size: 0.95rem;">
-                        <i class="fas fa-star" style="color: #f59e0b;"></i> {{ number_format($leaderboardData['myXp']) }} XP
-                    </span>
-                </div>
-            @endif
-        @else
-            <div style="padding: 36px 20px; text-align: center; background: #f8fafc; border-radius: 16px; border: 1px dashed #cbd5e1;">
-                <i class="fas fa-medal" style="font-size: 2.4rem; color: #cbd5e1; margin-bottom: 12px; display: inline-block;"></i>
-                <h4 style="font-family: 'Outfit', sans-serif; margin: 0 0 4px; color: #475569;">Belum Ada Peringkat Minggu Ini {{ !empty($leaderboardData['jenjang']) ? 'di Jenjang ' . $leaderboardData['jenjang'] : '' }}</h4>
-                <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">
-                    Jadilah yang pertama mengumpulkan XP dengan menyelesaikan Quiz Hari Ini!
-                </p>
-            </div>
-        @endif
-    </div>
-```
-
----
-
-## 5. Jebakan Umum yang Harus Dihindari (Common Pitfalls)
-
-1. **User Admin Masuk Leaderboard:**
-   Pastikan selalu memfilter query dengan `whereHas('user', fn($q) => $q->whereNotIn('role', ['superadmin', 'admin_sesi']))`. Jika admin masuk, kredibilitas leaderboard peserta akan rusak.
-2. **Hanya Mengandalkan Scheduler Tanpa Lazy Evaluation:**
-   Di environment local development atau server docker tanpa crontab sistem yang berjalan, scheduler `schedule:run` sering kali tidak menyala. Karena itu, method `checkAndResetWeeklyXp()` harus selalu dipanggil saat `getWeeklyLeaderboardData()` dieksekusi agar reset tetap berjalan tepat waktu.
-3. **Database Transaction saat Reset:**
-   Selalu bungkus `UserXp::query()->update(['total_xp' => 0])` dan pembaruan `last_weekly_reset_at` ke dalam satu `DB::transaction()` untuk menjaga konsistensi ACID.
-4. **Tie Breaker saat XP Sama:**
-   Jika ada dua peserta memiliki total XP yang sama (misal sama-sama 30 XP), gunakan `orderBy('updated_at', 'asc')` agar user yang mengumpulkan XP lebih cepat berada di peringkat atas secara adil.
-
----
-
-## 6. Skenario Pengujian & QA Checklist
-
-Buat feature test di `tests/Feature/WeeklyLeaderboardTest.php` untuk memverifikasi:
-
-- [x] **Test 1: Leaderboard Menampilkan Top 10 Peserta Berdasarkan XP Terbanyak**
-  - Buat 12 user peserta dengan perolehan XP bervariasi (10, 20, ..., 120 XP).
-  - Akses `/dashboard`.
-  - Verifikasi response menampilkan Top 10 user dengan XP tertinggi berurutan.
-  - Verifikasi user peringkat ke-11 dan ke-12 tidak muncul di tabel utama.
-
-- [x] **Test 2: Admin dan Superadmin Tidak Muncul di Leaderboard**
-  - Buat user dengan role `superadmin` yang memiliki XP tinggi (misal 999 XP).
-  - Akses dashboard peserta.
-  - Verifikasi superadmin tidak tercantum dalam daftar leaderboard.
-
-- [x] **Test 3: Reset XP Otomatis Setelah 7 Hari**
-  - Buat user dengan XP 50.
-  - Set `last_weekly_reset_at` di setting menjadi 7 hari yang lalu (`now()->subDays(7)`).
-  - Panggil `checkAndResetWeeklyXp()` atau akses `/dashboard`.
-  - Verifikasi `total_xp` user berubah menjadi 0.
-  - Verifikasi `last_weekly_reset_at` terupdate ke waktu sekarang.
-
-- [x] **Test 4: Command `php artisan leaderboard:reset-weekly`**
-  - Jalankan artisan command `leaderboard:reset-weekly --force`.
-  - Verifikasi command selesai dengan status exit 0 dan seluruh `total_xp` kembali 0.
-
-- [x] **Test 5: Empty State Tampil Saat Belum Ada XP**
-  - Saat database baru atau seluruh user ber-XP 0, verifikasi box "Belum Ada Peringkat Minggu Ini" tampil dengan rapi.
-
-- [x] **Test 6: Isolasi Leaderboard Per Jenjang Pendidikan**
-  - Buat peserta jenjang SMA dan jenjang SMP dengan perolehan XP masing-masing.
-  - Verifikasi peserta SMA hanya melihat leaderboard sesama SMA.
-  - Verifikasi peserta SMP hanya melihat leaderboard sesama SMP.
-
----
-
-## 7. Definition of Done (DoD)
-
-1. [x] Migration `last_weekly_reset_at` berhasil dieksekusi tanpa error.
-2. [x] Section Leaderboard tampil di dashboard tepat di bawah section kuis dan di atas grafik nilai.
-3. [x] Tabel menampilkan maksimal 10 peserta terurut berdasarkan total XP tertinggi.
-4. [x] Leaderboard difilter per jenjang pendidikan sesuai akun peserta yang sedang login.
-5. [x] XP seluruh peserta otomatis ter-reset ke 0 saat siklus 7 hari tercapai.
-6. [x] Artisan command `leaderboard:reset-weekly` berfungsi dengan baik.
-7. [x] Seluruh automated test berjalan sukses (100% Passed).
+1. [ ] **Manajemen User Superadmin:**
+   - Login sebagai `superadmin`, buka menu **Manajemen Peserta**.
+   - Buka modal "Tambah Peserta Baru". Pastikan ada opsi **Admin (Viewer Sesi Ujian)** pada dropdown Role.
+   - Buat satu user baru dengan role `admin` (misal `admin_test@jagobelajar.com`).
+   - Pastikan badge pada tabel menampilkan nama `Admin` dengan warna badge yang jelas.
+2. [ ] **Assign Admin ke Sesi Ujian:**
+   - Masuk ke salah satu Sesi Ujian sebagai `superadmin`.
+   - Klik "Tambah Peserta", cari akun `admin_test@jagobelajar.com` yang baru dibuat, lalu tambahkan ke sesi ujian.
+3. [ ] **Login sebagai Admin Baru:**
+   - Logout dari superadmin, login menggunakan akun `admin_test@jagobelajar.com`.
+   - Pastikan diarahkan ke `/admin/sessions`.
+   - Pastikan sidebar sebelah kiri tidak muncul (layout minimalis seperti `admin_sesi`).
+   - Pastikan hanya sesi ujian yang ditugaskan tadi yang terlihat.
+4. [ ] **Verifikasi Halaman Detail Sesi:**
+   - Klik "Kelola Sesi" pada sesi yang muncul.
+   - Pastikan tombol **"Buat Peserta Baru"** dan **"Tambah Peserta"** **TIDAK ADA**.
+   - Pada tabel peserta, pastikan **TIDAK ADA tombol ikon sampah (Hapus)**.
+   - Pastikan kolom **Privilege** tidak bisa diubah (berupa badge biasa, bukan dropdown select).
+   - Pastikan fitur view (Preview Soal, Export CSV Nilai, Lihat Tab Nilai/Hasil) tetap bisa diakses secara normal.
+5. [ ] **Uji Coba Penetrasi API (Backend Security):**
+   - Buka Developer Tools / Console Browser saat login sebagai `admin`.
+   - Jalankan `fetch('/admin/session-participants', { method: 'POST', ... })` atau kirim request penambahan peserta manual.
+   - Pastikan response mengembalikan **HTTP 403 Forbidden**.
+6. [ ] **Verifikasi Leaderboard:**
+   - Pastikan user `admin_test@jagobelajar.com` tidak muncul di leaderboard mingguan peserta.
+7. [ ] **Automated Test Lulus:**
+   - Jalankan `php artisan test --filter=AdminRolePermissionTest`. Semua test harus berwarna hijau (**PASS**).

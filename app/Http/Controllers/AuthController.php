@@ -57,7 +57,7 @@ class AuthController extends Controller
                 return redirect()->intended(route('admin.dashboard'));
             }
             
-            if ($user->role === 'admin_sesi') {
+            if (in_array($user->role, ['admin_sesi', 'admin'])) {
                 return redirect()->intended(route('admin.sessions.index'));
             }
             

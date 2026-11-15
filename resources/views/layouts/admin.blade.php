@@ -24,7 +24,7 @@
 <body>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     
-    @if(auth()->user() && auth()->user()->role === 'admin_sesi')
+    @if(auth()->user() && in_array(auth()->user()->role, ['admin_sesi', 'admin']))
         <style>
             .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
             .main-content { margin-left: 0 !important; max-width: 100%; margin: 0 auto; width: 100%; padding: 40px 32px; }

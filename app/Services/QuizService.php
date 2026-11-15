@@ -288,7 +288,7 @@ class QuizService
         // 2. Query top 10 users (hanya peserta non-admin, difilter sesuai jenjang peserta)
         $topUsers = UserXp::with('user')
             ->whereHas('user', function ($query) use ($jenjang) {
-                $query->whereNotIn('role', ['superadmin', 'admin_sesi']);
+                $query->whereNotIn('role', ['superadmin', 'admin_sesi', 'admin']);
                 if ($jenjang) {
                     $query->where('jenjang', $jenjang);
                 }
@@ -303,13 +303,13 @@ class QuizService
         $myRank = null;
         $myXp = 0;
 
-        if ($currentUser && ! in_array($currentUser->role, ['superadmin', 'admin_sesi'])) {
+        if ($currentUser && ! in_array($currentUser->role, ['superadmin', 'admin_sesi', 'admin'])) {
             $myXp = (int) (UserXp::where('user_id', $currentUser->id)->value('total_xp') ?? 0);
 
             if ($myXp > 0) {
                 // Rank adalah jumlah user dengan XP lebih tinggi di jenjang yang sama + 1
                 $higherCount = UserXp::whereHas('user', function ($query) use ($jenjang) {
-                    $query->whereNotIn('role', ['superadmin', 'admin_sesi']);
+                    $query->whereNotIn('role', ['superadmin', 'admin_sesi', 'admin']);
                     if ($jenjang) {
                         $query->where('jenjang', $jenjang);
                     }

@@ -15,6 +15,10 @@ class ExamSessionParticipantController extends Controller
 
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'admin') {
+            return $this->errorResponse('Akses Ditolak. Role Admin hanya memiliki izin melihat data dan tidak dapat menambahkan peserta.', 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'exam_session_id' => 'required|exists:exam_sessions,id',
             'user_ids' => 'required|array',
@@ -54,6 +58,10 @@ class ExamSessionParticipantController extends Controller
 
     public function storeNewUser(Request $request)
     {
+        if (auth()->user()->role === 'admin') {
+            return $this->errorResponse('Akses Ditolak. Role Admin tidak diizinkan membuat akun atau menambahkan peserta baru.', 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'exam_session_id' => 'required|exists:exam_sessions,id',
             'name' => 'required|string|max:255',
@@ -92,6 +100,10 @@ class ExamSessionParticipantController extends Controller
 
     public function destroy($id)
     {
+        if (auth()->user()->role === 'admin') {
+            return $this->errorResponse('Akses Ditolak. Role Admin tidak memiliki izin menghapus peserta.', 403);
+        }
+
         $participant = ExamSessionParticipant::find($id);
         if (!$participant) return $this->errorResponse('Peserta tidak ditemukan', 404);
         
@@ -103,6 +115,10 @@ class ExamSessionParticipantController extends Controller
 
     public function updatePrivilege(Request $request, $id)
     {
+        if (auth()->user()->role === 'admin') {
+            return $this->errorResponse('Akses Ditolak. Role Admin tidak memiliki izin mengubah privilege peserta.', 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'privilege' => 'required|in:general,premium'
         ]);

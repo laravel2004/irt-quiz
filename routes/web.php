@@ -6,7 +6,7 @@ Route::get('/', function() {
     if (auth()->check()) {
         $role = auth()->user()->role;
         if ($role === 'superadmin') return redirect()->route('admin.dashboard');
-        if ($role === 'admin_sesi') return redirect()->route('admin.sessions.index');
+        if (in_array($role, ['admin_sesi', 'admin'])) return redirect()->route('admin.sessions.index');
         return redirect()->route('participant.dashboard');
     }
     return view('participant.auth.login');

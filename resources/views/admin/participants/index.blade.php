@@ -55,6 +55,7 @@
                             $colorRole = '#3b82f6';
                             if($user->role === 'superadmin') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
                             elseif($user->role === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
+                            elseif($user->role === 'admin') { $bgRole = 'rgba(6, 182, 212, 0.1)'; $colorRole = '#06b6d4'; }
                         @endphp
                         <span class="badge" style="background: {{ $bgRole }}; color: {{ $colorRole }};">
                             {{ ucfirst(str_replace('_', ' ', $user->role)) }}
@@ -179,6 +180,7 @@
                     <label>Role</label>
                     <select name="role" id="pRole" class="form-input" required>
                         <option value="basic">Basic (Peserta Ujian)</option>
+                        <option value="admin">Admin (Viewer Sesi)</option>
                         <option value="admin_sesi">Admin Sesi</option>
                         <option value="superadmin">Superadmin</option>
                     </select>

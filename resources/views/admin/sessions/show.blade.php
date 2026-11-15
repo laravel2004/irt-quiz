@@ -175,12 +175,14 @@
                 <input type="text" id="participantSearch" class="form-input" placeholder="Cari nama peserta..." style="padding-left: 36px; margin-bottom: 0; font-size: 0.85rem; height: 38px;">
             </div>
 
+            @if(auth()->user()->role !== 'admin')
             <button class="btn-primary" onclick="openNewUserModal()" style="height: 38px; font-size: 0.85rem; background: transparent; border: 1px solid var(--accent); color: var(--accent);">
                 <i class="fas fa-plus"></i> Buat Peserta Baru
             </button>
             <button class="btn-primary" onclick="openParticipantModal()" style="height: 38px; font-size: 0.85rem;">
                 <i class="fas fa-user-plus"></i> Tambah Peserta
             </button>
+            @endif
         </div>
     </div>
 
@@ -194,7 +196,9 @@
                     <th style="width: 150px;">WHATSAPP</th>
                     <th style="width: 150px;">PRIVILEGE</th>
                     <th>SEKOLAH</th>
+                    @if(auth()->user()->role !== 'admin')
                     <th style="width: 80px; text-align: center;">AKSI</th>
+                    @endif
                 </tr>
             </thead>
             <tbody id="participantTableBody">
@@ -211,6 +215,7 @@
                             $colorRole = '#3b82f6';
                             if($roleName === 'superadmin') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
                             elseif($roleName === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
+                            elseif($roleName === 'admin') { $bgRole = 'rgba(6, 182, 212, 0.1)'; $colorRole = '#06b6d4'; }
                         @endphp
                         <span class="badge" style="font-size: 0.65rem; background: {{ $bgRole }}; color: {{ $colorRole }}; margin-top: 4px;">
                             {{ ucfirst(str_replace('_', ' ', $roleName)) }}
@@ -218,21 +223,29 @@
                     </td>
                     <td>{{ data_get($participant, 'whatsapp') }}</td>
                     <td>
-                        <select onchange="updateParticipantPrivilege({{ $participant->id }}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: {{ $participant->privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $participant->privilege === 'premium' ? '#eab308' : '#3b82f6' }}; font-weight: 600;">
-                            <option value="general" {{ $participant->privilege === 'general' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">General</option>
-                            <option value="premium" {{ $participant->privilege === 'premium' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">Premium</option>
-                        </select>
+                        @if(auth()->user()->role === 'admin')
+                            <span class="badge" style="font-size: 0.75rem; background: {{ $participant->privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $participant->privilege === 'premium' ? '#eab308' : '#3b82f6' }}; font-weight: 600;">
+                                {{ ucfirst($participant->privilege ?? 'general') }}
+                            </span>
+                        @else
+                            <select onchange="updateParticipantPrivilege({{ $participant->id }}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: {{ $participant->privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $participant->privilege === 'premium' ? '#eab308' : '#3b82f6' }}; font-weight: 600;">
+                                <option value="general" {{ $participant->privilege === 'general' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">General</option>
+                                <option value="premium" {{ $participant->privilege === 'premium' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">Premium</option>
+                            </select>
+                        @endif
                     </td>
                     <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ data_get($participant, 'address') ?? '-' }}</td>
+                    @if(auth()->user()->role !== 'admin')
                     <td style="text-align: center;">
                         <button class="btn-icon delete" onclick="deleteParticipant({{ $participant->id }})" title="Hapus">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
+                    @endif
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 60px; color: var(--text-secondary);">
+                    <td colspan="{{ auth()->user()->role === 'admin' ? 6 : 7 }}" style="text-align: center; padding: 60px; color: var(--text-secondary);">
                         <i class="fas fa-users-slash" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.2;"></i>
                         <p>Belum ada peserta terdaftar untuk sesi ini.</p>
                     </td>
@@ -251,6 +264,7 @@
     </div>
 </div>
 
+@if(auth()->user()->role !== 'admin')
 <!-- Participant Modal -->
 <div class="modal-overlay" id="participantModal">
     <div class="modal-content glass animate-fade-in" style="max-width: 700px; width: 90%;">
@@ -305,6 +319,7 @@
                                     $colorRole = '#3b82f6';
                                     if($user->role === 'premium') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
                                     elseif($user->role === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
+                                    elseif($user->role === 'admin') { $bgRole = 'rgba(6, 182, 212, 0.1)'; $colorRole = '#06b6d4'; }
                                 @endphp
                                 <span class="badge" style="font-size: 0.7rem; background: {{ $bgRole }}; color: {{ $colorRole }};">
                                     {{ ucfirst(str_replace('_', ' ', $user->role)) }}
@@ -369,6 +384,7 @@
         </form>
     </div>
 </div>
+@endif
 
 <!-- IRT Results Section -->
 <div class="glass animate-fade-in" style="padding: 32px; margin-top: 32px; border-top: 4px solid var(--accent);">
@@ -499,6 +515,7 @@
 
 @push('scripts')
 <script>
+    const isReadOnlyAdmin = @json(auth()->user()->role === 'admin');
     const pModal = document.getElementById('participantModal');
     const pForm = document.getElementById('participantForm');
     
@@ -543,7 +560,23 @@
             let roleName = p.user?.role || 'basic';
             if(roleName === 'superadmin') { badgeBg = 'rgba(234, 179, 8, 0.1)'; badgeColor = '#eab308'; }
             else if(roleName === 'admin_sesi') { badgeBg = 'rgba(139, 92, 246, 0.1)'; badgeColor = '#8b5cf6'; }
+            else if(roleName === 'admin') { badgeBg = 'rgba(6, 182, 212, 0.1)'; badgeColor = '#06b6d4'; }
             
+            const privilegeHtml = isReadOnlyAdmin
+                ? `<span class="badge" style="font-size: 0.75rem; background: ${p.privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)'}; color: ${p.privilege === 'premium' ? '#eab308' : '#3b82f6'}; font-weight: 600;">${(p.privilege || 'general').charAt(0).toUpperCase() + (p.privilege || 'general').slice(1)}</span>`
+                : `<select onchange="updateParticipantPrivilege(${p.id}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: ${p.privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)'}; color: ${p.privilege === 'premium' ? '#eab308' : '#3b82f6'}; font-weight: 600;">
+                    <option value="general" ${p.privilege === 'general' ? 'selected' : ''} style="background: #ffffff; color: #0f172a;">General</option>
+                    <option value="premium" ${p.privilege === 'premium' ? 'selected' : ''} style="background: #ffffff; color: #0f172a;">Premium</option>
+                </select>`;
+
+            const actionHtml = isReadOnlyAdmin
+                ? ''
+                : `<td style="text-align: center;">
+                    <button class="btn-icon delete" onclick="deleteParticipant(${p.id})" title="Hapus">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>`;
+
             return `
             <tr>
                 <td>${start + i + 1}</td>
@@ -555,23 +588,14 @@
                     </span>
                 </td>
                 <td>${p.whatsapp || '-'}</td>
-                <td>
-                    <select onchange="updateParticipantPrivilege(${p.id}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: ${p.privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)'}; color: ${p.privilege === 'premium' ? '#eab308' : '#3b82f6'}; font-weight: 600;">
-                        <option value="general" ${p.privilege === 'general' ? 'selected' : ''} style="background: #ffffff; color: #0f172a;">General</option>
-                        <option value="premium" ${p.privilege === 'premium' ? 'selected' : ''} style="background: #ffffff; color: #0f172a;">Premium</option>
-                    </select>
-                </td>
+                <td>${privilegeHtml}</td>
                 <td style="color: var(--text-secondary); font-size: 0.85rem;">${p.address || '-'}</td>
-                <td style="text-align: center;">
-                    <button class="btn-icon delete" onclick="deleteParticipant(${p.id})" title="Hapus">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
+                ${actionHtml}
             </tr>
         `;
         }).join('') : `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 60px; color: var(--text-secondary);">
+                <td colspan="${isReadOnlyAdmin ? 6 : 7}" style="text-align: center; padding: 60px; color: var(--text-secondary);">
                     <i class="fas fa-users-slash" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.2;"></i>
                     <p>${searchVal ? 'Tidak ada peserta yang cocok dengan pencarian.' : 'Belum ada peserta terdaftar.'}</p>
                 </td>

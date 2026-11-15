@@ -36,7 +36,7 @@ class ExamSessionController extends Controller
     {
         $query = ExamSession::with('sessionCategories.category')->latest();
 
-        if (auth()->user() && auth()->user()->role === 'admin_sesi') {
+        if (auth()->user() && in_array(auth()->user()->role, ['admin_sesi', 'admin'])) {
             $query->whereHas('participants', function ($q) {
                 $q->where('user_id', auth()->id());
             });
@@ -94,7 +94,7 @@ class ExamSessionController extends Controller
         }
 
         // Fetch all potential participants (Users)
-        $availableParticipants = User::whereIn('role', ['basic', 'premium', 'user', 'admin_sesi'])->orderBy('name')->get();
+        $availableParticipants = User::whereIn('role', ['basic', 'premium', 'user', 'admin_sesi', 'admin'])->orderBy('name')->get();
 
         if ($request->ajax() || $request->wantsJson()) {
             return $this->successResponse([

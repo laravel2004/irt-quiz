@@ -19,7 +19,7 @@ class ParticipantController extends Controller
 
     public function index(Request $request)
     {
-        $query = User::whereIn('role', ['basic', 'admin_sesi', 'superadmin'])->latest();
+        $query = User::whereIn('role', ['basic', 'admin_sesi', 'superadmin', 'admin'])->latest();
         
         if ($request->has('search') && !empty($request->search)) {
             $search = strtolower($request->search);
@@ -45,7 +45,7 @@ class ParticipantController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string',
             'address' => 'nullable|string',
-            'role' => 'required|in:basic,admin_sesi,superadmin',
+            'role' => 'required|in:basic,admin_sesi,superadmin,admin',
             'password' => 'required|string|min:6',
         ]);
 
@@ -78,7 +78,7 @@ class ParticipantController extends Controller
             'email' => 'required|email|unique:users,email,' . $id,
             'phone' => 'nullable|string',
             'address' => 'nullable|string',
-            'role' => 'required|in:basic,admin_sesi,superadmin',
+            'role' => 'required|in:basic,admin_sesi,superadmin,admin',
             'password' => 'nullable|string|min:6',
         ]);
 
