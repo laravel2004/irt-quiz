@@ -215,6 +215,20 @@
         optionImageInputs.clear();
         optionsList.innerHTML = '';
         
+        if (type === 'essai_singkat') {
+            document.getElementById('addOptionBtn').style.display = 'none';
+            document.getElementById('optionsLabelText').textContent = 'Kunci Jawaban Singkat';
+            optionsList.innerHTML = `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; display: block;">
+                        Tuliskan kunci jawaban (jawaban peserta akan dicocokkan otomatis tanpa membedakan huruf besar/kecil & spasi):
+                    </label>
+                    <input type="text" name="correct_answer[]" id="essayCorrectAnswerInput" class="form-input" placeholder="Contoh: Jakarta" required style="width: 100%; font-size: 1rem; padding: 10px 14px;">
+                </div>
+            `;
+            return;
+        }
+
         if (type === 'multiple_benar_salah') {
             document.getElementById('addOptionBtn').style.display = 'block';
             document.getElementById('addOptionBtn').innerHTML = '<i class="fas fa-plus"></i> Tambah Pernyataan';
@@ -238,6 +252,9 @@
 
     function addOption() {
         const type = typeSelect.value;
+        if (type === 'essai_singkat') {
+            return;
+        }
         if (type === 'multiple_benar_salah') {
             addMBSItem('', 'benar');
         } else {
@@ -479,6 +496,15 @@
         
         if (mode === 'edit') formData.append('_method', 'PUT');
 
+        if (typeSelect.value === 'essai_singkat') {
+            formData.delete('options[]');
+            formData.delete('options');
+            const essayVal = document.getElementById('essayCorrectAnswerInput')?.value || '';
+            formData.delete('correct_answer[]');
+            formData.delete('correct_answer');
+            formData.append('correct_answer[]', essayVal);
+        }
+
         if (typeSelect.value === 'pilihan_ganda' || typeSelect.value === 'multiple_choice' || typeSelect.value === 'multiple_benar_salah') {
             formData.delete('options[]');
             formData.delete('correct_answer[]');
@@ -647,7 +673,19 @@
 
             optionsList.innerHTML = '';
 
-            if (q.type === 'multiple_benar_salah') {
+            if (q.type === 'essai_singkat') {
+                document.getElementById('addOptionBtn').style.display = 'none';
+                document.getElementById('optionsLabelText').textContent = 'Kunci Jawaban Singkat';
+                const keyVal = (q.correct_answer && q.correct_answer[0]) ? q.correct_answer[0] : '';
+                optionsList.innerHTML = `
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; display: block;">
+                            Tuliskan kunci jawaban:
+                        </label>
+                        <input type="text" name="correct_answer[]" id="essayCorrectAnswerInput" class="form-input" value="${escapeHtml(keyVal)}" required style="width: 100%; font-size: 1rem; padding: 10px 14px;">
+                    </div>
+                `;
+            } else if (q.type === 'multiple_benar_salah') {
                 document.getElementById('addOptionBtn').style.display = 'block';
                 document.getElementById('addOptionBtn').innerHTML = '<i class="fas fa-plus"></i> Tambah Pernyataan';
                 document.getElementById('optionsLabelText').textContent = 'Pernyataan (Tentukan Benar/Salah)';
@@ -702,6 +740,7 @@
             if (q.type === 'benar_salah') typeLabel = 'Benar / Salah';
             else if (q.type === 'multiple_choice') typeLabel = 'Multiple Choice';
             else if (q.type === 'multiple_benar_salah') typeLabel = 'Multiple Benar/Salah';
+            else if (q.type === 'essai_singkat') typeLabel = 'Essai Singkat';
             document.getElementById('previewType').textContent = typeLabel;
             
             document.getElementById('previewScoreCorrect').textContent = q.score_correct || 1;
@@ -720,7 +759,20 @@
             const optionsContainer = document.getElementById('previewOptions');
             optionsContainer.innerHTML = '';
             
-            if (q.type === 'multiple_benar_salah') {
+            if (q.type === 'essai_singkat') {
+                const keyVal = (q.correct_answer && q.correct_answer[0]) ? q.correct_answer[0] : '-';
+                optionsContainer.innerHTML = `
+                    <div class="preview-option-item correct" style="border: 1px solid #10b981; padding: 16px; border-radius: 10px; background: rgba(16,185,129,0.06); display: flex; align-items: center; gap: 12px;">
+                        <div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; color: #10b981; font-weight: 600;">KUNCI JAWABAN:</div>
+                            <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">${escapeHtml(keyVal)}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (q.type === 'multiple_benar_salah') {
                 q.options.forEach((opt, idx) => {
                     const isBenar = q.correct_answer.includes(idx.toString());
                     optionsContainer.innerHTML += `

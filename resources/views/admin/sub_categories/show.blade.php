@@ -49,6 +49,7 @@
                         @if($question->type === 'pilihan_ganda') Pilihan Ganda
                         @elseif($question->type === 'benar_salah') Benar / Salah
                         @elseif($question->type === 'multiple_benar_salah') Multiple B/S
+                        @elseif($question->type === 'essai_singkat') Essai Singkat
                         @else Multiple Choice @endif
                     </td>
                     <td style="max-width: 400px;">
@@ -201,6 +202,7 @@
             if (q.type === 'benar_salah') typeLabel = 'Benar / Salah';
             else if (q.type === 'multiple_choice') typeLabel = 'Multiple Choice';
             else if (q.type === 'multiple_benar_salah') typeLabel = 'Multiple Benar/Salah';
+            else if (q.type === 'essai_singkat') typeLabel = 'Essai Singkat';
             document.getElementById('previewType').textContent = typeLabel;
             
             document.getElementById('previewScoreCorrect').textContent = q.score_correct || 1;
@@ -219,7 +221,20 @@
             const optionsContainer = document.getElementById('previewOptions');
             optionsContainer.innerHTML = '';
             
-            if (q.type === 'multiple_benar_salah') {
+            if (q.type === 'essai_singkat') {
+                const keyVal = (q.correct_answer && q.correct_answer[0]) ? q.correct_answer[0] : '-';
+                optionsContainer.innerHTML = `
+                    <div class="preview-option-item correct" style="border: 1px solid #10b981; padding: 16px; border-radius: 10px; background: rgba(16,185,129,0.06); display: flex; align-items: center; gap: 12px;">
+                        <div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; color: #10b981; font-weight: 600;">KUNCI JAWABAN:</div>
+                            <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">${escapeHtml(keyVal)}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (q.type === 'multiple_benar_salah') {
                 q.options.forEach((opt, idx) => {
                     const isBenar = q.correct_answer.includes(idx.toString());
                     optionsContainer.innerHTML += `

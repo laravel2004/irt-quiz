@@ -176,6 +176,7 @@ class QuizService
             'is_correct' => (bool) $attempt->is_correct,
             'xp_earned' => (int) $attempt->xp_earned,
             'correct_indices' => $checker->correctIndices($quiz),
+            'correct_answer' => array_values((array) $quiz->correct_answer),
             'explanation' => $quiz->explanation,
         ];
     }

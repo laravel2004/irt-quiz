@@ -191,6 +191,11 @@
                     </div>
                 @endforeach
             </div>
+        @elseif($question->type === 'essai_singkat')
+            <div style="padding: 16px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid #10b981; display: flex; align-items: center; gap: 12px;">
+                <span style="font-weight: 700; color: #10b981;"><i class="fas fa-key"></i> Kunci Jawaban:</span>
+                <span style="color: #0f172a; font-weight: 600;">{{ ((array) $question->correct_answer)[0] ?? '-' }}</span>
+            </div>
         @else
             <div class="session-preview-option-grid">
                 @foreach($options as $optIndex => $option)

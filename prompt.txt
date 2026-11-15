@@ -3,9 +3,15 @@ untuk nanti di implementasikan oleh junior programmer
 atau ai model yang lebih murah
 
 Isi planningnya adalah sebagai berikut :
-1. aku ingin membuat role baru yang ada disini.
-2. hampir sama kayak admin_sesi tapi namanya admin.
-3. untuk role ini itu hampir sama kayak admin sesi namun beda hanya hanya bisa lihat" saja tidak bisa untuk menambahkan siswa ke ke sesi ujian
+1. untuk tipe soal itu kan untuk sekarang kan ada hanya :
+    - pilihan ganda
+    - benar salah
+    - multiple choice
+    - multiple benar / salah
+2. nah aku pengen menambah tipe soal lainnya yaitu essai singkat.
+3. aturan essay singkat itu jawaban harus sama dengan isian kunci jawaban.
+4. tapi kalau hanya huruf yang besar kecil dan juga spasi itu tetep dihitung benar.
+5. tambahkan tipe soal tersebut
 
 Buat tahapan tahapan yang harus dilakukan untuk mengimplementasi fitur ini, jelaskan secara detail
 dengan target  junior programmer atau model yang lebih murah bisa mengerjakan

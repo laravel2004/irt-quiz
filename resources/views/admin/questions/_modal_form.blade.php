@@ -46,6 +46,7 @@
                                 <option value="benar_salah">Benar / Salah</option>
                                 <option value="multiple_choice">Multiple Choice (Pilih Banyak)</option>
                                 <option value="multiple_benar_salah">Multiple Benar / Salah</option>
+                                <option value="essai_singkat">Essai Singkat</option>
                             </select>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">

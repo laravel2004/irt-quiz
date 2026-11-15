@@ -178,6 +178,10 @@
                     </div>
                 @endforeach
             </div>
+        @elseif($question->type === 'essai_singkat')
+            <div style="padding: 16px; border-radius: 10px; background: #ffffff; border: 1px dashed var(--glass-border);">
+                <span style="color: var(--text-secondary); font-style: italic;"><i class="fas fa-pencil-alt" style="margin-right: 6px;"></i> [Kotak isian jawaban singkat untuk peserta]</span>
+            </div>
         @else
             <div class="session-preview-option-grid">
                 @foreach($options as $optIndex => $option)

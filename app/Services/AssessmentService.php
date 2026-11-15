@@ -168,6 +168,24 @@ class AssessmentService
                     } else {
                         $score = $question->score_incorrect ?? 0;
                     }
+                } elseif ($question->type === 'essai_singkat') {
+                    $normalize = function ($str) {
+                        return mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $str)), 'UTF-8');
+                    };
+
+                    $userNormalized = $normalize($answer);
+                    $isCorrect = false;
+
+                    if ($userNormalized !== '') {
+                        foreach ($correctArr as $c) {
+                            if ($userNormalized === $normalize($c)) {
+                                $isCorrect = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
                 }
 
                 $ans->update(['is_correct' => $isCorrect, 'score' => $score]);

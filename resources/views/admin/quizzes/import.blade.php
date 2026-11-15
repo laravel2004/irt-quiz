@@ -91,6 +91,7 @@
                             @if($q->type === 'pilihan_ganda') Pilihan Ganda
                             @elseif($q->type === 'benar_salah') Benar / Salah
                             @elseif($q->type === 'multiple_benar_salah') Multiple B/S
+                            @elseif($q->type === 'essai_singkat') Essai Singkat
                             @else {{ Str::headline($q->type) }} @endif
                         </td>
                         <td style="max-width: 400px;">

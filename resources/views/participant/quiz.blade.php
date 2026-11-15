@@ -140,7 +140,30 @@
     }
     function setProgress() { $('progressBar').style.width = (((IS_PREVIEW ? idx : (ANSWERED_BEFORE + idx)) + 1) / TOTAL * 100) + '%'; }
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function optionsHtml(q) {
+        if (q.type === 'essai_singkat') {
+            const currentVal = typeof q.user_answer === 'string' ? q.user_answer : '';
+            return `
+                <div style="margin-top: 16px;">
+                    <label style="font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; display: block; color: var(--text-primary);">Tuliskan Jawaban Singkat Kamu:</label>
+                    <input type="text" id="quizEssayInput" class="form-input" placeholder="Ketik jawaban di sini..." 
+                        value="${escapeHtml(currentVal)}"
+                        ${IS_PREVIEW ? 'disabled' : ''}
+                        oninput="sel = this.value.trim().length > 0 ? this.value : null; $('btnSubmit').disabled = !ready(QUESTIONS[idx]);"
+                        style="width: 100%; font-size: 1.05rem; padding: 12px 16px; border-radius: 10px; border: 2px solid #cbd5e1; background: #ffffff; color: #0f172a;">
+                </div>
+            `;
+        }
         if (q.type === 'multiple_benar_salah') {
             return q.options.map((opt, i) => `
                 <div class="q-mbs" data-i="${i}">
@@ -161,6 +184,7 @@
     function ready(q) {
         if (q.type === 'multiple_choice') return sel.size > 0;
         if (q.type === 'multiple_benar_salah') return Object.keys(sel).length === q.options.length;
+        if (q.type === 'essai_singkat') return typeof sel === 'string' && sel.trim().length > 0;
         return sel !== null;
     }
     function payload(q) { return q.type === 'multiple_choice' ? [...sel] : sel; }
@@ -169,7 +193,23 @@
         const correctSet = new Set((q.correct_indices || []).map(String));
         const userAns = q.user_answer;
 
-        if (q.type === 'multiple_benar_salah') {
+        if (q.type === 'essai_singkat') {
+            const userText = typeof userAns === 'string' ? userAns : '-';
+            const correctText = (q.correct_answer && q.correct_answer[0]) ? q.correct_answer[0] : (q.options ? q.options[0] : '-');
+            const container = $('qOptions');
+            container.innerHTML += `
+                <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="padding: 12px 16px; border-radius: 8px; border: 1px solid ${q.is_correct ? '#10b981' : '#ef4444'}; background: ${q.is_correct ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};">
+                        <strong style="color: ${q.is_correct ? '#10b981' : '#ef4444'}; font-size: 0.85rem;">Jawaban Kamu:</strong>
+                        <div style="font-size: 1rem; font-weight: 600; color: #0f172a; margin-top: 2px;">${escapeHtml(userText)}</div>
+                    </div>
+                    <div style="padding: 12px 16px; border-radius: 8px; border: 1px solid #10b981; background: rgba(16,185,129,0.08);">
+                        <strong style="color: #10b981; font-size: 0.85rem;"><i class="fas fa-key"></i> Kunci Jawaban:</strong>
+                        <div style="font-size: 1rem; font-weight: 700; color: #0f172a; margin-top: 2px;">${escapeHtml(correctText)}</div>
+                    </div>
+                </div>
+            `;
+        } else if (q.type === 'multiple_benar_salah') {
             document.querySelectorAll('.q-mbs').forEach(row => {
                 const rowI = row.dataset.i;
                 const userVal = userAns && userAns[rowI];

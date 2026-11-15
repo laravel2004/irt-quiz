@@ -94,7 +94,19 @@
         $correctValues = $resolveCorrectValues((array) $correctIndices, (array) $options);
         
         // Handle correction check based on type
-        if ($question->type === 'multiple_choice') {
+        if ($question->type === 'essai_singkat') {
+            $userNorm = mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $participantAnswer)), 'UTF-8');
+            $isCorrect = false;
+            if ($userNorm !== '') {
+                foreach ((array) $question->correct_answer as $c) {
+                    $cNorm = mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $c)), 'UTF-8');
+                    if ($userNorm === $cNorm) {
+                        $isCorrect = true;
+                        break;
+                    }
+                }
+            }
+        } elseif ($question->type === 'multiple_choice') {
             $participantNormalized = array_map($normalizeAnswer, is_array($participantAnswer) ? $participantAnswer : []);
             $correctNormalized = array_map($normalizeAnswer, $correctValues);
             sort($participantNormalized);
@@ -133,7 +145,20 @@
             @endif
         </div>
 
-        @if($question->type === 'multiple_benar_salah')
+        @if($question->type === 'essai_singkat')
+        {{-- Essai Singkat review --}}
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+            <div style="padding: 16px; border-radius: 12px; border: 1px solid {{ $participantAnswer === null ? 'var(--glass-border)' : ($isCorrect ? '#10b981' : '#ef4444') }}; background: {{ $participantAnswer === null ? 'rgba(255, 255, 255, 0.03)' : ($isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)') }};">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">JAWABAN ANDA:</div>
+                <div style="font-size: 1.05rem; font-weight: 600; color: #0f172a;">{{ $participantAnswer ?: '(Tidak dijawab)' }}</div>
+            </div>
+
+            <div style="padding: 16px; border-radius: 12px; border: 1px solid #10b981; background: rgba(16, 185, 129, 0.1);">
+                <div style="font-size: 0.8rem; font-weight: 700; color: #10b981; margin-bottom: 4px;"><i class="fas fa-key"></i> KUNCI JAWABAN:</div>
+                <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">{{ (array_values((array)$question->correct_answer))[0] ?? '-' }}</div>
+            </div>
+        </div>
+        @elseif($question->type === 'multiple_benar_salah')
         {{-- Multiple Benar/Salah review --}}
         <div style="display: grid; gap: 12px; margin-bottom: 24px;">
             @foreach($options as $optIndex => $option)

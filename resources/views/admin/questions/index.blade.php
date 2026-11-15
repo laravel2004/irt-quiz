@@ -65,6 +65,7 @@
                         @if($question->type === 'pilihan_ganda') Pilihan Ganda
                         @elseif($question->type === 'benar_salah') Benar / Salah
                         @elseif($question->type === 'multiple_benar_salah') Multiple B/S
+                        @elseif($question->type === 'essai_singkat') Essai Singkat
                         @else Multiple Choice @endif
                     </td>
                     <td>

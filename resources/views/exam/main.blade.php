@@ -534,7 +534,9 @@
                 const isDoubtful = doubtfuls[q.id];
                 const isAnswered = q.type === 'multiple_benar_salah'
                     ? (answers[q.id] && Object.keys(answers[q.id]).length > 0)
-                    : (answers[q.id] && (!Array.isArray(answers[q.id]) || answers[q.id].length > 0));
+                    : (q.type === 'essai_singkat'
+                        ? (typeof answers[q.id] === 'string' && answers[q.id].trim().length > 0)
+                        : (answers[q.id] && (!Array.isArray(answers[q.id]) || answers[q.id].length > 0)));
 
                 btn.className = `nav-grid-btn ${i === currentIdx ? 'active' : ''} ${isDoubtful ? 'doubtful' : (isAnswered ? 'answered' : '')}`;
                 btn.innerText = i + 1;
@@ -591,6 +593,22 @@
                         </div>
                     </div>`;
                 }).join('');
+            } else if (q.type === 'essai_singkat') {
+                const currentText = typeof selectedVal === 'string' ? selectedVal : '';
+                optionsHtml = `
+                <div class="essay-container" style="margin-top: 20px;">
+                    <label style="font-size: 0.95rem; font-weight: 600; color: #0f172a; margin-bottom: 10px; display: block;">
+                        <i class="fas fa-pencil-alt" style="margin-right: 6px; color: var(--accent);"></i> Tuliskan Jawaban Singkat Anda:
+                    </label>
+                    <input type="text" 
+                        id="essayInput_${q.id}" 
+                        class="form-input" 
+                        placeholder="Ketik jawaban Anda di sini..." 
+                        value="${escapeHtml(currentText)}"
+                        oninput="handleEssayInput('${q.id}', this.value)"
+                        autocomplete="off"
+                        style="width: 100%; max-width: 600px; font-size: 1.05rem; padding: 14px 18px; border: 2px solid #cbd5e1; border-radius: 10px; background: #ffffff; color: #0f172a;">
+                </div>`;
             }
 
             document.getElementById('questionText').innerHTML = q.question_text;
@@ -676,6 +694,27 @@
             answers[qId] = current;
             saveDraft();
             renderQuestion();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function handleEssayInput(qId, val) {
+            if (isSubmitting || isTimeExpired) return;
+            if (val && val.trim().length > 0) {
+                answers[qId] = val;
+            } else {
+                delete answers[qId];
+            }
+            saveDraft();
+            renderNav();
         }
 
         function selectMBS(qId, statementIdx, value) {

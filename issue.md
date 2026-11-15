@@ -1,634 +1,676 @@
-# Rencana Implementasi: Role Baru `admin` (Viewer / Pengawas Sesi Read-Only)
+# Rencana Implementasi: Tipe Soal Baru `essai_singkat` (Essay Singkat)
 
-Dokumen ini disusun sebagai panduan spesifikasi dan teknis implementasi langkah-demi-langkah bagi **Junior Programmer** atau **Model AI (Cost-effective / Budget AI)** untuk menambahkan role baru bernama `admin` pada sistem JagoBelajar Tryout IRT.
-
----
-
-## 1. Ringkasan & Definisi Kebutuhan
-
-### 1.1. Latar Belakang
-Saat ini sistem memiliki 2 level admin:
-1. `superadmin`: Memiliki akses penuh ke seluruh sistem (Bank Soal, Modul Quiz, Kategori, Quiz Settings, Manajemen User/Peserta, Cetak Raport, dan Sesi Ujian).
-2. `admin_sesi`: Hanya memiliki akses ke modul Sesi Ujian yang ditugaskan kepadanya. Pada sesi tersebut, `admin_sesi` dapat melihat nilai, melihat soal, serta **menambahkan / mendaftarkan peserta** ke sesi ujian.
-
-### 1.2. Kebutuhan Role Baru: `admin`
-Dibutuhkan satu role baru dengan kode role: **`admin`**.
-Karakteristik role `admin`:
-- **Hampir sama dengan `admin_sesi`**:
-  - Tampilan dashboard dan layout minimalis (sidebar admin master soal/peserta disembunyikan, langsung diarahkan ke daftar Sesi Ujian).
-  - Hanya dapat melihat sesi ujian yang **ditugaskan / di-assign** kepadanya (melalui relasi `exam_session_participants`).
-  - Dapat membuka halaman detail sesi (`/admin/sessions/{id}`), melihat daftar peserta terdaftar, melihat nilai/hasil ujian peserta, preview soal, serta export hasil ujian.
-- **Perbedaan Utama (Read-Only pada Peserta):**
-  - Role `admin` **HANYA BISA LIHAT-LIHAT SAJA** pada sesi ujian.
-  - Role `admin` **TIDAK BISA** menambahkan siswa/peserta ke dalam sesi ujian (baik memilih user yang sudah ada maupun membuat user baru).
-  - Role `admin` **TIDAK BISA** menghapus siswa dari sesi ujian.
-  - Role `admin` **TIDAK BISA** mengubah privilege (General / Premium) peserta di sesi ujian.
-- **Batasan Sistem Lainnya**:
-  - Tidak memiliki akses ke menu Superadmin (`/admin/categories`, `/admin/questions`, `/admin/quizzes`, `/admin/participants`, dll.).
-  - Tidak boleh muncul atau masuk ke dalam perhitungan Leaderboard Mingguan Peserta (`QuizService`).
+Dokumen ini disusun sebagai panduan spesifikasi teknis dan implementasi langkah-demi-langkah bagi **Junior Programmer** atau **Model AI (Cost-effective / Budget AI)** untuk menambahkan tipe soal baru **`essai_singkat`** pada sistem JagoBelajar Tryout IRT & Modul Quiz.
 
 ---
 
-## 2. Matriks Perbandingan Hak Akses Role Admin
+## 1. Ringkasan & Spesifikasi Fitur
 
-| Fitur / Tindakan | `superadmin` | `admin_sesi` | `admin` (Role Baru) |
-| :--- | :---: | :---: | :---: |
-| Akses Menu Master (Soal, Kategori, Quiz, Raport, User) | ✅ Ya | ❌ Tidak (403) | ❌ Tidak (403) |
-| Melihat Semua Sesi Ujian | ✅ Semua | ❌ Hanya yang ditugaskan | ❌ Hanya yang ditugaskan |
-| Buat / Edit / Hapus Sesi Ujian | ✅ Ya | ❌ Tidak | ❌ Tidak |
-| Melihat Detail Sesi, Soal, & Hasil Nilai Ujian | ✅ Ya | ✅ Ya | ✅ Ya |
-| Export Hasil Ujian (CSV) | ✅ Ya | ✅ Ya | ✅ Ya |
-| **Menambah Peserta ke Sesi Ujian (User Lama)** | ✅ Ya | ✅ Ya | ❌ **DILARANG (403 & Tombol Hidden)** |
-| **Membuat Peserta Baru ke Sesi Ujian** | ✅ Ya | ✅ Ya | ❌ **DILARANG (403 & Tombol Hidden)** |
-| **Hapus Peserta dari Sesi Ujian** | ✅ Ya | ✅ Ya | ❌ **DILARANG (403 & Tombol Hidden)** |
-| **Ubah Privilege Peserta (General / Premium)** | ✅ Ya | ✅ Ya | ❌ **DILARANG (403 & Input Disabled)** |
-| Muncul di Leaderboard Peserta | ❌ Tidak | ❌ Tidak | ❌ Tidak |
+### 1.1. Konteks Saat Ini
+Saat ini sistem memiliki 4 tipe soal:
+1. `pilihan_ganda`: Pilihan ganda standar (single choice A, B, C, D, ...).
+2. `benar_salah`: Pilihan benar atau salah (single choice).
+3. `multiple_choice`: Pilihan ganda kompleks (memilih lebih dari satu opsi yang benar).
+4. `multiple_benar_salah`: Pernyataan majemuk di mana setiap baris ditentukan benar atau salah.
+
+### 1.2. Kebutuhan Fitur Baru: `essai_singkat`
+Dibutuhkan tipe soal ke-5 bernama **`essai_singkat`** (Essay Singkat / Isian Singkat).
+
+### 1.3. Aturan Penilaian (Grading Rules)
+1. **Pencocokan Kunci Jawaban:**
+   Jawaban peserta dinyatakan **BENAR** jika teks yang diketik sama dengan isian kunci jawaban yang ditentukan oleh admin/guru.
+2. **Case-Insensitive (Abaikan Huruf Besar/Kecil):**
+   Perbedaan huruf kapital dan huruf kecil **TIDAK** menggugurkan kebenaran jawaban.
+   *Contoh:* Kunci `"Jakarta"`, peserta menjawab `"jakarta"` atau `"JAKARTA"` $\rightarrow$ **BENAR**.
+3. **Space-Insensitive (Normalisasi Spasi):**
+   - Spasi di awal (*leading space*) dan di akhir (*trailing space*) dibersihkan (*trimmed*).
+   - Spasi ganda atau berlebih di tengah kalimat dinormalisasi menjadi 1 spasi tunggal.
+   *Contoh:* Kunci `"Bhinneka Tunggal Ika"`, peserta menjawab `"  bhinneka   tunggal   ika  "` $\rightarrow$ **BENAR**.
+4. **Jawaban Kosong:**
+   Jika peserta hanya mengirim spasi kosong `""` atau `"   "`, otomatis dinilai **SALAH** (skor tidak diberikan).
+5. **Skor:**
+   - Jika benar: Mendapatkan `score_correct` (default 1).
+   - Jika salah / kosong: Mendapatkan `score_incorrect` (default 0).
 
 ---
 
-## 3. Daftar File yang Terlibat
+## 2. Format Data & Karakteristik Model
+
+| Field Model | Nilai untuk `essai_singkat` | Keterangan |
+| :--- | :--- | :--- |
+| `type` | `'essai_singkat'` | Nilai enum/string tipe soal baru |
+| `options` | `null` atau `[]` | Tipe essay tidak membutuhkan opsi pilihan A/B/C/D |
+| `correct_answer` | `["Jakarta"]` | Disimpan sebagai array JSON berisi string kunci jawaban |
+| `answer` (User Answer) | `"Jakarta"` | Jawaban siswa disimpan sebagai teks string langsung |
+
+---
+
+## 3. Algoritma Normalisasi Jawaban (Helper Normalizer)
+
+Gunakan formula normalisasi standar berikut di seluruh controller, service, dan checker:
+
+```php
+/**
+ * Normalisasi teks jawaban essay:
+ * 1. Trim spasi di awal dan akhir string.
+ * 2. Ubah multiple spasi berurutan / tabs / newlines menjadi 1 spasi tunggal.
+ * 3. Ubah seluruh huruf menjadi lowercase (menggunakan mb_strtolower UTF-8).
+ */
+function normalizeEssayAnswer(mixed $text): string
+{
+    if ($text === null) {
+        return '';
+    }
+    $str = is_scalar($text) ? (string) $text : '';
+    $normalizedWhitespace = preg_replace('/\s+/', ' ', trim($str));
+    return mb_strtolower($normalizedWhitespace, 'UTF-8');
+}
+```
+
+### Tabel Uji Kasus Normalisasi:
+| Kunci Jawaban | Jawaban Peserta | Hasil | Alasan |
+| :--- | :--- | :---: | :--- |
+| `Jakarta` | `jakarta` | ✅ BENAR | Case-insensitive |
+| `Jakarta` | `JAKARTA` | ✅ BENAR | Case-insensitive |
+| `Jakarta` | `  Jakarta   ` | ✅ BENAR | Leading & trailing space di-trim |
+| `Bhinneka Tunggal Ika` | `bhinneka   tunggal   ika` | ✅ BENAR | Multiple whitespace dinormalisasi |
+| `Fotosintesis` | `Fotosintesa` | ❌ SALAH | Beda kata/ejaan |
+| `Jakarta` | `""` (spasi saja) | ❌ SALAH | Kosong tidak boleh dihitung benar |
+
+---
+
+## 4. Daftar File yang Terlibat
 
 | No | File | Jenis Perubahan | Deskripsi |
 |---|---|---|---|
-| 1 | `app/Models/User.php` | Edit | Menambahkan `'admin'` ke method helper `isAdmin()` |
-| 2 | `app/Http/Controllers/AuthController.php` | Edit | Redirect user setelah login jika role adalah `'admin'` |
-| 3 | `routes/web.php` | Edit | Redirect pada route root `/` jika user yang login ber-role `'admin'` |
-| 4 | `app/Http/Controllers/Admin/ExamSessionController.php` | Edit | Filter sesi yang ditugaskan untuk `'admin'` di `index()` & tambahkan `'admin'` ke daftar user yang dapat di-assign di `show()` |
-| 5 | `app/Http/Controllers/Admin/ExamSessionParticipantController.php` | Edit | Proteksi backend 403 Forbidden untuk role `'admin'` pada endpoint penambahan/penghapusan peserta |
-| 6 | `resources/views/layouts/admin.blade.php` | Edit | Menyesuaikan tampilan layout (hide sidebar) untuk role `'admin'` sama seperti `admin_sesi` |
-| 7 | `resources/views/admin/sessions/show.blade.php` | Edit | Sembunyikan tombol tambah peserta, modal tambah peserta, tombol hapus, dan disable dropdown privilege jika role adalah `'admin'` |
-| 8 | `app/Http/Controllers/Admin/ParticipantController.php` | Edit | Menambahkan role `'admin'` pada query index dan validasi form manajemen user superadmin |
-| 9 | `resources/views/admin/participants/index.blade.php` | Edit | Menambahkan opsi role `Admin` pada dropdown modal & styling badge role |
-| 10 | `app/Services/QuizService.php` | Edit | Memastikan role `'admin'` di-exclude dari query leaderboard mingguan |
-| 11 | `tests/Feature/AdminRolePermissionTest.php` | Baru | Unit/Feature test untuk memastikan seluruh hak akses role `admin` bekerja sesuai spesifikasi |
+| 1 | `database/migrations/xxxx_add_essai_singkat_to_question_banks_type.php` | File Baru | Migrasi untuk mengupdate kolom `type` pada tabel `question_banks` di MySQL |
+| 2 | `app/Http/Controllers/Admin/QuestionBankController.php` | Edit | Tambahkan `essai_singkat` pada validasi `store()` dan `update()` |
+| 3 | `app/Services/AssessmentService.php` | Edit | Logika auto-grading essay singkat untuk penilaian sesi ujian IRT & Raw |
+| 4 | `app/Http/Controllers/ExamController.php` | Edit | Logika penilaian saat siswa submit kategori ujian di sesi ujian |
+| 5 | `app/Services/QuizAnswerChecker.php` | Edit | Logika pengecekan jawaban essay singkat pada Modul Quiz harian |
+| 6 | `resources/views/admin/questions/_modal_form.blade.php` | Edit | Tambahkan `<option value="essai_singkat">` pada dropdown Tipe Soal |
+| 7 | `resources/views/admin/questions/_modal_scripts.blade.php` | Edit | Logika JavaScript UI input kunci jawaban essay (hide opsi, show single text input), edit modal, dan preview modal |
+| 8 | `resources/views/admin/questions/index.blade.php` | Edit | Label badge tipe soal `Essai Singkat` pada tabel daftar bank soal |
+| 9 | `resources/views/admin/sub_categories/show.blade.php` | Edit | Label badge tipe soal `Essai Singkat` pada tabel sub kategori |
+| 10 | `resources/views/admin/quizzes/_modal_form.blade.php` | Edit | Tambahkan opsi `Essai Singkat` pada modal quiz |
+| 11 | `resources/views/admin/quizzes/_modal_scripts.blade.php` | Edit | Logika JavaScript input kunci jawaban essay pada modul quiz |
+| 12 | `resources/views/admin/quizzes/index.blade.php` | Edit | Label badge tipe soal pada modul quiz |
+| 13 | `resources/views/admin/quizzes/import.blade.php` | Edit | Label tipe soal pada modal import bank soal ke quiz |
+| 14 | `resources/views/exam/main.blade.php` | Edit | Render input text box untuk soal essay singkat saat ujian berlangsung |
+| 15 | `resources/views/participant/quiz.blade.php` | Edit | Render input text box untuk soal essay singkat pada quiz harian |
+| 16 | `resources/views/participant/review_category.blade.php` | Edit | Render kartu perbandingan jawaban peserta vs kunci jawaban pada review hasil ujian |
+| 17 | `resources/views/admin/sessions/preview.blade.php` | Edit | Tampilan kunci jawaban essay pada halaman preview soal sesi ujian |
+| 18 | `resources/views/admin/sessions/preview-only.blade.php` | Edit | Tampilan kunci jawaban essay pada halaman preview-only sesi ujian |
+| 19 | `tests/Feature/ShortEssayQuestionTest.php` | File Baru | Automated Feature & Unit Test untuk memastikan seluruh alur berjalan sempurna |
 
 ---
 
-## 4. Rincian Langkah Implementasi (Step-by-Step)
+## 5. Rincian Langkah Implementasi (Step-by-Step)
 
-### Langkah 1: Update Model `app/Models/User.php`
-Buka file `app/Models/User.php`. Cari method `isAdmin()`:
-
-**Sebelum:**
+### Langkah 1: Buat Database Migration
+Buat file migration baru untuk memperbarui ENUM kolom `type` pada tabel `question_banks`:
+Jalankan artisan command:
+```bash
+php artisan make:migration add_essai_singkat_to_question_banks_type
+```
+Isi migration:
 ```php
-public function isAdmin()
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+
+return new class extends Migration
 {
-    return in_array($this->role, ['superadmin', 'admin_sesi']);
-}
-```
-
-**Sesudah:**
-```php
-public function isAdmin()
-{
-    return in_array($this->role, ['superadmin', 'admin_sesi', 'admin']);
-}
-```
-> **Penjelasan:** Method ini digunakan oleh `AdminMiddleware` untuk mengizinkan user masuk ke prefix `/admin`. Dengan memasukkan `'admin'`, user dengan role baru ini diakui sebagai admin level sistem.
-
----
-
-### Langkah 2: Update Autentikasi & Routing Redirect
-User dengan role `admin` harus langsung diarahkan ke halaman daftar sesi ujian (`admin.sessions.index`) ketika berhasil login.
-
-#### 2.1. File `app/Http/Controllers/AuthController.php`
-Cari method `login()` sekitar baris 56-66:
-
-**Sebelum:**
-```php
-if ($user->role === 'superadmin') {
-    return redirect()->intended(route('admin.dashboard'));
-}
-
-if ($user->role === 'admin_sesi') {
-    return redirect()->intended(route('admin.sessions.index'));
-}
-
-if ($user->role === 'basic') {
-    return redirect()->intended(route('participant.dashboard'));
-}
-```
-
-**Sesudah:**
-```php
-if ($user->role === 'superadmin') {
-    return redirect()->intended(route('admin.dashboard'));
-}
-
-if (in_array($user->role, ['admin_sesi', 'admin'])) {
-    return redirect()->intended(route('admin.sessions.index'));
-}
-
-if ($user->role === 'basic') {
-    return redirect()->intended(route('participant.dashboard'));
-}
-```
-
-#### 2.2. File `routes/web.php`
-Cari route root `/` pada baris 5-13:
-
-**Sebelum:**
-```php
-Route::get('/', function() {
-    if (auth()->check()) {
-        $role = auth()->user()->role;
-        if ($role === 'superadmin') return redirect()->route('admin.dashboard');
-        if ($role === 'admin_sesi') return redirect()->route('admin.sessions.index');
-        return redirect()->route('participant.dashboard');
-    }
-    return view('participant.auth.login');
-})->name('login');
-```
-
-**Sesudah:**
-```php
-Route::get('/', function() {
-    if (auth()->check()) {
-        $role = auth()->user()->role;
-        if ($role === 'superadmin') return redirect()->route('admin.dashboard');
-        if (in_array($role, ['admin_sesi', 'admin'])) return redirect()->route('admin.sessions.index');
-        return redirect()->route('participant.dashboard');
-    }
-    return view('participant.auth.login');
-})->name('login');
-```
-
----
-
-### Langkah 3: Update `app/Http/Controllers/Admin/ExamSessionController.php`
-Ada dua penyesuaian di controller ini:
-
-#### 3.1. Filter Sesi di Method `index()` (Baris ~39)
-User dengan role `admin` hanya boleh melihat sesi yang ditugaskan kepadanya, sama seperti `admin_sesi`.
-
-**Sebelum:**
-```php
-if (auth()->user() && auth()->user()->role === 'admin_sesi') {
-    $query->whereHas('participants', function ($q) {
-        $q->where('user_id', auth()->id());
-    });
-}
-```
-
-**Sesudah:**
-```php
-if (auth()->user() && in_array(auth()->user()->role, ['admin_sesi', 'admin'])) {
-    $query->whereHas('participants', function ($q) {
-        $q->where('user_id', auth()->id());
-    });
-}
-```
-
-#### 3.2. Daftar User yang Dapat Ditugaskan di Method `show()` (Baris ~97)
-Agar Superadmin dapat menugaskan user ber-role `admin` ke suatu sesi ujian:
-
-**Sebelum:**
-```php
-$availableParticipants = User::whereIn('role', ['basic', 'premium', 'user', 'admin_sesi'])->orderBy('name')->get();
-```
-
-**Sesudah:**
-```php
-$availableParticipants = User::whereIn('role', ['basic', 'premium', 'user', 'admin_sesi', 'admin'])->orderBy('name')->get();
-```
-
----
-
-### Langkah 4: Proteksi Backend di `app/Http/Controllers/Admin/ExamSessionParticipantController.php`
-Ini adalah proteksi paling krusial. Meskipun tombol di frontend disembunyikan, endpoint backend **wajib memblokir** user role `admin` dengan status kode `403 Forbidden`.
-
-Buka file `app/Http/Controllers/Admin/ExamSessionParticipantController.php`:
-
-Tambahkan pengecekan hak akses di awal 4 method berikut:
-1. `store(Request $request)` - Menambah peserta yang sudah ada
-2. `storeNewUser(Request $request)` - Membuat user baru dan menambahkannya ke sesi
-3. `destroy($id)` - Menghapus peserta dari sesi
-4. `updatePrivilege(Request $request, $id)` - Mengubah status privilege peserta
-
-**Contoh Implementasi pada Masing-Masing Method:**
-
-```php
-public function store(Request $request)
-{
-    if (auth()->user()->role === 'admin') {
-        return $this->errorResponse('Akses Ditolak. Role Admin hanya memiliki izin melihat data dan tidak dapat menambahkan peserta.', 403);
-    }
-    
-    // ... kode yang sudah ada ...
-}
-
-public function storeNewUser(Request $request)
-{
-    if (auth()->user()->role === 'admin') {
-        return $this->errorResponse('Akses Ditolak. Role Admin tidak diizinkan membuat akun atau menambahkan peserta baru.', 403);
-    }
-
-    // ... kode yang sudah ada ...
-}
-
-public function destroy($id)
-{
-    if (auth()->user()->role === 'admin') {
-        return $this->errorResponse('Akses Ditolak. Role Admin tidak memiliki izin menghapus peserta.', 403);
-    }
-
-    // ... kode yang sudah ada ...
-}
-
-public function updatePrivilege(Request $request, $id)
-{
-    if (auth()->user()->role === 'admin') {
-        return $this->errorResponse('Akses Ditolak. Role Admin tidak memiliki izin mengubah privilege peserta.', 403);
-    }
-
-    // ... kode yang sudah ada ...
-}
-```
-
-> **Catatan:** Jika response web biasa (non-JSON), controller dapat memanggil `abort(403, 'Akses Ditolak...')`. Namun karena controller ini menggunakan trait `ResponseTrait` dan dipanggil via `fetch()` (AJAX), `$this->errorResponse(..., 403)` atau `abort(403)` akan mengembalikan JSON error 403 yang tepat.
-
----
-
-### Langkah 5: Update Layout Admin `resources/views/layouts/admin.blade.php`
-Buka file `resources/views/layouts/admin.blade.php`.
-Cari blok style khusus `admin_sesi` pada baris 27-37:
-
-**Sebelum:**
-```blade
-@if(auth()->user() && auth()->user()->role === 'admin_sesi')
-    <style>
-        .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
-        .main-content { margin-left: 0 !important; max-width: 100%; margin: 0 auto; width: 100%; padding: 40px 32px; }
-        @media (max-width: 768px) {
-            .main-content { padding: 20px 16px; }
-            header { flex-direction: column; align-items: flex-start !important; gap: 20px; }
-            .search-container { max-width: 100% !important; }
+    public function up(): void
+    {
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE question_banks MODIFY COLUMN type ENUM('pilihan_ganda', 'benar_salah', 'multiple_choice', 'multiple_benar_salah', 'essai_singkat') NOT NULL");
         }
-    </style>
-@endif
+    }
+
+    public function down(): void
+    {
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE question_banks MODIFY COLUMN type ENUM('pilihan_ganda', 'benar_salah', 'multiple_choice', 'multiple_benar_salah') NOT NULL");
+        }
+    }
+};
+```
+> **Catatan:** Tabel `quizzes` sudah menggunakan tipe data `$table->string('type')` sehingga tidak memerlukan alter table.
+
+---
+
+### Langkah 2: Update Validasi di `QuestionBankController.php`
+Buka file `app/Http/Controllers/Admin/QuestionBankController.php`:
+
+Perbarui baris 59 pada method `store()` dan baris 102 pada method `update()`:
+
+**Sebelum:**
+```php
+'type' => 'required|in:pilihan_ganda,benar_salah,multiple_choice,multiple_benar_salah',
 ```
 
 **Sesudah:**
-```blade
-@if(auth()->user() && in_array(auth()->user()->role, ['admin_sesi', 'admin']))
-    <style>
-        .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
-        .main-content { margin-left: 0 !important; max-width: 100%; margin: 0 auto; width: 100%; padding: 40px 32px; }
-        @media (max-width: 768px) {
-            .main-content { padding: 20px 16px; }
-            header { flex-direction: column; align-items: flex-start !important; gap: 20px; }
-            .search-container { max-width: 100% !important; }
-        }
-    </style>
-@endif
+```php
+'type' => 'required|in:pilihan_ganda,benar_salah,multiple_choice,multiple_benar_salah,essai_singkat',
 ```
 
 ---
 
-### Langkah 6: Update Halaman Detail Sesi `resources/views/admin/sessions/show.blade.php`
-Pada halaman ini, kita perlu memastikan elemen interaktif untuk menambah/mengubah/menghapus peserta dinonaktifkan jika yang login adalah role `admin`.
+### Langkah 3: Update Auto-Grading di `AssessmentService.php` & `ExamController.php`
 
-#### 6.1. Sembunyikan Tombol "Buat Peserta Baru" dan "Tambah Peserta"
-Cari baris ~178-184:
+#### 3.1. File `app/Services/AssessmentService.php`
+Di dalam method `calculateScores(ExamSession $session)`:
+Cari pengecekan `if ($question->type === 'pilihan_ganda' || $question->type === 'benar_salah')` (sekitar baris 106-172):
 
-**Sebelum:**
-```blade
-<button class="btn-primary" onclick="openNewUserModal()" style="height: 38px; font-size: 0.85rem; background: transparent; border: 1px solid var(--accent); color: var(--accent);">
-    <i class="fas fa-plus"></i> Buat Peserta Baru
-</button>
-<button class="btn-primary" onclick="openParticipantModal()" style="height: 38px; font-size: 0.85rem;">
-    <i class="fas fa-user-plus"></i> Tambah Peserta
-</button>
-```
-
-**Sesudah:**
-```blade
-@if(auth()->user()->role !== 'admin')
-<button class="btn-primary" onclick="openNewUserModal()" style="height: 38px; font-size: 0.85rem; background: transparent; border: 1px solid var(--accent); color: var(--accent);">
-    <i class="fas fa-plus"></i> Buat Peserta Baru
-</button>
-<button class="btn-primary" onclick="openParticipantModal()" style="height: 38px; font-size: 0.85rem;">
-    <i class="fas fa-user-plus"></i> Tambah Peserta
-</button>
-@endif
-```
-
-#### 6.2. Atur Tampilan Kolom Privilege & Aksi pada Tabel Peserta (SSR Blade)
-Cari baris ~197-231:
-- Jika user ber-role `'admin'`, dropdown privilege diganti menjadi teks / badge non-editable (disable atau plain text).
-- Tombol delete peserta disembunyikan.
-
-**Sesudah:**
-```blade
-<!-- Di thead baris ~197: -->
-@if(auth()->user()->role !== 'admin')
-<th style="width: 80px; text-align: center;">AKSI</th>
-@endif
-
-<!-- Di tbody baris ~220-231: -->
-<td>
-    @if(auth()->user()->role === 'admin')
-        <span class="badge" style="font-size: 0.75rem; background: {{ $participant->privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $participant->privilege === 'premium' ? '#eab308' : '#3b82f6' }}; font-weight: 600;">
-            {{ ucfirst($participant->privilege ?? 'general') }}
-        </span>
-    @else
-        <select onchange="updateParticipantPrivilege({{ $participant->id }}, this.value)" class="form-input" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; margin-bottom: 0; background-color: {{ $participant->privilege === 'premium' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}; color: {{ $participant->privilege === 'premium' ? '#eab308' : '#3b82f6' }}; font-weight: 600;">
-            <option value="general" {{ $participant->privilege === 'general' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">General</option>
-            <option value="premium" {{ $participant->privilege === 'premium' ? 'selected' : '' }} style="background: #ffffff; color: #0f172a;">Premium</option>
-        </select>
-    @endif
-</td>
-<td style="color: var(--text-secondary); font-size: 0.85rem;">{{ data_get($participant, 'address') ?? '-' }}</td>
-@if(auth()->user()->role !== 'admin')
-<td style="text-align: center;">
-    <button class="btn-icon delete" onclick="deleteParticipant({{ $participant->id }})" title="Hapus">
-        <i class="fas fa-trash"></i>
-    </button>
-</td>
-@endif
-```
-
-#### 6.3. Badge Role untuk Peserta di Tabel (SSR & JS)
-Tambahkan penanganan warna badge untuk role `'admin'`:
+Tambahkan blok kondisi untuk `essai_singkat`:
 ```php
-if($roleName === 'superadmin') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
-elseif($roleName === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
-elseif($roleName === 'admin') { $bgRole = 'rgba(6, 182, 212, 0.1)'; $colorRole = '#06b6d4'; }
+} elseif ($question->type === 'essai_singkat') {
+    $normalize = function ($str) {
+        return mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $str)), 'UTF-8');
+    };
+
+    $userNormalized = $normalize($answer);
+    $isCorrect = false;
+
+    if ($userNormalized !== '') {
+        foreach ($correctArr as $c) {
+            if ($userNormalized === $normalize($c)) {
+                $isCorrect = true;
+                break;
+            }
+        }
+    }
+
+    $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
+}
 ```
 
-#### 6.4. Sinkronisasi di Javascript Table Rendering (`renderTable`)
-Di bagian script `resources/views/admin/sessions/show.blade.php`:
-Definisikan variable role di script Blade:
+#### 3.2. File `app/Http/Controllers/ExamController.php`
+Di dalam method `submitCategory(Request $request, $code, $id)`:
+Cari pengecekan tipe soal (sekitar baris 380-432):
+
+Tambahkan blok kondisi untuk `essai_singkat`:
+```php
+} elseif ($question->type === 'essai_singkat') {
+    $normalize = function ($str) {
+        return mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $str)), 'UTF-8');
+    };
+
+    $userNormalized = $normalize($answer);
+    $isCorrect = false;
+
+    if ($userNormalized !== '') {
+        foreach ($correctArr as $c) {
+            if ($userNormalized === $normalize($c)) {
+                $isCorrect = true;
+                break;
+            }
+        }
+    }
+
+    $score = $isCorrect ? ($question->score_correct ?? 1) : ($question->score_incorrect ?? 0);
+}
+```
+
+---
+
+### Langkah 4: Update Auto-Grading Quiz di `QuizAnswerChecker.php`
+Buka file `app/Services/QuizAnswerChecker.php`:
+Tambahkan case `'essai_singkat'` pada method `isCorrect(Quiz $quiz, mixed $answer)`:
+
+```php
+case 'essai_singkat':
+    if (! is_scalar($answer)) {
+        return false;
+    }
+    $userNormalized = mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $answer)), 'UTF-8');
+    if ($userNormalized === '') {
+        return false;
+    }
+    foreach ((array) $quiz->correct_answer as $c) {
+        $correctNorm = mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $c)), 'UTF-8');
+        if ($userNormalized === $correctNorm) {
+            return true;
+        }
+    }
+    return false;
+```
+
+---
+
+### Langkah 5: Update Tampilan Admin Bank Soal
+
+#### 5.1. File `resources/views/admin/questions/_modal_form.blade.php`
+Tambahkan pilihan option di `<select name="type" id="typeSelect">` (baris ~44-50):
+```blade
+<select name="type" id="typeSelect" class="form-input" onchange="handleTypeChange()" required>
+    <option value="pilihan_ganda">Pilihan Ganda (Single)</option>
+    <option value="benar_salah">Benar / Salah</option>
+    <option value="multiple_choice">Multiple Choice (Pilih Banyak)</option>
+    <option value="multiple_benar_salah">Multiple Benar / Salah</option>
+    <option value="essai_singkat">Essai Singkat</option>
+</select>
+```
+
+#### 5.2. File `resources/views/admin/questions/_modal_scripts.blade.php`
+1. **Di method `handleTypeChange()`:**
+   Jika tipe adalah `'essai_singkat'`:
+   - Sembunyikan tombol `#addOptionBtn` (`display: none`).
+   - Ubah teks `#optionsLabelText` menjadi `"Kunci Jawaban Singkat"`.
+   - Render input teks sederhana untuk memasukkan kunci jawaban:
+   ```javascript
+   if (type === 'essai_singkat') {
+       document.getElementById('addOptionBtn').style.display = 'none';
+       document.getElementById('optionsLabelText').textContent = 'Kunci Jawaban Singkat';
+       optionsList.innerHTML = `
+           <div class="form-group" style="margin-bottom: 0;">
+               <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; display: block;">
+                   Tuliskan kunci jawaban (jawaban peserta akan dicocokkan otomatis tanpa membedakan huruf besar/kecil & spasi):
+               </label>
+               <input type="text" name="correct_answer[]" id="essayCorrectAnswerInput" class="form-input" placeholder="Contoh: Jakarta" required style="width: 100%; font-size: 1rem; padding: 10px 14px;">
+           </div>
+       `;
+       return;
+   }
+   ```
+2. **Di form submit handler (`form.onsubmit`):**
+   Tambahkan pengecekan jika `typeSelect.value === 'essai_singkat'`:
+   - Hapus field `options[]`.
+   - Pastikan nilai dari `#essayCorrectAnswerInput` masuk ke `correct_answer[]`.
+3. **Di method `editQuestion(id)`:**
+   Tambahkan penanganan saat memuat data soal ber-tipe `essai_singkat`:
+   ```javascript
+   if (q.type === 'essai_singkat') {
+       document.getElementById('addOptionBtn').style.display = 'none';
+       document.getElementById('optionsLabelText').textContent = 'Kunci Jawaban Singkat';
+       const keyVal = (q.correct_answer && q.correct_answer[0]) ? q.correct_answer[0] : '';
+       optionsList.innerHTML = `
+           <div class="form-group" style="margin-bottom: 0;">
+               <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; display: block;">
+                   Tuliskan kunci jawaban:
+               </label>
+               <input type="text" name="correct_answer[]" id="essayCorrectAnswerInput" class="form-input" value="${escapeHtml(keyVal)}" required style="width: 100%; font-size: 1rem; padding: 10px 14px;">
+           </div>
+       `;
+   }
+   ```
+4. **Di method `previewQuestion(id)`:**
+   - Update label tipe: `else if (q.type === 'essai_singkat') typeLabel = 'Essai Singkat';`
+   - Render tampilan kunci jawaban essay pada `#previewOptions`:
+   ```javascript
+   if (q.type === 'essai_singkat') {
+       const keyVal = (q.correct_answer && q.correct_answer[0]) ? q.correct_answer[0] : '-';
+       optionsContainer.innerHTML = `
+           <div class="preview-option-item correct" style="border: 1px solid #10b981; padding: 16px; border-radius: 10px; background: rgba(16,185,129,0.06); display: flex; align-items: center; gap: 12px;">
+               <div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
+                   <i class="fas fa-key"></i>
+               </div>
+               <div>
+                   <div style="font-size: 0.8rem; color: #10b981; font-weight: 600;">KUNCI JAWABAN:</div>
+                   <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">${escapeHtml(keyVal)}</div>
+               </div>
+           </div>
+       `;
+   }
+   ```
+
+#### 5.3. File `resources/views/admin/questions/index.blade.php` & `sub_categories/show.blade.php`
+Tambahkan cabang `elseif`:
+```blade
+@elseif($question->type === 'essai_singkat') Essai Singkat
+```
+
+---
+
+### Langkah 6: Update Modul Quiz Admin
+Lakukan perubahan analog pada modul Quiz:
+- `resources/views/admin/quizzes/_modal_form.blade.php`: Tambahkan `<option value="essai_singkat">Essai Singkat</option>`.
+- `resources/views/admin/quizzes/_modal_scripts.blade.php`: Tangani `essai_singkat` pada `handleTypeChange`, submit form, edit modal, dan preview modal.
+- `resources/views/admin/quizzes/index.blade.php`: Tambahkan label `Essai Singkat`.
+- `resources/views/admin/quizzes/import.blade.php`: Tambahkan label `Essai Singkat` pada modal import.
+
+---
+
+### Langkah 7: Update Tampilan Ujian Siswa (`resources/views/exam/main.blade.php`)
+
+Pada file `resources/views/exam/main.blade.php`:
+
+#### 7.1. Cek Status Soal Terjawab di Grid Navigasi (`renderNav()`)
+Cari baris ~535:
 ```javascript
-const isReadOnlyAdmin = @json(auth()->user()->role === 'admin');
+const isAnswered = q.type === 'multiple_benar_salah'
+    ? (answers[q.id] && Object.keys(answers[q.id]).length > 0)
+    : (q.type === 'essai_singkat'
+        ? (typeof answers[q.id] === 'string' && answers[q.id].trim().length > 0)
+        : (answers[q.id] && (!Array.isArray(answers[q.id]) || answers[q.id].length > 0)));
 ```
-Pada fungsi `renderTable(data)`:
-- Jika `isReadOnlyAdmin` bernilai `true`, render kolom privilege sebagai static badge, dan **jangan** render kolom tombol delete.
-- Pastikan colspan untuk state kosong disesuaikan (`isReadOnlyAdmin ? 6 : 7`).
 
-#### 6.5. Proteksi Render Modal
-Bungkus elemen modal HTML `#participantModal` dan `#newUserModal` dengan:
+#### 7.2. Render Input Text Box untuk Soal Essay di `renderQuestion()`
+Cari cabang pembuatan `optionsHtml` (baris ~580-595):
+Tambahkan:
+```javascript
+} else if (q.type === 'essai_singkat') {
+    const currentText = typeof selectedVal === 'string' ? selectedVal : '';
+    optionsHtml = `
+    <div class="essay-container" style="margin-top: 20px;">
+        <label style="font-size: 0.95rem; font-weight: 600; color: #0f172a; margin-bottom: 10px; display: block;">
+            <i class="fas fa-pencil-alt" style="margin-right: 6px; color: var(--accent);"></i> Tuliskan Jawaban Singkat Anda:
+        </label>
+        <input type="text" 
+            id="essayInput_${q.id}" 
+            class="form-input" 
+            placeholder="Ketik jawaban Anda di sini..." 
+            value="${escapeHtml(currentText)}"
+            oninput="handleEssayInput('${q.id}', this.value)"
+            autocomplete="off"
+            style="width: 100%; max-width: 600px; font-size: 1.05rem; padding: 14px 18px; border: 2px solid #cbd5e1; border-radius: 10px; background: #ffffff; color: #0f172a;">
+    </div>`;
+}
+```
+
+#### 7.3. Buat Handler Input Essay (`handleEssayInput`)
+Tambahkan fungsi Javascript di bagian scripts:
+```javascript
+function handleEssayInput(qId, val) {
+    if (val.trim().length > 0) {
+        answers[qId] = val;
+    } else {
+        delete answers[qId];
+    }
+    renderNav();
+    syncAnswerControlState();
+    debouncedAutoSave();
+}
+```
+
+---
+
+### Langkah 8: Update Tampilan Quiz Harian (`resources/views/participant/quiz.blade.php`)
+
+Pada file `resources/views/participant/quiz.blade.php`:
+
+#### 8.1. Di fungsi `optionsHtml(q)`:
+Tambahkan:
+```javascript
+if (q.type === 'essai_singkat') {
+    return `
+        <div style="margin-top: 16px;">
+            <input type="text" id="quizEssayInput" class="form-input" placeholder="Ketik jawaban singkat kamu..." 
+                oninput="sel = this.value.trim().length > 0 ? this.value : null; $('btnSubmit').disabled = !ready(QUESTIONS[idx]);"
+                style="width: 100%; font-size: 1rem; padding: 12px 16px; border-radius: 10px; border: 2px solid #e2e8f0;">
+        </div>
+    `;
+}
+```
+
+#### 8.2. Di fungsi `ready(q)`:
+```javascript
+if (q.type === 'essai_singkat') return typeof sel === 'string' && sel.trim().length > 0;
+```
+
+#### 8.3. Di fungsi `renderPreviewFeedback(q)`:
+Tampilkan feedback jawaban siswa vs kunci jawaban untuk essay singkat.
+
+---
+
+### Langkah 9: Update Halaman Review Siswa (`resources/views/participant/review_category.blade.php`)
+
+Pada file `resources/views/participant/review_category.blade.php`:
+1. **Di bagian blok kalkulasi skor (baris ~97-120):**
+   Tambahkan logika perbandingan untuk `essai_singkat`:
+   ```php
+   if ($question->type === 'essai_singkat') {
+       $normalize = function ($str) {
+           return mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $str)), 'UTF-8');
+       };
+       $userNorm = $normalize($participantAnswer);
+       $isCorrect = false;
+       if ($userNorm !== '') {
+           foreach ((array) $question->correct_answer as $c) {
+               if ($userNorm === $normalize($c)) {
+                   $isCorrect = true;
+                   break;
+               }
+           }
+       }
+   }
+   ```
+2. **Di bagian tampilan opsi (baris ~136):**
+   Jika `$question->type === 'essai_singkat'`, tampilkan kartu review khusus:
+   ```blade
+   @if($question->type === 'essai_singkat')
+   <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+       <div style="padding: 16px; border-radius: 12px; border: 1px solid {{ $participantAnswer === null ? '#cbd5e1' : ($isCorrect ? '#10b981' : '#ef4444') }}; background: {{ $participantAnswer === null ? 'rgba(241,245,249,0.5)' : ($isCorrect ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)') }};">
+           <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">JAWABAN ANDA:</div>
+           <div style="font-size: 1.05rem; font-weight: 600; color: #0f172a;">{{ $participantAnswer ?? '(Tidak dijawab)' }}</div>
+       </div>
+
+       <div style="padding: 16px; border-radius: 12px; border: 1px solid #10b981; background: rgba(16,185,129,0.08);">
+           <div style="font-size: 0.8rem; font-weight: 700; color: #10b981; margin-bottom: 4px;"><i class="fas fa-key"></i> KUNCI JAWABAN:</div>
+           <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">{{ (array_values((array)$question->correct_answer))[0] ?? '-' }}</div>
+       </div>
+   </div>
+   @elseif($question->type === 'multiple_benar_salah')
+   {{-- ... --}}
+   ```
+
+---
+
+### Langkah 10: Update Halaman Preview Sesi Admin
+Di file `resources/views/admin/sessions/preview.blade.php` dan `resources/views/admin/sessions/preview-only.blade.php`:
+Tambahkan tampilan kunci jawaban essay:
 ```blade
-@if(auth()->user()->role !== 'admin')
-    <!-- Modal Tambah Peserta & Buat User Baru -->
-@endif
+@elseif($question->type === 'essai_singkat')
+    <div style="padding: 16px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid #10b981; display: flex; align-items: center; gap: 12px;">
+        <span style="font-weight: 700; color: #10b981;"><i class="fas fa-key"></i> Kunci Jawaban:</span>
+        <span style="color: #0f172a; font-weight: 600;">{{ ((array) $question->correct_answer)[0] ?? '-' }}</span>
+    </div>
 ```
 
 ---
 
-### Langkah 7: Update Manajemen User Superadmin (`ParticipantController.php` & `index.blade.php`)
-Superadmin harus bisa membuat user baru atau mengubah user yang sudah ada menjadi role `admin`.
+## 6. Rencana Pengujian Otomatis (Automated Testing)
 
-#### 7.1. File `app/Http/Controllers/Admin/ParticipantController.php`
-Perbarui 3 tempat:
-1. Method `index()` (Baris 22):
-   ```php
-   $query = User::whereIn('role', ['basic', 'admin_sesi', 'superadmin', 'admin'])->latest();
-   ```
-2. Method `store()` (Baris 48):
-   ```php
-   'role' => 'required|in:basic,admin_sesi,superadmin,admin',
-   ```
-3. Method `update()` (Baris 81):
-   ```php
-   'role' => 'required|in:basic,admin_sesi,superadmin,admin',
-   ```
-
-#### 7.2. File `resources/views/admin/participants/index.blade.php`
-1. **Dropdown Pilihan Role (Baris ~180):**
-   ```blade
-   <select name="role" id="pRole" class="form-input" required>
-       <option value="basic">Basic (Peserta Ujian)</option>
-       <option value="admin">Admin (Viewer Sesi Ujian)</option>
-       <option value="admin_sesi">Admin Sesi (Kelola Sesi & Peserta)</option>
-       <option value="superadmin">Superadmin</option>
-   </select>
-   ```
-2. **Badge Role di Tabel (Baris ~56):**
-   ```blade
-   @php
-       $bgRole = 'rgba(59, 130, 246, 0.1)';
-       $colorRole = '#3b82f6';
-       if($user->role === 'superadmin') { $bgRole = 'rgba(234, 179, 8, 0.1)'; $colorRole = '#eab308'; }
-       elseif($user->role === 'admin_sesi') { $bgRole = 'rgba(139, 92, 246, 0.1)'; $colorRole = '#8b5cf6'; }
-       elseif($user->role === 'admin') { $bgRole = 'rgba(6, 182, 212, 0.1)'; $colorRole = '#06b6d4'; }
-   @endphp
-   ```
-
----
-
-### Langkah 8: Filter Leaderboard Mingguan di `app/Services/QuizService.php`
-Pastikan user dengan role `admin` tidak masuk ke daftar leaderboard mingguan peserta.
-
-Buka `app/Services/QuizService.php`:
-Cari pemanggilan `whereNotIn('role', ['superadmin', 'admin_sesi'])` pada baris 291, 306, dan 312:
-
-Ubah ketiga baris tersebut menjadi:
-```php
-// Baris ~291
-$query->whereNotIn('role', ['superadmin', 'admin_sesi', 'admin']);
-
-// Baris ~306
-if ($currentUser && ! in_array($currentUser->role, ['superadmin', 'admin_sesi', 'admin'])) {
-
-// Baris ~312
-$query->whereNotIn('role', ['superadmin', 'admin_sesi', 'admin']);
-```
-
----
-
-## 5. Rencana Pengujian Otomatis (Automated Testing)
-
-Buat file test baru di `tests/Feature/AdminRolePermissionTest.php`.
-
-Test suite ini wajib mencakup skenario-skenario berikut:
+Buat file test baru di `tests/Feature/ShortEssayQuestionTest.php`:
 
 ```php
 <?php
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\ExamSession;
+use App\Models\ExamSessionCategory;
 use App\Models\ExamSessionParticipant;
+use App\Models\QuestionBank;
+use App\Models\Quiz;
+use App\Models\QuizAttempt;
+use App\Models\QuizSetting;
+use App\Models\SubCategory;
 use App\Models\User;
+use App\Models\UserAnswer;
+use App\Services\AssessmentService;
+use App\Services\QuizAnswerChecker;
+use App\Services\QuizService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class AdminRolePermissionTest extends TestCase
+class ShortEssayQuestionTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $adminUser;
-    protected User $adminSesiUser;
     protected User $superAdmin;
-    protected ExamSession $assignedSession;
-    protected ExamSession $unassignedSession;
+    protected Category $category;
+    protected SubCategory $subCategory;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->superAdmin = User::factory()->create(['role' => 'superadmin']);
-        $this->adminUser = User::factory()->create(['role' => 'admin']);
-        $this->adminSesiUser = User::factory()->create(['role' => 'admin_sesi']);
-
-        $this->assignedSession = ExamSession::factory()->create(['name' => 'Sesi Ditugaskan']);
-        $this->unassignedSession = ExamSession::factory()->create(['name' => 'Sesi Rahasia']);
-
-        // Tugaskan adminUser ke assignedSession
-        ExamSessionParticipant::create([
-            'exam_session_id' => $this->assignedSession->id,
-            'user_id' => $this->adminUser->id,
-            'name' => $this->adminUser->name,
-            'access_code' => 'ADMIN01',
+        $this->category = Category::create(['name' => 'Bahasa Indonesia', 'slug' => 'bahasa-indonesia']);
+        $this->subCategory = SubCategory::create([
+            'category_id' => $this->category->id,
+            'name' => 'Tata Bahasa',
+            'slug' => 'tata-bahasa',
         ]);
     }
 
-    /** 1. Test redirect login untuk role admin */
-    public function test_admin_redirects_to_sessions_index_after_login(): void
+    /** 1. Test Superadmin dapat membuat soal essai singkat via API / Controller */
+    public function test_superadmin_can_create_short_essay_question(): void
     {
-        $response = $this->actingAs($this->adminUser)->get('/');
-        $response->assertRedirect(route('admin.sessions.index'));
-    }
-
-    /** 2. Test role admin hanya melihat sesi yang ditugaskan */
-    public function test_admin_only_sees_assigned_sessions(): void
-    {
-        $response = $this->actingAs($this->adminUser)->get(route('admin.sessions.index'));
-        $response->assertOk();
-        $response->assertSee('Sesi Ditugaskan');
-        $response->assertDontSee('Sesi Rahasia');
-    }
-
-    /** 3. Test role admin dapat melihat detail sesi yang ditugaskan */
-    public function test_admin_can_view_assigned_session_details(): void
-    {
-        $response = $this->actingAs($this->adminUser)->get(route('admin.sessions.show', $this->assignedSession->id));
-        $response->assertOk();
-        $response->assertSee('Daftar Peserta');
-    }
-
-    /** 4. Test role admin TIDAK BISA melihat tombol Tambah Peserta di halaman detail */
-    public function test_admin_does_not_see_add_participant_buttons(): void
-    {
-        $response = $this->actingAs($this->adminUser)->get(route('admin.sessions.show', $this->assignedSession->id));
-        $response->assertOk();
-        $response->assertDontSee('openParticipantModal');
-        $response->assertDontSee('openNewUserModal');
-    }
-
-    /** 5. Test proteksi backend: admin DITOLAK saat menambahkan user lama (POST /admin/session-participants) */
-    public function test_admin_cannot_store_existing_participant(): void
-    {
-        $student = User::factory()->create(['role' => 'basic']);
-
-        $response = $this->actingAs($this->adminUser)->postJson(route('admin.session-participants.store'), [
-            'exam_session_id' => $this->assignedSession->id,
-            'user_ids' => [$student->id],
+        $response = $this->actingAs($this->superAdmin)->postJson(route('admin.questions.store'), [
+            'category_id' => $this->category->id,
+            'sub_category_id' => $this->subCategory->id,
+            'kode_soal' => 'ESSAY-01',
+            'type' => 'essai_singkat',
+            'question_text' => 'Ibu kota negara Indonesia adalah...',
+            'options' => [],
+            'correct_answer' => ['Jakarta'],
+            'score_correct' => 1,
+            'score_incorrect' => 0,
+            'explanation' => 'Ibu kota Indonesia adalah Jakarta.',
         ]);
 
-        $response->assertStatus(403);
-        $this->assertDatabaseMissing('exam_session_participants', [
-            'exam_session_id' => $this->assignedSession->id,
-            'user_id' => $student->id,
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('question_banks', [
+            'kode_soal' => 'ESSAY-01',
+            'type' => 'essai_singkat',
         ]);
     }
 
-    /** 6. Test proteksi backend: admin DITOLAK saat membuat user baru (POST /admin/session-participants/new) */
-    public function test_admin_cannot_store_new_user_participant(): void
+    /** 2. Test QuizAnswerChecker: Jawaban persis, beda case, beda spasi, dan salah */
+    public function test_quiz_answer_checker_evaluates_short_essay_accurately(): void
     {
-        $response = $this->actingAs($this->adminUser)->postJson(route('admin.session-participants.store-new'), [
-            'exam_session_id' => $this->assignedSession->id,
-            'name' => 'Siswa Baru',
-            'email' => 'siswabaru@test.com',
-            'password' => 'password123',
+        $checker = app(QuizAnswerChecker::class);
+
+        $quiz = new Quiz([
+            'type' => 'essai_singkat',
+            'correct_answer' => ['Bhinneka Tunggal Ika'],
         ]);
 
-        $response->assertStatus(403);
-        $this->assertDatabaseMissing('users', ['email' => 'siswabaru@test.com']);
+        // A. Persis sama -> Benar
+        $this->assertTrue($checker->isCorrect($quiz, 'Bhinneka Tunggal Ika'));
+
+        // B. Huruf kecil semua -> Benar
+        $this->assertTrue($checker->isCorrect($quiz, 'bhinneka tunggal ika'));
+
+        // C. Huruf kapital semua -> Benar
+        $this->assertTrue($checker->isCorrect($quiz, 'BHINNEKA TUNGGAL IKA'));
+
+        // D. Spasi di awal & akhir -> Benar
+        $this->assertTrue($checker->isCorrect($quiz, '   Bhinneka Tunggal Ika   '));
+
+        // E. Spasi ganda di tengah kalimat -> Benar
+        $this->assertTrue($checker->isCorrect($quiz, 'bhinneka    tunggal   ika'));
+
+        // F. Jawaban typo / salah -> Salah
+        $this->assertFalse($checker->isCorrect($quiz, 'Bhinneka Ika'));
+
+        // G. Jawaban kosong / spasi saja -> Salah
+        $this->assertFalse($checker->isCorrect($quiz, ''));
+        $this->assertFalse($checker->isCorrect($quiz, '   '));
     }
 
-    /** 7. Test proteksi backend: admin DITOLAK saat menghapus peserta */
-    public function test_admin_cannot_delete_participant(): void
+    /** 3. Test AssessmentService penilaian sesi ujian untuk soal essai singkat */
+    public function test_assessment_service_scores_short_essay_correctly(): void
     {
-        $student = User::factory()->create(['role' => 'basic']);
-        $participant = ExamSessionParticipant::create([
-            'exam_session_id' => $this->assignedSession->id,
-            'user_id' => $student->id,
-            'name' => $student->name,
-            'access_code' => 'STU001',
+        $question = QuestionBank::create([
+            'category_id' => $this->category->id,
+            'sub_category_id' => $this->subCategory->id,
+            'kode_soal' => 'ESSAY-02',
+            'type' => 'essai_singkat',
+            'question_text' => 'Lambang negara Indonesia adalah burung...',
+            'options' => [],
+            'correct_answer' => ['Garuda'],
+            'score_correct' => 5,
+            'score_incorrect' => 0,
         ]);
 
-        $response = $this->actingAs($this->adminUser)->deleteJson(route('admin.session-participants.destroy', $participant->id));
-        $response->assertStatus(403);
-        $this->assertDatabaseHas('exam_session_participants', ['id' => $participant->id]);
-    }
-
-    /** 8. Test proteksi backend: admin DITOLAK saat mengubah privilege peserta */
-    public function test_admin_cannot_update_participant_privilege(): void
-    {
-        $student = User::factory()->create(['role' => 'basic']);
-        $participant = ExamSessionParticipant::create([
-            'exam_session_id' => $this->assignedSession->id,
-            'user_id' => $student->id,
-            'name' => $student->name,
-            'access_code' => 'STU002',
-            'privilege' => 'general',
+        $session = ExamSession::create([
+            'name' => 'Sesi Ujian Essay',
+            'code' => 'ESSAY001',
+            'start_date' => '2026-09-10',
+            'end_date' => '2026-09-10',
+            'start_time' => '08:00',
+            'end_time' => '10:00',
+            'is_active' => true,
         ]);
 
-        $response = $this->actingAs($this->adminUser)->patchJson(route('admin.session-participants.update-privilege', $participant->id), [
-            'privilege' => 'premium',
+        $participantBenar = ExamSessionParticipant::create([
+            'exam_session_id' => $session->id,
+            'user_id' => User::factory()->create()->id,
+            'name' => 'Siswa Benar',
+            'whatsapp' => '08123456789',
+            'access_code' => 'BENAR01',
         ]);
 
-        $response->assertStatus(403);
-        $this->assertEquals('general', $participant->fresh()->privilege);
-    }
+        $participantSalah = ExamSessionParticipant::create([
+            'exam_session_id' => $session->id,
+            'user_id' => User::factory()->create()->id,
+            'name' => 'Siswa Salah',
+            'whatsapp' => '08123456788',
+            'access_code' => 'SALAH01',
+        ]);
 
-    /** 9. Test role admin DITOLAK saat mencoba akses menu Superadmin */
-    public function test_admin_cannot_access_superadmin_menus(): void
-    {
-        $response = $this->actingAs($this->adminUser)->get(route('admin.categories.index'));
-        $response->assertForbidden();
+        // Siswa Benar menjawab dengan spasi berlebih dan lowercase: "  garuda  "
+        UserAnswer::create([
+            'exam_session_id' => $session->id,
+            'participant_id' => $participantBenar->id,
+            'question_bank_id' => $question->id,
+            'answer' => '  garuda  ',
+        ]);
 
-        $responseQuestions = $this->actingAs($this->adminUser)->get(route('admin.questions.index'));
-        $responseQuestions->assertForbidden();
+        // Siswa Salah menjawab "Elang"
+        UserAnswer::create([
+            'exam_session_id' => $session->id,
+            'participant_id' => $participantSalah->id,
+            'question_bank_id' => $question->id,
+            'answer' => 'Elang',
+        ]);
 
-        $responseParticipants = $this->actingAs($this->adminUser)->get(route('admin.participants.index'));
-        $responseParticipants->assertForbidden();
+        $assessmentService = app(AssessmentService::class);
+        $assessmentService->calculateScores($session);
+
+        $answerBenar = UserAnswer::where('participant_id', $participantBenar->id)->first();
+        $this->assertTrue((bool) $answerBenar->is_correct);
+        $this->assertEquals(5, $answerBenar->score);
+
+        $answerSalah = UserAnswer::where('participant_id', $participantSalah->id)->first();
+        $this->assertFalse((bool) $answerSalah->is_correct);
+        $this->assertEquals(0, $answerSalah->score);
     }
 }
 ```
 
 ---
 
-## 6. Checklist Verifikasi Manual (QA Acceptance Criteria)
+## 7. Checklist Verifikasi Manual (QA Acceptance Criteria)
 
-Lakukan verifikasi manual berikut sebelum menandai pekerjaan selesai:
+Lakukan pengujian manual berikut:
 
-1. [ ] **Manajemen User Superadmin:**
-   - Login sebagai `superadmin`, buka menu **Manajemen Peserta**.
-   - Buka modal "Tambah Peserta Baru". Pastikan ada opsi **Admin (Viewer Sesi Ujian)** pada dropdown Role.
-   - Buat satu user baru dengan role `admin` (misal `admin_test@jagobelajar.com`).
-   - Pastikan badge pada tabel menampilkan nama `Admin` dengan warna badge yang jelas.
-2. [ ] **Assign Admin ke Sesi Ujian:**
-   - Masuk ke salah satu Sesi Ujian sebagai `superadmin`.
-   - Klik "Tambah Peserta", cari akun `admin_test@jagobelajar.com` yang baru dibuat, lalu tambahkan ke sesi ujian.
-3. [ ] **Login sebagai Admin Baru:**
-   - Logout dari superadmin, login menggunakan akun `admin_test@jagobelajar.com`.
-   - Pastikan diarahkan ke `/admin/sessions`.
-   - Pastikan sidebar sebelah kiri tidak muncul (layout minimalis seperti `admin_sesi`).
-   - Pastikan hanya sesi ujian yang ditugaskan tadi yang terlihat.
-4. [ ] **Verifikasi Halaman Detail Sesi:**
-   - Klik "Kelola Sesi" pada sesi yang muncul.
-   - Pastikan tombol **"Buat Peserta Baru"** dan **"Tambah Peserta"** **TIDAK ADA**.
-   - Pada tabel peserta, pastikan **TIDAK ADA tombol ikon sampah (Hapus)**.
-   - Pastikan kolom **Privilege** tidak bisa diubah (berupa badge biasa, bukan dropdown select).
-   - Pastikan fitur view (Preview Soal, Export CSV Nilai, Lihat Tab Nilai/Hasil) tetap bisa diakses secara normal.
-5. [ ] **Uji Coba Penetrasi API (Backend Security):**
-   - Buka Developer Tools / Console Browser saat login sebagai `admin`.
-   - Jalankan `fetch('/admin/session-participants', { method: 'POST', ... })` atau kirim request penambahan peserta manual.
-   - Pastikan response mengembalikan **HTTP 403 Forbidden**.
-6. [ ] **Verifikasi Leaderboard:**
-   - Pastikan user `admin_test@jagobelajar.com` tidak muncul di leaderboard mingguan peserta.
-7. [ ] **Automated Test Lulus:**
-   - Jalankan `php artisan test --filter=AdminRolePermissionTest`. Semua test harus berwarna hijau (**PASS**).
+1. [ ] **Admin: Input Soal Essay Singkat Baru:**
+   - Masuk ke Admin $\rightarrow$ **Bank Soal** $\rightarrow$ Klik **Tambah Soal**.
+   - Pilih Tipe Soal: **Essai Singkat**.
+   - Pastikan opsi A, B, C, D dan tombol "Tambah Opsi" disembunyikan.
+   - Masukkan kunci jawaban: `"Pancasila"`.
+   - Simpan soal dan pastikan tersimpan tanpa error validasi.
+2. [ ] **Admin: Preview & Edit Soal:**
+   - Klik ikon **Preview** pada soal yang baru dibuat. Pastikan badge bertuliskan **Essai Singkat** dan kunci jawaban tampil dengan rapi.
+   - Klik **Edit Soal**. Pastikan input kunci jawaban terisi otomatis dengan nilai `"Pancasila"`, lalu simpan kembali.
+3. [ ] **Siswa: Mengerjakan Ujian dengan Soal Essay:**
+   - Mulai sesi ujian yang memuat soal essay singkat tersebut.
+   - Pastikan muncul **kotak input isian teks** (bukan tombol pilihan ganda).
+   - Ketik jawaban dengan huruf kecil dan spasi berlebih: `"  pancasila  "`.
+   - Selesaikan ujian.
+4. [ ] **Verifikasi Nilai & Review:**
+   - Buka halaman review nilai siswa.
+   - Pastikan jawaban dinilai **BENAR** (centang hijau) dengan skor penuh.
+   - Uji juga dengan jawaban yang salah (misal: `"UUD 1945"`), pastikan dinilai **SALAH** (silang merah) dengan skor 0.
+5. [ ] **Automated Test:**
+   - Jalankan `php artisan test --filter=ShortEssayQuestionTest`.
+   - Seluruh test harus berwarna hijau (**PASS**).

@@ -68,6 +68,22 @@ class QuizAnswerChecker
                     }
                 }
                 return true;
+
+            case 'essai_singkat':
+                if (! is_scalar($answer)) {
+                    return false;
+                }
+                $userNormalized = mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $answer)), 'UTF-8');
+                if ($userNormalized === '') {
+                    return false;
+                }
+                foreach ((array) $quiz->correct_answer as $c) {
+                    $correctNorm = mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $c)), 'UTF-8');
+                    if ($userNormalized === $correctNorm) {
+                        return true;
+                    }
+                }
+                return false;
         }
 
         return false;
